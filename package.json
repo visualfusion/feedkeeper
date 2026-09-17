@@ -1,0 +1,31 @@
+{
+  "name": "feedkeeper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted, multi-user RSS/Atom feed manager with a remote-capable MCP server.",
+  "license": "MIT",
+  "author": {
+    "name": "visualfusion",
+    "url": "https://www.visualfusion.de"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/visualfusion/feedkeeper.git"
+  },
+  "homepage": "https://rss.visualfusion.de",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:server": "npm run dev --workspace server",
+    "dev:web": "npm run dev --workspace web",
+    "build": "npm run build --workspace web && npm run build --workspace server",
+    "start": "npm run start --workspace server",
+    "setup": "npm run setup --workspace server",
+    "lint": "npm run lint --workspace server && npm run lint --workspace web"
+  }
+}

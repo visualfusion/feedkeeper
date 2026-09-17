@@ -1,0 +1,118 @@
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/manrope/latin-600.css";
+@import "@fontsource/manrope/latin-700.css";
+@import "tailwindcss";
+
+:root,
+[data-theme="light"] {
+  --c-bg: #fdfdfd;
+  --c-surface: #ffffff;
+  --c-border: rgba(38, 54, 85, 0.12);
+  --c-text: #263655;
+  --c-text-muted: rgba(38, 54, 85, 0.64);
+  --c-blue1: #2a597b;
+  --c-blue3: #577e9f;
+  --c-blue4: #6d94b5;
+  --c-green3: #9cb63c;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --c-bg: #0f141e;
+  --c-surface: #171e2b;
+  --c-border: rgba(253, 253, 253, 0.12);
+  --c-text: #fdfdfd;
+  --c-text-muted: rgba(253, 253, 253, 0.64);
+  --c-blue1: #6d94b5;
+  --c-blue3: #577e9f;
+  --c-blue4: #2a597b;
+  --c-green3: #9cb63c;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-bg: #0f141e;
+    --c-surface: #171e2b;
+    --c-border: rgba(253, 253, 253, 0.12);
+    --c-text: #fdfdfd;
+    --c-text-muted: rgba(253, 253, 253, 0.64);
+    --c-blue1: #6d94b5;
+    --c-blue3: #577e9f;
+    --c-blue4: #2a597b;
+    color-scheme: dark;
+  }
+}
+
+html,
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background-color: var(--c-bg);
+  color: var(--c-text);
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Manrope", sans-serif;
+}
+
+/* @layer components sits below Tailwind's utilities layer, so e.g. a
+   `sm:w-56` on an element using `.input` always wins over this width:100%
+   regardless of source order (plain same-specificity classes would not). */
+@layer components {
+  .card {
+    background-color: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: 0.75rem;
+  }
+
+  .btn-primary {
+    background-color: var(--c-blue1);
+    color: #fdfdfd;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: opacity 0.15s ease;
+  }
+
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background-color: transparent;
+    color: var(--c-text);
+    border: 1px solid var(--c-border);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+  }
+
+  .input {
+    background-color: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--c-text);
+    width: 100%;
+  }
+
+  .input:focus {
+    outline: 2px solid var(--c-blue3);
+    outline-offset: 1px;
+  }
+
+  .input::placeholder {
+    color: var(--c-text-muted);
+    opacity: 1;
+  }
+}
