@@ -1,13 +1,12 @@
 # Feedkeeper
 
-[![CI](https://github.com/visualfusion/feedkeeper/actions/workflows/ci.yml/badge.svg)](https://github.com/visualfusion/feedkeeper/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![MCP](https://img.shields.io/badge/MCP-Streamable%20HTTP-8a2be2)](https://modelcontextprotocol.io)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
-[![GitHub stars](https://img.shields.io/github/stars/visualfusion/feedkeeper?style=social)](https://github.com/visualfusion/feedkeeper)
-[![Languages](https://img.shields.io/badge/UI-EN%20%7C%20DE%20%7C%20JA-informational)](#features)
+<p align="center">
+  <a href="https://github.com/visualfusion/feedkeeper/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/visualfusion/feedkeeper/ci.yml?style=for-the-badge&logo=githubactions&logoColor=white&label=CI" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License: MIT" /></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-Streamable_HTTP-8A2BE2?style=for-the-badge" alt="MCP" /></a>
+  <a href="#features"><img src="https://img.shields.io/badge/UI-EN_%7C_DE_%7C_JA-informational?style=for-the-badge" alt="Languages" /></a>
+  <a href="#contributing"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=for-the-badge" alt="PRs Welcome" /></a>
+</p>
 
 Feedkeeper is a self-hosted RSS/Atom feed manager with a **remote-capable [MCP](https://modelcontextprotocol.io) server** built in. Subscribe to any feed — news sites, blogs, or a [Google Alerts](https://www.google.com/alerts) RSS feed — and let an MCP client like Claude read, search, and triage new items for you, from anywhere. The web UI is fully translated into English, German, and Japanese, switchable per user at any time.
 
