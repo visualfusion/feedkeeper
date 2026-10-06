@@ -45,7 +45,7 @@
     "@types/node": "^22.15.0",
     "@types/web-push": "^3.6.4",
     "tsx": "^4.23.13",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "yaml": "^2.9.1"
   }
 }
