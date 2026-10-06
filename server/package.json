@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@humanwhocodes/ico-to-png": "^1.1.0",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.0",
     "@mozilla/readability": "^0.6.0",
     "@resvg/resvg-js": "^2.6.2",
     "bcryptjs": "^3.0.3",
