@@ -4,6 +4,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.16.2] - 2026-10-07
+
 ### Security
 - The service worker stored a copy of every GET request outside `/api/` and answered with it first. FeedKeeper itself serves nothing user-specific there, but a product built on it that adds its own pages or API under another path would have shown one account another account's data in the same browser. The worker now only caches the app's static files (the files next to `index.html`) and `/assets/`; every other path goes to the network.
 
@@ -231,7 +233,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 First public release: an RSS and Atom reader with a remote MCP server, multi-user accounts, a trilingual interface (English, German, Japanese), SSRF-guarded feed fetching and a single-file SQLite database.
 
-[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.16.1...HEAD
+[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.16.2...HEAD
+[0.16.2]: https://github.com/visualfusion/feedkeeper/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/visualfusion/feedkeeper/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/visualfusion/feedkeeper/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/visualfusion/feedkeeper/compare/v0.15.0...v0.15.1
