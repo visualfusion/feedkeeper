@@ -16,6 +16,9 @@ const MAX_CACHED_IMAGES = 3000;
 const READABLE_API = [/^\/api\/onboarding\/status$/, /^\/api\/config$/, /^\/api\/auth\/me$/, /^\/api\/feeds$/, /^\/api\/folders$/, /^\/api\/items$/, /^\/api\/filters\/muted$/];
 const FEED_ICON = /^\/api\/feeds\/\d+\/icon$/;
 const IMMUTABLE_API = [/^\/api\/archive\/images\/\d+$/, /^\/api\/items\/\d+\/image$/, /^\/api\/auth\/me\/avatar$/];
+// Files next to index.html (theme script, manifest, icons) are the only other thing served from the cache. Any other
+// path answers per request and per signed-in user, so a stored copy could show one account another's data.
+const STATIC_FILE = /^\/[^/]+\.(?:js|css|svg|png|ico|webmanifest|txt|woff2?)$/;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(precache().catch(() => undefined).then(() => self.skipWaiting()));
@@ -58,7 +61,7 @@ self.addEventListener("fetch", (event) => {
     } else if (READABLE_API.some((pattern) => pattern.test(url.pathname))) {
       event.respondWith(networkFirst(API_CACHE, request, url.pathname === "/api/items" ? MAX_CACHED_ITEM_LISTS : 0));
     }
-  } else if (!url.pathname.startsWith("/mcp")) {
+  } else if (!url.pathname.startsWith("/mcp") && STATIC_FILE.test(url.pathname)) {
     event.respondWith(staleWhileRevalidate(STATIC_CACHE, request));
   }
 });

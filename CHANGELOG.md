@@ -4,6 +4,9 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Security
+- The service worker stored a copy of every GET request outside `/api/` and answered with it first. FeedKeeper itself serves nothing user-specific there, but a product built on it that adds its own pages or API under another path would have shown one account another account's data in the same browser. The worker now only caches the app's static files (the files next to `index.html`) and `/assets/`; every other path goes to the network.
+
 ## [0.16.1] - 2026-10-06
 
 ### Changed
