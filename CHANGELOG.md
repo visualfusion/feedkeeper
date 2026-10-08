@@ -4,6 +4,11 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-08
+
+### Added
+- Extension point `articlesNotice`: a host can show one card above the list of articles, for example what a plan includes. It appears for accounts that already have feeds and only after the person has closed the short tour, so one card is shown at a time. `applies(user)` decides whether it is still to be shown; closing it is up to the host's content.
+
 ## [0.17.0] - 2026-10-08
 
 ### Added
@@ -252,7 +257,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 First public release: an RSS and Atom reader with a remote MCP server, multi-user accounts, a trilingual interface (English, German, Japanese), SSRF-guarded feed fetching and a single-file SQLite database.
 
-[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/visualfusion/feedkeeper/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/visualfusion/feedkeeper/compare/v0.16.2...v0.17.0
 [0.16.2]: https://github.com/visualfusion/feedkeeper/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/visualfusion/feedkeeper/compare/v0.16.0...v0.16.1

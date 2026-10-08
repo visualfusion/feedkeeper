@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { groupSettingsSections, pickLocalized, resolveFooterLinks, resolveLoginForm, resolvePasswordCard, resolveSettingsExtensions } from "../src/extensions/host.ts";
+import { groupSettingsSections, pickLocalized, resolveFooterLinks, resolveLoginForm, resolvePasswordCard, resolveArticlesNotice, resolveSettingsExtensions } from "../src/extensions/host.ts";
 
 const builtIn = ["account", "general", "users", "database"];
 const section = (id, extra = {}) => ({ id, label: `Label ${id}`, description: "Beschreibung", group: "Kunden", mount: () => {}, ...extra });
@@ -158,4 +158,14 @@ test("the built-in starter packs have unique ids, https addresses and titles in 
     }
     for (const feed of pack.feeds) assert.match(feed.url, /^https:\/\//);
   }
+});
+
+test("a notice above the articles needs a mount function, and `applies` is optional", () => {
+  const mount = () => {};
+  const applies = () => true;
+  assert.deepEqual(resolveArticlesNotice({ articlesNotice: { mount, applies } }), { mount, applies });
+  assert.deepEqual(resolveArticlesNotice({ articlesNotice: { mount } }), { mount });
+  assert.equal(resolveArticlesNotice({ articlesNotice: {} }), null);
+  assert.equal(resolveArticlesNotice({ articlesNotice: { mount: "x" } }), null);
+  assert.equal(resolveArticlesNotice(undefined), null);
 });

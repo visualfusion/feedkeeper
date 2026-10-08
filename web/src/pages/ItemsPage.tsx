@@ -15,6 +15,7 @@ import { toast } from "../utils/toast.ts";
 import { announceItemsChanged } from "../utils/badge.ts";
 import { syncOfflineCopy } from "../utils/offlineSync.ts";
 import { RefreshIcon } from "../components/feeds/icons.tsx";
+import { HostNotice } from "../components/onboarding/HostNotice.tsx";
 import { Intro } from "../components/onboarding/Intro.tsx";
 import { Welcome } from "../components/onboarding/Welcome.tsx";
 
@@ -778,6 +779,7 @@ export function ItemsPage() {
       </div>
 
       {feedsLoaded && feeds.length > 0 && !loadError && <Intro />}
+      {feedsLoaded && feeds.length > 0 && !loadError && <HostNotice />}
 
       {loadError ? (
         <div role="alert" className="flex flex-col items-start gap-3">

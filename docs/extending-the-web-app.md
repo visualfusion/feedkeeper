@@ -108,6 +108,20 @@ extensions.onboarding = {
 - A pack with the id of a built-in one replaces it. Feeds are shown in the language of the app first, then English; a feed without `lang` is always shown. Only `http(s)` addresses without credentials are accepted, at most 12 packs of 20 feeds.
 - A pack subscribes its feeds into a folder with the pack's name.
 
+## Notice above the articles
+
+```js
+extensions.articlesNotice = {
+  // Optional: whether the notice is shown to this user right now.
+  applies: async () => !localStorage.getItem("notice-closed"),
+  mount(container) {
+    container.innerHTML = '<div class="card p-4">Your plan includes …</div>';
+  },
+};
+```
+
+A host can show one card above the list of articles, for example what a plan includes. It appears for accounts that already have feeds, and only after the person has closed the short tour of the app, so one card is shown at a time. Closing the notice is up to the host's content: store that somewhere and answer `false` from `applies` afterwards.
+
 ## Where it lives
 
 `web/src/extensions/host.ts` validates and resolves everything, `useExtensions.ts` re-reads it on every announced change, and the components `SettingsPage.tsx`, `FooterLinks.tsx`, `LoginPage.tsx` and `ProfileMenu.tsx` use it. The unit tests are in `web/test/extensions.test.mjs`.

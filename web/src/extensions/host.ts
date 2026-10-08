@@ -68,6 +68,13 @@ export interface OnboardingExtension {
   mount: (container: HTMLElement) => void | (() => void);
 }
 
+export interface ArticlesNoticeExtension {
+  /** Whether the notice is shown to this user right now, for example until the person has closed it. Without it the notice always shows. */
+  applies?: (user: { id: number; email: string; display_name: string | null }) => boolean | Promise<boolean>;
+  /** Fills the container of the notice above the articles. Closing it is up to the host's content (then it answers `false` from `applies` the next time). */
+  mount: (container: HTMLElement) => void | (() => void);
+}
+
 export interface LoginFormExtension {
   /** Fills the container where the sign-in form is. After signing in, reload the page. */
   mount: (container: HTMLElement) => void | (() => void);
@@ -239,4 +246,11 @@ export function resolveStarterPacks<T extends { id: string; title: Localized; de
     if (feeds.length > 0) packs.push({ id: pack.id, title, description: pickLocalized(pack.description, language) ?? "", feeds });
   }
   return packs;
+}
+
+/** The host's notice above the list of articles, if it provides a usable one. */
+export function resolveArticlesNotice(extensions: unknown): ArticlesNoticeExtension | null {
+  const notice = isObject(extensions) ? extensions.articlesNotice : undefined;
+  if (!isObject(notice) || typeof notice.mount !== "function") return null;
+  return { mount: notice.mount as ArticlesNoticeExtension["mount"], ...(typeof notice.applies === "function" ? { applies: notice.applies as ArticlesNoticeExtension["applies"] } : {}) };
 }
