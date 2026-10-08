@@ -29,6 +29,7 @@ extensions.footerLinks = [
 
 - Shown under the sign-in card, at the bottom of the account menu and at the end of every settings page. Without links nothing is shown.
 - `label` and `href` are either one value or values by language code (`de`, `en`, `ja`, …). The app picks the language it is shown in, then the language without region (`de-AT` → `de`), then English, then the first value.
+- `icon` (optional) is a small image shown before the label, an address like the ones below. `placements` (optional) is a list of `"login"`, `"menu"` and `"page"`; without it the link is shown everywhere.
 - An address is a page on the same site (`/impressum`) or an `http(s)` URL; anything else, such as `javascript:` or `//host`, is dropped. External addresses open in a new tab. At most eight links, labels up to 60 characters.
 
 ## Settings sections
@@ -68,6 +69,20 @@ extensions.loginForm = {
 ```
 
 The app keeps its card with the logo and title and puts the host's content where the email and password form is. The server decides who is signed in, so the content signs the user in through the API (or by redirecting) and reloads the page afterwards. The classes of the app (`input`, `btn-primary`, `btn-secondary`) are available for styling; colours follow the light and dark theme through CSS variables such as `--c-text` and `--c-border`.
+
+## Password card
+
+```js
+extensions.passwordCard = {
+  // Optional: only replace the card for some users. Without it the card is always replaced.
+  applies: async (user) => (await fetch("/sso/status").then((r) => r.json())).noPassword,
+  mount(container) {
+    container.textContent = "You sign in through your company; there is no password here.";
+  },
+};
+```
+
+The account page shows a card to change the password. A host that signs people in another way can replace it, for everyone or, with `applies`, for those who have no password. While `applies` is pending nothing is shown; if it fails or answers anything but `true`, the built-in card is used.
 
 ## Where it lives
 

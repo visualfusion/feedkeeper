@@ -1,9 +1,12 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { resolvePasswordCard } from "../../extensions/host.ts";
+import { useExtensions } from "../../extensions/useExtensions.ts";
 import { api, ApiError } from "../../api/client.ts";
 import { useAuth } from "../../auth/AuthContext.tsx";
 import { prepareAvatar } from "../../utils/avatarImage.ts";
 import { UserAvatar } from "../UserAvatar.tsx";
+import { ExtensionMount } from "./ExtensionMount.tsx";
 import { SettingsCard, SettingBlock, SettingRow, Status, type StatusMessage } from "./ui.tsx";
 
 function ProfileCard() {
@@ -153,11 +156,32 @@ function PasswordCard() {
   );
 }
 
+/** The host's password card where it asks to replace it (for example for accounts without a password), else the built-in one. */
+function PasswordSection() {
+  const { user } = useAuth();
+  const hostCard = resolvePasswordCard(useExtensions());
+  const [replaced, setReplaced] = useState<boolean | null>(null);
+  useEffect(() => {
+    let current = true;
+    setReplaced(null);
+    if (!hostCard || !user) return;
+    Promise.resolve(hostCard.applies ? hostCard.applies({ id: user.id, email: user.email, display_name: user.display_name ?? null }) : true)
+      .then((value) => { if (current) setReplaced(value === true); })
+      .catch(() => { if (current) setReplaced(false); });
+    return () => { current = false; };
+    // The functions identify the host's card; resolving builds a new object on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hostCard?.mount, hostCard?.applies, user?.id]);
+  if (!hostCard) return <PasswordCard />;
+  if (replaced === null) return null;
+  return replaced ? <ExtensionMount name="password-card" mount={hostCard.mount} /> : <PasswordCard />;
+}
+
 export function AccountSettings() {
   return (
     <div className="flex flex-col gap-5">
       <ProfileCard />
-      <PasswordCard />
+      <PasswordSection />
     </div>
   );
 }

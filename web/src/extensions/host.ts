@@ -39,6 +39,20 @@ export interface FooterLink {
   href: Localized;
   /** Open in a new tab. */
   newTab?: boolean;
+  /** A small image shown in front of the label (an address on this site or an `http(s)` URL). */
+  icon?: string;
+  /** Where the link is shown; every place when left out. */
+  placements?: FooterPlacement[];
+}
+
+export type FooterPlacement = "login" | "menu" | "page";
+const FOOTER_PLACEMENTS: readonly FooterPlacement[] = ["login", "menu", "page"];
+
+export interface PasswordCardExtension {
+  /** Whether the host's card replaces the password card for this user, for example for accounts that signed in without a password. */
+  applies?: (user: { id: number; email: string; display_name: string | null }) => boolean | Promise<boolean>;
+  /** Fills the container in place of the password card. */
+  mount: (container: HTMLElement) => void | (() => void);
 }
 
 export interface LoginFormExtension {
@@ -128,10 +142,11 @@ export interface ResolvedFooterLink {
   label: string;
   href: string;
   newTab: boolean;
+  icon: string | null;
 }
 
 /** The footer links the host asks for, in its language-specific wording; invalid ones are left out. */
-export function resolveFooterLinks(extensions: unknown, language: string): ResolvedFooterLink[] {
+export function resolveFooterLinks(extensions: unknown, language: string, placement?: FooterPlacement): ResolvedFooterLink[] {
   const list = isObject(extensions) && Array.isArray(extensions.footerLinks) ? extensions.footerLinks : [];
   const links: ResolvedFooterLink[] = [];
   for (const entry of list.slice(0, 8)) {
@@ -139,7 +154,9 @@ export function resolveFooterLinks(extensions: unknown, language: string): Resol
     const label = pickLocalized(entry.label, language);
     const href = pickLocalized(entry.href, language);
     if (!label || !isText(label, 60) || !href || !safeHref(href)) continue;
-    links.push({ label, href, newTab: entry.newTab === true || /^https?:/i.test(href) });
+    if (placement && Array.isArray(entry.placements) && !entry.placements.some((value) => value === placement && FOOTER_PLACEMENTS.includes(value))) continue;
+    const icon = typeof entry.icon === "string" && safeHref(entry.icon) ? entry.icon : null;
+    links.push({ label, href, newTab: entry.newTab === true || /^https?:/i.test(href), icon });
   }
   return links;
 }
@@ -148,4 +165,11 @@ export function resolveFooterLinks(extensions: unknown, language: string): Resol
 export function resolveLoginForm(extensions: unknown): LoginFormExtension | null {
   const login = isObject(extensions) ? extensions.loginForm : undefined;
   return isObject(login) && typeof login.mount === "function" ? (login as unknown as LoginFormExtension) : null;
+}
+
+/** The replacement for the password card of the account page, if the host provides a usable one. */
+export function resolvePasswordCard(extensions: unknown): PasswordCardExtension | null {
+  const card = isObject(extensions) ? extensions.passwordCard : undefined;
+  if (!isObject(card) || typeof card.mount !== "function") return null;
+  return { mount: card.mount as PasswordCardExtension["mount"], ...(typeof card.applies === "function" ? { applies: card.applies as PasswordCardExtension["applies"] } : {}) };
 }

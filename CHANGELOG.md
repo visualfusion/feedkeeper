@@ -4,6 +4,10 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Added
+- Extension point `passwordCard`: a host that signs people in another way (single sign-on, Sign in with Apple) can replace the password card of the account page, for everyone or, with `applies`, for the users who have no password.
+- Footer links can carry a small `icon` and be limited to some `placements` (`login`, `menu`, `page`), so a host no longer needs style rules to decorate or hide them.
+
 ## [0.16.2] - 2026-10-07
 
 ### Security

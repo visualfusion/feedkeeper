@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { groupSettingsSections, pickLocalized, resolveFooterLinks, resolveLoginForm, resolveSettingsExtensions } from "../src/extensions/host.ts";
+import { groupSettingsSections, pickLocalized, resolveFooterLinks, resolveLoginForm, resolvePasswordCard, resolveSettingsExtensions } from "../src/extensions/host.ts";
 
 const builtIn = ["account", "general", "users", "database"];
 const section = (id, extra = {}) => ({ id, label: `Label ${id}`, description: "Beschreibung", group: "Kunden", mount: () => {}, ...extra });
@@ -84,8 +84,8 @@ test("footer links follow the language and only ever link to pages or http(s) ad
     ],
   };
   assert.deepEqual(resolveFooterLinks(host, "de"), [
-    { label: "Impressum", href: "/impressum", newTab: false },
-    { label: "Operator", href: "https://example.org/about", newTab: true },
+    { label: "Impressum", href: "/impressum", newTab: false, icon: null },
+    { label: "Operator", href: "https://example.org/about", newTab: true, icon: null },
   ]);
   assert.equal(resolveFooterLinks(host, "en")[0].href, "/en/legal-notice");
   const many = { footerLinks: Array.from({ length: 20 }, (_, index) => ({ label: `Link ${index}`, href: `/page-${index}` })) };
@@ -97,4 +97,25 @@ test("a sign-in form from the host needs a mount function", () => {
   assert.equal(resolveLoginForm({ loginForm: { mount } }).mount, mount);
   assert.equal(resolveLoginForm({ loginForm: {} }), null);
   assert.equal(resolveLoginForm({ loginForm: { mount: "x" } }), null);
+});
+
+test("footer links can carry an icon and be limited to some places", () => {
+  const host = {
+    footerLinks: [
+      { label: "Brand", href: "https://example.org", icon: "/logo.svg", placements: ["login", "page"] },
+      { label: "Everywhere", href: "/all", icon: "javascript:alert(1)" },
+    ],
+  };
+  assert.deepEqual(resolveFooterLinks(host, "en", "menu").map((link) => link.label), ["Everywhere"]);
+  assert.deepEqual(resolveFooterLinks(host, "en", "page").map((link) => [link.label, link.icon]), [["Brand", "/logo.svg"], ["Everywhere", null]]);
+  assert.equal(resolveFooterLinks(host, "en").length, 2);
+});
+
+test("a password card from the host needs a mount function", () => {
+  const mount = () => {};
+  const applies = () => true;
+  assert.deepEqual(resolvePasswordCard({ passwordCard: { mount, applies } }), { mount, applies });
+  assert.deepEqual(resolvePasswordCard({ passwordCard: { mount } }), { mount });
+  assert.equal(resolvePasswordCard({ passwordCard: {} }), null);
+  assert.equal(resolvePasswordCard({}), null);
 });
