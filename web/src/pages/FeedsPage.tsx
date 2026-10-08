@@ -256,11 +256,14 @@ export function FeedsPage() {
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button type="button" onClick={() => setPanel(panel === "add" ? null : "add")} className="btn-primary inline-flex items-center gap-1.5 whitespace-nowrap">
-            <PlusIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("feeds.addFeed")}</span>
-            <span className="sm:hidden">{t("feeds.addFeedShort")}</span>
-          </button>
+          {/* Without feeds the empty state below carries the same button. */}
+          {(loading || feeds.length > 0) && (
+            <button type="button" onClick={() => setPanel(panel === "add" ? null : "add")} className="btn-primary inline-flex items-center gap-1.5 whitespace-nowrap">
+              <PlusIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("feeds.addFeed")}</span>
+              <span className="sm:hidden">{t("feeds.addFeedShort")}</span>
+            </button>
+          )}
           <ActionMenu
             label={t("feeds.moreActions")}
             items={[
