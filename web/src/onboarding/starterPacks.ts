@@ -62,10 +62,14 @@ export const BUILT_IN_STARTER_PACKS: StarterPack[] = [
       { title: "iPhone-Ticker", url: "https://www.iphone-ticker.de/feed/", lang: "de" },
       { title: "apfelpatient", url: "https://www.apfelpatient.de/feed", lang: "de" },
       { title: "Macerkopf", url: "https://www.macerkopf.de/feed/", lang: "de" },
+      { title: "ifun.de", url: "https://www.ifun.de/feed/", lang: "de" },
+      { title: "MacTechNews", url: "https://www.mactechnews.de/Rss/News.x", lang: "de" },
       { title: "Daring Fireball", url: "https://daringfireball.net/feeds/main", lang: "en" },
       { title: "MacStories", url: "https://www.macstories.net/feed/", lang: "en" },
       { title: "MacRumors", url: "https://feeds.macrumors.com/MacRumors-All", lang: "en" },
       { title: "9to5Mac", url: "https://9to5mac.com/feed/", lang: "en" },
+      { title: "iPhone Mania", url: "https://iphone-mania.jp/feed/", lang: "ja" },
+      { title: "Apple Info. (Applech2)", url: "https://applech2.com/feed", lang: "ja" },
     ],
   },
   {
@@ -79,6 +83,9 @@ export const BUILT_IN_STARTER_PACKS: StarterPack[] = [
       { title: "NASA", url: "https://www.nasa.gov/feed/", lang: "en" },
       { title: "Nature", url: "https://www.nature.com/nature.rss", lang: "en" },
       { title: "ScienceDaily", url: "https://www.sciencedaily.com/rss/all.xml", lang: "en" },
+      { title: "sorae 宇宙へのポータルサイト", url: "https://sorae.info/feed", lang: "ja" },
+      { title: "ナゾロジー", url: "https://nazology.kusuguru.co.jp/feed", lang: "ja" },
+      { title: "日経サイエンス", url: "https://www.nikkei-science.com/?feed=rss2", lang: "ja" },
     ],
   },
   {
@@ -91,18 +98,22 @@ export const BUILT_IN_STARTER_PACKS: StarterPack[] = [
       { title: "UX Collective", url: "https://uxdesign.cc/feed", lang: "en" },
       { title: "Creative Bloq", url: "https://www.creativebloq.com/feeds/all", lang: "en" },
       { title: "designboom", url: "https://www.designboom.com/feed/", lang: "en" },
+      { title: "コリス", url: "https://coliss.com/feed/", lang: "ja" },
+      { title: "AXIS", url: "https://www.axismag.jp/feed", lang: "ja" },
+      { title: "Web Creator Box", url: "https://www.webcreatorbox.com/feed", lang: "ja" },
     ],
   },
 ];
 
 /**
- * The feeds of a pack worth showing in a language: its own language first, English after it. A pack without any feed
+ * The feeds of a pack worth showing in a language: its own language first, English after it (except for Japanese). A pack without any feed
  * for that language yields only English ones; a pack with nothing to show gives an empty list.
  */
 export function feedsForLanguage<T extends { lang: string }>(pack: { feeds: T[] }, language: string): T[] {
   const base = language.toLowerCase().split("-")[0];
   // A feed without a language (from a host) is always shown.
   const own = pack.feeds.filter((feed) => feed.lang === base || feed.lang === "");
-  const english = base === "en" ? [] : pack.feeds.filter((feed) => feed.lang === "en");
+  // English ones follow for most languages; readers of Japanese get them only for a pack that has nothing in Japanese.
+  const english = base === "en" || (base === "ja" && own.length > 0) ? [] : pack.feeds.filter((feed) => feed.lang === "en");
   return [...own, ...english];
 }

@@ -142,7 +142,8 @@ test("starter packs of the host are added to the built-in ones, replace them on 
   const technology = added.find((pack) => pack.id === "technology");
   assert.ok(feedsForLanguage(technology, "de").every((feed) => feed.lang === "de" || feed.lang === "en"));
   assert.equal(feedsForLanguage(technology, "de")[0].lang, "de", "the own language comes first");
-  assert.ok(feedsForLanguage(technology, "ja").some((feed) => feed.lang === "ja"));
+  assert.ok(feedsForLanguage(technology, "ja").length > 0 && feedsForLanguage(technology, "ja").every((feed) => feed.lang === "ja"), "Japanese readers get no English feeds where there are Japanese ones");
+  assert.ok(feedsForLanguage({ feeds: [{ lang: "en" }] }, "ja").length === 1, "but a pack without Japanese ones still shows the English ones");
   assert.ok(feedsForLanguage(technology, "en").every((feed) => feed.lang === "en"));
 });
 
