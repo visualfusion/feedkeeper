@@ -3,7 +3,7 @@ import cron from "node-cron";
 import { fetchFeed } from "./fetcher.js";
 import { discoverIconUrls, iconCheckDue } from "./icon.js";
 import { refreshFeedIcon } from "./feedIcon.js";
-import { decodeEntities } from "./text.js";
+import { decodeEntities, plainTitle } from "./text.js";
 import { notifyNewItems } from "../push.js";
 import { listFeedsDueForPoll, updateFeedAfterPoll, updateFeedIcon, upsertItems, type Feed } from "./repository.js";
 
@@ -116,7 +116,7 @@ export async function pollFeed(feed: Feed): Promise<{ newItems: number; error: s
 
     const items = parsed.items.map((item) => ({
       guid: item.guid ?? item.link ?? item.title ?? crypto.randomUUID(),
-      title: decodeEntities(item.title) ?? undefined,
+      title: plainTitle(item.title),
       link: item.link,
       contentSnippet: decodeEntities(item.contentSnippet ?? item.content) ?? undefined,
       contentHtml: item.contentEncoded ?? item["content:encoded"] ?? item.content ?? null,
@@ -132,7 +132,7 @@ export async function pollFeed(feed: Feed): Promise<{ newItems: number; error: s
     await refreshIconIfDue(parsed.link || feed.site_url);
 
     updateFeedAfterPoll(feed.id, {
-      title: decodeEntities(parsed.title) ?? undefined,
+      title: plainTitle(parsed.title),
       siteUrl: parsed.link,
       etag: fetched.etag,
       lastModified: fetched.lastModified,

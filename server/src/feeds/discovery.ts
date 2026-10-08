@@ -1,7 +1,7 @@
 import Parser from "rss-parser";
 import { fetchFeed } from "./fetcher.js";
 import { assertPublicHttpUrl } from "./ssrfGuard.js";
-import { decodeEntities } from "./text.js";
+import { decodeEntities, plainTitle } from "./text.js";
 
 const rssParser = new Parser();
 
@@ -43,7 +43,7 @@ async function parseFeedAt(url: string): Promise<{ feed: DiscoveredFeed | null; 
   try {
     const parsed = await rssParser.parseString(fetched.body);
     if (parsed.items && (parsed.title || parsed.description || parsed.items.length > 0)) {
-      return { feed: { url: finalUrl, title: decodeEntities(parsed.title) ?? null, type: "application/rss+xml" }, html: null, finalUrl };
+      return { feed: { url: finalUrl, title: plainTitle(parsed.title) ?? null, type: "application/rss+xml" }, html: null, finalUrl };
     }
   } catch {
     // Not a feed; the caller may look for feed links in the HTML instead.

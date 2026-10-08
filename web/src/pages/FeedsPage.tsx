@@ -81,7 +81,8 @@ export function FeedsPage() {
     return () => window.clearTimeout(timer);
   }, [highlightedId, feeds]);
 
-  const feedName = (feed: Feed) => feed.label ?? feed.title ?? feed.url;
+  // Titles come from the feeds themselves; some contain line breaks and runs of spaces.
+  const feedName = (feed: Feed) => (feed.label ?? feed.title ?? feed.url).replace(/\s+/g, " ").trim();
 
   async function onFeedAdded(feed: Feed) {
     toast.success(t("feeds.subscribedToast", { title: feedName(feed) }));
