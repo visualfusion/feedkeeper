@@ -4,6 +4,7 @@ import LanguageDetector from "i18next-browser-languagedetector";
 import en from "./locales/en.json";
 import de from "./locales/de.json";
 import ja from "./locales/ja.json";
+import { LANGUAGE_KEY } from "./remember.ts";
 
 i18n
   .use(LanguageDetector)
@@ -17,10 +18,13 @@ i18n
     fallbackLng: "en",
     supportedLngs: ["en", "de", "ja"],
     interpolation: { escapeValue: false },
+    // An explicit choice (stored by rememberLanguage) comes first, then the system's language. What the detector finds
+    // is not stored, so that only a real choice overrides the system.
     detection: {
-      order: ["localStorage", "navigator"],
-      caches: ["localStorage"],
-      lookupLocalStorage: "fk_lang",
+      order: ["cookie", "localStorage", "navigator"],
+      caches: [],
+      lookupCookie: LANGUAGE_KEY,
+      lookupLocalStorage: LANGUAGE_KEY,
     },
   });
 

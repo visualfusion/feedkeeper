@@ -4,21 +4,24 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
-### Added
-- A welcome card for a person without feeds, on the articles page and on the feeds page: add a website by its address, pick a starter pack (news, technology, Apple, science, design; the feeds in the language of the app first) or import an OPML file. A pack subscribes its feeds into a folder with the pack's name.
-- Extension points `starterPacks` and `onboarding` let a host add packs, replace the list, and show its own content above the first steps.
-
-- A short introduction ("A short tour") on the articles page: the list and newspaper views, the unread filter, the star for saving, and folders. Every account sees it once, existing accounts included, as soon as it has feeds; closing it is stored with the account (`POST /api/auth/me/intro`, `intro_dismissed_at` on the user), so it stays closed on every device.
-
-### Changed
-- The articles page tells the empty cases apart: no feeds (welcome card), feeds that have not been fetched yet (a waiting message that updates itself), everything read ("All caught up" with a button to show all), no search result, and a load error with a retry button.
-- The feeds page no longer shows the "Add feed" button twice while there are no feeds.
-
 ## [0.17.0] - 2026-10-08
 
 ### Added
+- A welcome card for a person without feeds, on the articles page and on the feeds page: add a website by its address, pick a starter pack (news, technology, Apple, science, design; the feeds in the language of the app first, Japanese readers get Japanese feeds only) or import an OPML file. A pack subscribes its feeds into a folder with the pack's name.
+- A short introduction ("A short tour") on the articles page: the list and newspaper views, the unread filter, the star for saving, and folders. Every account sees it once, existing accounts included, as soon as it has feeds; closing it is stored with the account (`POST /api/auth/me/intro`, `intro_dismissed_at` on the user, migration `0028`), so it stays closed on every device.
 - Extension point `passwordCard`: a host that signs people in another way (single sign-on, Sign in with Apple) can replace the password card of the account page, for everyone or, with `applies`, for the users who have no password.
+- Extension points `starterPacks` and `onboarding` let a host add packs, replace the list, and show its own content above the first steps.
 - Footer links can carry a small `icon` and be limited to some `placements` (`login`, `menu`, `page`), so a host no longer needs style rules to decorate or hide them.
+
+### Changed
+- The articles page tells the empty cases apart: no feeds (welcome card), feeds that have not been fetched yet (a waiting message that updates itself), everything read ("All caught up" with a button to show all), no search result, and a load error with a retry button.
+- The language is only stored when the person picks one (cookie `fk_lang` and local storage); without a choice the app follows the system's language. Until now the language the browser reported was stored as if it had been chosen. A choice made on another page of the same site, such as the landing page of a hosted service, applies in the app too.
+- When the language changes, host scripts are told to read their settings sections and footer links again, and the content they put into the page (settings sections, sign-in form, password card, welcome content) is built again in the new language.
+- The "Add feed" button on the feeds page no longer appears twice while there are no feeds.
+
+### Fixed
+- Titles of feeds and articles with line breaks or runs of spaces (for example "A List Apart: The Full Feed" with a leading line break) are cleaned up when they are fetched and shown as one line, which also fixes odd spacing in the unsubscribe dialog.
+- The "Follow system" label of the Japanese theme switch was so long that it wrapped over three lines; it now reads "システム".
 
 ## [0.16.2] - 2026-10-07
 
