@@ -4,6 +4,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-08
+
 ### Added
 - Extension point `passwordCard`: a host that signs people in another way (single sign-on, Sign in with Apple) can replace the password card of the account page, for everyone or, with `applies`, for the users who have no password.
 - Footer links can carry a small `icon` and be limited to some `placements` (`login`, `menu`, `page`), so a host no longer needs style rules to decorate or hide them.
@@ -237,7 +239,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 First public release: an RSS and Atom reader with a remote MCP server, multi-user accounts, a trilingual interface (English, German, Japanese), SSRF-guarded feed fetching and a single-file SQLite database.
 
-[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.16.2...HEAD
+[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/visualfusion/feedkeeper/compare/v0.16.2...v0.17.0
 [0.16.2]: https://github.com/visualfusion/feedkeeper/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/visualfusion/feedkeeper/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/visualfusion/feedkeeper/compare/v0.15.1...v0.16.0
