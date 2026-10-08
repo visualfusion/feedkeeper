@@ -20,7 +20,9 @@ export function ExtensionMount({ name, mount }: { name: string; mount: (containe
       }
       element.replaceChildren();
     };
-    // The host's mount function identifies the content; a new object with the same name must not remount it.
+    // The host's mount function identifies the content; a new object with the same name must not
+    // remount it, so `mount` is deliberately left out of the dependency array.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name]);
   return <div ref={container} className="min-w-0" />;
 }

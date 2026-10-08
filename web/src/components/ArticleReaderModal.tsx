@@ -61,7 +61,10 @@ export function ArticleReaderModal({
     setExtractedByline(null);
   }, [item?.id, item?.full_content_html]);
 
-  // Automatically trigger reader view extraction if configured and article not yet extracted
+  // Automatically trigger reader view extraction if configured and article not yet extracted.
+  // Runs only when the modal opens or the active item changes; the derived values (articleUrl,
+  // fullTextDisabled) and handleToggleFullText are read fresh from the current render, and
+  // depending on them would re-run the extraction mid-flight.
   useEffect(() => {
     if (!isOpen || !item || !articleUrl) return;
     const isAutoReader = localStorage.getItem("feedkeeper_auto_reader_mode") !== "false";
@@ -69,6 +72,7 @@ export function ArticleReaderModal({
     if (isAutoReader && !item.full_content_html && !fullTextDisabled && navigator.onLine) {
       handleToggleFullText();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, item?.id]);
 
   // Prevent background scrolling when reader modal is open
@@ -83,7 +87,7 @@ export function ArticleReaderModal({
   }, [isOpen]);
 
   // Extract full article text from original website via Readability
-  async function handleToggleFullText() {
+  const handleToggleFullText = useCallback(async () => {
     if (!item || extracting) return;
 
     if (item.full_content_html) {
@@ -119,7 +123,7 @@ export function ArticleReaderModal({
     } finally {
       setExtracting(false);
     }
-  }
+  }, [item, extracting, articleUrl, t, onItemUpdated]);
 
   // Keyboard navigation & shortcuts
   useEffect(() => {
@@ -162,7 +166,7 @@ export function ArticleReaderModal({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, item, articleUrl, hasNext, hasPrev, onNext, onPrevious, onClose, onToggleBookmark, onToggleRead, showFullText, extracting]);
+  }, [isOpen, item, articleUrl, hasNext, hasPrev, onNext, onPrevious, onClose, onToggleBookmark, onToggleRead, handleToggleFullText]);
 
   // Format publication date & time
   const pubDate = useMemo(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 const TRIGGER_DISTANCE = 68;
@@ -34,7 +34,7 @@ export function PullToRefresh({
   const [refreshing, setRefreshing] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  function startRefresh() {
+  const startRefresh = useCallback(() => {
     if (refreshing) return;
     setFailed(false);
     setRefreshing(true);
@@ -45,7 +45,7 @@ export function PullToRefresh({
         setRefreshing(false);
         setDistance(0);
       });
-  }
+  }, [refreshing, onRefresh]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -105,7 +105,7 @@ export function PullToRefresh({
       root.removeEventListener("touchend", onTouchEnd);
       root.removeEventListener("touchcancel", reset);
     };
-  }, [disabled, refreshing, onRefresh]);
+  }, [disabled, refreshing, onRefresh, startRefresh]);
 
   const progress = refreshing ? 1 : Math.min(1, distance / TRIGGER_DISTANCE);
 

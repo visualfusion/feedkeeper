@@ -268,6 +268,9 @@ export function ItemsPage() {
       }
       setSearchParams(nextParams, { replace: true });
     }
+    // Responds only to URL changes; filterScope and initialScope are read from the current render,
+    // and setSearchParams is a stable reference from useSearchParams.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Update URL search params and localStorage when filterScope changes
@@ -380,6 +383,8 @@ export function ItemsPage() {
     const timeout = setTimeout(() => { void load(); }, 200);
     return () => {
       clearTimeout(timeout);
+      // Bump the version so any load started under the previous filter is discarded by the guard.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       loadVersion.current++;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

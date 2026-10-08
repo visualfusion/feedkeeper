@@ -69,6 +69,9 @@ export function Favicon({ feedId, iconUrl, siteUrl, feedUrl, articleUrl, classNa
 
     void findFavicon();
     return () => { cancelled = true; };
+    // sourceKey is the JSON encoding of every input prop, so it is the single value the effect
+    // keys on and changes exactly when any of them does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceKey]);
 
   if (!loaded || loaded.key !== sourceKey) return null;
