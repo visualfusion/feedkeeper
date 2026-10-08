@@ -5,7 +5,8 @@ import { discoverIconUrls, iconCheckDue } from "./icon.js";
 import { refreshFeedIcon } from "./feedIcon.js";
 import { decodeEntities, plainTitle } from "./text.js";
 import { notifyNewItems } from "../push.js";
-import { listFeedsDueForPoll, updateFeedAfterPoll, updateFeedIcon, upsertItems, type Feed } from "./repository.js";
+import { hasUserCapability } from "../auth/capabilities.js";
+import { listFeedsDueForPoll, listSubscriberIds, updateFeedAfterPoll, updateFeedIcon, upsertItems, type Feed } from "./repository.js";
 
 type CustomItem = Parser.Item & {
   mediaContent?: unknown;
@@ -154,8 +155,16 @@ export async function probeFeed(url: string): Promise<{ title: string | null; it
   return { title: parsed.title ?? null, itemCount: parsed.items.length };
 }
 
+/**
+ * Whether anyone who subscribes to the feed may have it updated. An account whose plan does not include syncing (a hosted
+ * service after the trial) gets no updates, and a feed that only such accounts subscribe to is not fetched at all.
+ */
+export function feedHasActiveSubscriber(feedId: number): boolean {
+  return listSubscriberIds(feedId).some((userId) => hasUserCapability(userId, "sync"));
+}
+
 export async function pollDueFeeds(): Promise<void> {
-  const due = listFeedsDueForPoll();
+  const due = listFeedsDueForPoll().filter((feed) => feedHasActiveSubscriber(feed.id));
   for (const feed of due) {
     await pollFeed(feed);
   }

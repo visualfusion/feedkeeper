@@ -332,5 +332,11 @@
     "foldersTitle": "Kategorien",
     "foldersText": "Unter Feeds legst du Kategorien an und sortierst deine Abos.",
     "done": "Verstanden"
+  },
+  "plan": {
+    "limitedTitle": "Dein Konto ist im Moment eingeschränkt",
+    "limitedText": "Feeds hinzufügen, importieren und aktualisieren ist in deinem Tarif im Moment nicht enthalten. Lesen, exportieren und löschen kannst du weiterhin.",
+    "view": "Tarife ansehen",
+    "unavailable": "In deinem Tarif nicht enthalten"
   }
 }

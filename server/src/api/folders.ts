@@ -1,3 +1,4 @@
+import { requireCapability } from "../auth/capabilities.js";
 import { Router } from "express";
 import { z } from "zod";
 import { requireSession } from "../auth/middleware.js";
@@ -22,7 +23,7 @@ foldersRouter.get("/", (req, res) => {
   res.json({ folders });
 });
 
-foldersRouter.post("/", (req, res) => {
+foldersRouter.post("/", requireCapability("sync"), (req, res) => {
   const parsed = folderNameSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });

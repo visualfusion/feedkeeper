@@ -218,6 +218,11 @@ export function isUserSubscribed(userId: number, feedId: number): boolean {
   return row.count > 0;
 }
 
+/** The accounts that subscribe to a feed. */
+export function listSubscriberIds(feedId: number): number[] {
+  return db.prepare<[number], { user_id: number }>("SELECT user_id FROM subscriptions WHERE feed_id = ?").all(feedId).map((row) => row.user_id);
+}
+
 export function listFeedsDueForPoll(): Feed[] {
   return db
     .prepare<[], Feed>(

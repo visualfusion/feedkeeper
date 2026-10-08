@@ -4,6 +4,7 @@ import { pushSupported } from "../../utils/push.ts";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, type Feed } from "../../api/client.ts";
+import { usePlanLimits } from "../../utils/planLimits.ts";
 import { ActionMenu, type ActionMenuItem } from "../ActionMenu.tsx";
 import { CustomSelect, type SelectOption } from "../CustomSelect.tsx";
 import { Favicon } from "../Favicon.tsx";
@@ -154,13 +155,14 @@ export interface FeedRowProps {
 /** One subscription: favicon, name, source and health at a glance, actions tucked into a menu. */
 export function FeedRow({ feed, editing, refreshing, highlighted = false, folderOptions, intervalOptions, onEdit, onRefresh, onMarkRead, onUnsubscribe, onSaved, drag }: FeedRowProps) {
   const { t, i18n } = useTranslation();
+  const { syncAllowed } = usePlanLimits();
   const name = feed.label ?? feed.title ?? feed.url;
   const host = hostOf(feed.site_url) ?? hostOf(feed.url);
   const failing = Boolean(feed.last_error);
   const pending = !feed.last_polled_at;
 
   const actions: ActionMenuItem[] = [
-    { label: refreshing ? t("feeds.refreshing") : t("feeds.refreshFeed"), icon: <RefreshIcon className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />, onSelect: onRefresh, disabled: refreshing },
+    { label: refreshing ? t("feeds.refreshing") : t("feeds.refreshFeed"), icon: <RefreshIcon className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />, onSelect: onRefresh, disabled: refreshing || !syncAllowed },
     ...(feed.unread_count > 0 ? [{ label: t("feeds.markAllRead"), icon: <CheckAllIcon />, onSelect: onMarkRead }] : []),
     { label: t("feeds.edit"), icon: <EditIcon />, onSelect: () => onEdit(!editing) },
     { label: t("feeds.unsubscribe"), icon: <TrashIcon />, onSelect: onUnsubscribe, danger: true },

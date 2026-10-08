@@ -17,6 +17,8 @@ import { syncOfflineCopy } from "../utils/offlineSync.ts";
 import { RefreshIcon } from "../components/feeds/icons.tsx";
 import { HostNotice } from "../components/onboarding/HostNotice.tsx";
 import { Intro } from "../components/onboarding/Intro.tsx";
+import { PlanNotice } from "../components/PlanNotice.tsx";
+import { usePlanLimits } from "../utils/planLimits.ts";
 import { Welcome } from "../components/onboarding/Welcome.tsx";
 
 const PAGE_SIZE = 50;
@@ -49,6 +51,7 @@ export function ItemsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [feedsLoaded, setFeedsLoaded] = useState(false);
+  const { syncAllowed } = usePlanLimits();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -632,8 +635,8 @@ export function ItemsPage() {
           <button
             type="button"
             onClick={refreshArticles}
-            disabled={refreshingAll}
-            title={refreshingAll ? t("items.refreshing") : t("items.refresh")}
+            disabled={refreshingAll || !syncAllowed}
+            title={!syncAllowed ? t("plan.unavailable") : refreshingAll ? t("items.refreshing") : t("items.refresh")}
             aria-label={refreshingAll ? t("items.refreshing") : t("items.refresh")}
             className="btn-secondary hidden h-11 w-11 shrink-0 items-center justify-center p-0! sm:flex"
           >
@@ -778,6 +781,7 @@ export function ItemsPage() {
         </div>
       </div>
 
+      {feedsLoaded && feeds.length > 0 && !syncAllowed && <PlanNotice />}
       {feedsLoaded && feeds.length > 0 && !loadError && <Intro />}
       {feedsLoaded && feeds.length > 0 && !loadError && <HostNotice />}
 
@@ -1054,7 +1058,7 @@ export function ItemsPage() {
   );
 
   return (
-    <PullToRefresh disabled={loading || Boolean(selectedArticle) || mobileSearchOpen} onRefresh={refreshArticles}>
+    <PullToRefresh disabled={loading || !syncAllowed || Boolean(selectedArticle) || mobileSearchOpen} onRefresh={refreshArticles}>
       {content}
     </PullToRefresh>
   );

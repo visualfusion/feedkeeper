@@ -332,5 +332,11 @@
     "foldersTitle": "Folders",
     "foldersText": "Under Feeds you create folders and sort your subscriptions.",
     "done": "Got it"
+  },
+  "plan": {
+    "limitedTitle": "Your account is limited right now",
+    "limitedText": "Adding, importing and updating feeds is not included in your plan at the moment. You can still read, export and delete.",
+    "view": "View plans",
+    "unavailable": "Not included in your plan"
   }
 }

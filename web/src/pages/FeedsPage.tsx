@@ -7,6 +7,8 @@ import { LoadingSpinner } from "../components/LoadingSpinner.tsx";
 import { ActionMenu } from "../components/ActionMenu.tsx";
 import { FeedRow, formatInterval } from "../components/feeds/FeedRow.tsx";
 import { Welcome } from "../components/onboarding/Welcome.tsx";
+import { PlanNotice } from "../components/PlanNotice.tsx";
+import { usePlanLimits } from "../utils/planLimits.ts";
 import { AddFeedPanel } from "../components/feeds/AddFeedPanel.tsx";
 import { FolderManager } from "../components/feeds/FolderManager.tsx";
 import { toast } from "../utils/toast.ts";
@@ -47,7 +49,7 @@ export function FeedsPage() {
   });
   useEffect(() => {
     if (!searchParams.has("add") && !searchParams.has("url") && !searchParams.has("text")) return;
-    setPanel("add");
+    if (syncAllowed) setPanel("add");
     setSearchParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -82,6 +84,7 @@ export function FeedsPage() {
   }, [highlightedId, feeds]);
 
   // Titles come from the feeds themselves; some contain line breaks and runs of spaces.
+  const { syncAllowed } = usePlanLimits();
   const feedName = (feed: Feed) => (feed.label ?? feed.title ?? feed.url).replace(/\s+/g, " ").trim();
 
   async function onFeedAdded(feed: Feed) {
@@ -260,7 +263,7 @@ export function FeedsPage() {
         <div className="flex shrink-0 items-center gap-1">
           {/* Without feeds the empty state below carries the same button. */}
           {(loading || feeds.length > 0) && (
-            <button type="button" onClick={() => setPanel(panel === "add" ? null : "add")} className="btn-primary inline-flex items-center gap-1.5 whitespace-nowrap">
+            <button type="button" disabled={!syncAllowed} title={syncAllowed ? undefined : t("plan.unavailable")} onClick={() => setPanel(panel === "add" ? null : "add")} className="btn-primary inline-flex items-center gap-1.5 whitespace-nowrap">
               <PlusIcon className="h-4 w-4" />
               <span className="hidden sm:inline">{t("feeds.addFeed")}</span>
               <span className="sm:hidden">{t("feeds.addFeedShort")}</span>
@@ -269,9 +272,9 @@ export function FeedsPage() {
           <ActionMenu
             label={t("feeds.moreActions")}
             items={[
-              { label: refreshingAll ? t("feeds.refreshing") : t("feeds.refreshAll"), icon: <RefreshIcon className={`h-4 w-4 ${refreshingAll ? "animate-spin" : ""}`} />, onSelect: onRefreshAll, disabled: refreshingAll },
+              { label: refreshingAll ? t("feeds.refreshing") : t("feeds.refreshAll"), icon: <RefreshIcon className={`h-4 w-4 ${refreshingAll ? "animate-spin" : ""}`} />, onSelect: onRefreshAll, disabled: refreshingAll || !syncAllowed },
               { label: t("feeds.manageFolders"), icon: <FolderIcon />, onSelect: () => setPanel("folders") },
-              { label: importing ? t("feeds.importing") : t("feeds.importOpml"), icon: <UploadIcon />, onSelect: () => fileInputRef.current?.click(), disabled: importing },
+              { label: importing ? t("feeds.importing") : t("feeds.importOpml"), icon: <UploadIcon />, onSelect: () => fileInputRef.current?.click(), disabled: importing || !syncAllowed },
               { label: t("feeds.exportOpml"), icon: <DownloadIcon />, onSelect: exportOpml },
             ]}
           />
@@ -279,7 +282,8 @@ export function FeedsPage() {
         </div>
       </div>
 
-      {panel === "add" && (
+      {!syncAllowed && feeds.length > 0 && <PlanNotice />}
+      {panel === "add" && syncAllowed && (
         <AddFeedPanel
           folderOptions={folderOptions}
           defaultFolderId={filter.startsWith("folder:") ? Number(filter.slice(7)) : null}

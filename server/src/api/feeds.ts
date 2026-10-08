@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireSession } from "../auth/middleware.js";
+import { requireCapability } from "../auth/capabilities.js";
 import { listSubscriptionsForUser, findFeedById, isUserSubscribed, reorderSubscriptions } from "../feeds/repository.js";
 import { subscribeToFeed, unsubscribeFromFeed, updateFeedSettings, FeedError, MultipleFeedsFoundError } from "../feeds/service.js";
 import { SsrfBlockedError, normalizeUrlCandidate } from "../feeds/ssrfGuard.js";
@@ -12,6 +13,9 @@ import rateLimit from "express-rate-limit";
 
 export const feedsRouter = Router();
 feedsRouter.use(requireSession);
+
+// Adding and updating feeds belongs to the plan's sync feature; reading, exporting and deleting stay available without it.
+const requireSync = requireCapability("sync");
 
 feedsRouter.get("/", (req, res) => {
   res.json(listSubscriptionsForUser(req.user!.id));
@@ -62,7 +66,7 @@ feedsRouter.get("/opml", (req, res) => {
   res.send(opml);
 });
 
-feedsRouter.post("/opml", async (req, res) => {
+feedsRouter.post("/opml", requireSync, async (req, res) => {
   const xmlContent =
     typeof req.body === "string"
       ? req.body
@@ -95,7 +99,7 @@ const discoverSchema = z.object({
   url: urlField,
 });
 
-feedsRouter.post("/discover", async (req, res) => {
+feedsRouter.post("/discover", requireSync, async (req, res) => {
   const parsed = discoverSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
@@ -120,7 +124,7 @@ const subscribeSchema = z.object({
   folderId: z.number().int().positive().nullable().optional(),
 });
 
-feedsRouter.post("/", async (req, res) => {
+feedsRouter.post("/", requireSync, async (req, res) => {
   const parsed = subscribeSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
@@ -196,7 +200,7 @@ feedsRouter.delete("/:feedId", (req, res) => {
   }
 });
 
-feedsRouter.post("/:feedId/refresh", async (req, res) => {
+feedsRouter.post("/:feedId/refresh", requireSync, async (req, res) => {
   const feedId = Number(req.params.feedId);
   if (!Number.isInteger(feedId) || feedId <= 0) {
     res.status(400).json({ error: "invalid_feed_id" });
@@ -218,7 +222,7 @@ feedsRouter.post("/:feedId/refresh", async (req, res) => {
   });
 });
 
-feedsRouter.post("/refresh-all", async (req, res) => {
+feedsRouter.post("/refresh-all", requireSync, async (req, res) => {
   const subs = listSubscriptionsForUser(req.user!.id);
   let totalNewItems = 0;
   let errorCount = 0;

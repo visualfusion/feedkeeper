@@ -8,6 +8,8 @@ import { toast } from "../../utils/toast.ts";
 import { AddFeedPanel } from "../feeds/AddFeedPanel.tsx";
 import { UploadIcon } from "../feeds/icons.tsx";
 import { ExtensionMount } from "../settings/ExtensionMount.tsx";
+import { PlanNotice } from "../PlanNotice.tsx";
+import { usePlanLimits } from "../../utils/planLimits.ts";
 
 interface Progress { done: number; total: number }
 
@@ -27,6 +29,7 @@ async function folderIdFor(name: string): Promise<number | null> {
  */
 export function Welcome({ onSubscribed }: { onSubscribed: () => void | Promise<void> }) {
   const { t, i18n } = useTranslation();
+  const { syncAllowed } = usePlanLimits();
   const extensions = useExtensions();
   const hostWelcome = resolveOnboarding(extensions);
   const language = i18n.resolvedLanguage || "en";
@@ -105,6 +108,9 @@ export function Welcome({ onSubscribed }: { onSubscribed: () => void | Promise<v
   }
 
   const busy = progress !== null || importing;
+
+  // An account whose plan does not include adding feeds gets the reason instead of the first steps.
+  if (!syncAllowed) return <PlanNotice />;
 
   return (
     <section className="card flex flex-col gap-6 p-5 sm:p-7" aria-labelledby="welcome-title">
