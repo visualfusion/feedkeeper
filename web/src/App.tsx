@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AuthProvider, useAuth } from "./auth/AuthContext.tsx";
@@ -11,14 +11,19 @@ import { SettingsPage } from "./pages/SettingsPage.tsx";
 import { LoadingSpinner } from "./components/LoadingSpinner.tsx";
 import { OfflineScreen } from "./components/Offline.tsx";
 import { hideSplash, isSplashVisible } from "./utils/splash.ts";
+import { EXTENSIONS_CHANGED } from "./extensions/host.ts";
 
 function MetaSync() {
   const { t, i18n } = useTranslation();
 
-  useEffect(() => {
-    const lang = i18n.resolvedLanguage || "en";
-    document.documentElement.lang = lang;
+  // Before anything else reacts to the new language: a host script reads the page's `lang` for its texts, so the
+  // attribute is set first and the host is told to read its settings sections and links again.
+  useLayoutEffect(() => {
+    document.documentElement.lang = i18n.resolvedLanguage || "en";
+    window.dispatchEvent(new Event(EXTENSIONS_CHANGED));
+  }, [i18n.resolvedLanguage]);
 
+  useEffect(() => {
     const title = t("common.metaTitle");
     const desc = t("common.metaDescription");
 
