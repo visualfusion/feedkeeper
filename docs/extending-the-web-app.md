@@ -84,6 +84,30 @@ extensions.passwordCard = {
 
 The account page shows a card to change the password. A host that signs people in another way can replace it, for everyone or, with `applies`, for those who have no password. While `applies` is pending nothing is shown; if it fails or answers anything but `true`, the built-in card is used.
 
+## Starter packs and welcome content
+
+A person without feeds sees a welcome card: add a website by its address, pick a starter pack or import a subscription file. The app brings a few packs (news, technology, Apple, science, design). A host can add its own, replace the list, and put its own content above the first steps.
+
+```js
+extensions.starterPacks = {
+  replace: false, // true: show only the host's packs
+  packs: [{
+    id: "company",
+    title: { en: "Our company", de: "Unsere Firma" },
+    description: { en: "News from us and our partners." },
+    feeds: [{ title: "Company blog", url: "https://example.org/feed.xml", lang: "en" }],
+  }],
+};
+extensions.onboarding = {
+  mount(container) {
+    container.textContent = "Welcome! Your trial runs for 14 days.";
+  },
+};
+```
+
+- A pack with the id of a built-in one replaces it. Feeds are shown in the language of the app first, then English; a feed without `lang` is always shown. Only `http(s)` addresses without credentials are accepted, at most 12 packs of 20 feeds.
+- A pack subscribes its feeds into a folder with the pack's name.
+
 ## Where it lives
 
 `web/src/extensions/host.ts` validates and resolves everything, `useExtensions.ts` re-reads it on every announced change, and the components `SettingsPage.tsx`, `FooterLinks.tsx`, `LoginPage.tsx` and `ProfileMenu.tsx` use it. The unit tests are in `web/test/extensions.test.mjs`.

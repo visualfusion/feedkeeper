@@ -55,6 +55,19 @@ export interface PasswordCardExtension {
   mount: (container: HTMLElement) => void | (() => void);
 }
 
+export interface StarterPackExtension {
+  /** Lowercase letters, digits and dashes. A pack with the id of a built-in one replaces it. */
+  id: string;
+  title: Localized;
+  description?: Localized;
+  feeds: Array<{ title: string; url: string; lang?: string }>;
+}
+
+export interface OnboardingExtension {
+  /** Fills the container at the top of the welcome card that a person without feeds sees. */
+  mount: (container: HTMLElement) => void | (() => void);
+}
+
 export interface LoginFormExtension {
   /** Fills the container where the sign-in form is. After signing in, reload the page. */
   mount: (container: HTMLElement) => void | (() => void);
@@ -172,4 +185,58 @@ export function resolvePasswordCard(extensions: unknown): PasswordCardExtension 
   const card = isObject(extensions) ? extensions.passwordCard : undefined;
   if (!isObject(card) || typeof card.mount !== "function") return null;
   return { mount: card.mount as PasswordCardExtension["mount"], ...(typeof card.applies === "function" ? { applies: card.applies as PasswordCardExtension["applies"] } : {}) };
+}
+
+/** Whether the host asks for its welcome content above the first steps of a person without feeds. */
+export function resolveOnboarding(extensions: unknown): OnboardingExtension | null {
+  const onboarding = isObject(extensions) ? extensions.onboarding : undefined;
+  return isObject(onboarding) && typeof onboarding.mount === "function" ? (onboarding as unknown as OnboardingExtension) : null;
+}
+
+export interface ResolvedStarterPack {
+  id: string;
+  title: string;
+  description: string;
+  feeds: Array<{ title: string; url: string; lang: string }>;
+}
+
+/** Only `http(s)` addresses without credentials can be subscribed to. */
+function feedAddress(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 500) return null;
+  try {
+    const url = new URL(value);
+    return (url.protocol === "https:" || url.protocol === "http:") && !url.username && !url.password ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The starter packs the host adds to the built-in ones, or, with `replace: true`, instead of them. Packs and feeds
+ * that are malformed are left out; at most 12 packs of 20 feeds.
+ */
+export function resolveStarterPacks<T extends { id: string; title: Localized; description?: Localized; feeds: Array<{ title: string; url: string; lang?: string }> }>(
+  extensions: unknown, builtIn: T[], language: string,
+): ResolvedStarterPack[] {
+  const host = isObject(extensions) && isObject(extensions.starterPacks) ? extensions.starterPacks : {};
+  const own = Array.isArray(host.packs) ? host.packs : [];
+  const byId = new Map<string, { id: string; title: Localized; description?: Localized; feeds: Array<{ title: string; url: string; lang?: string }> }>();
+  if (host.replace !== true) for (const pack of builtIn) byId.set(pack.id, pack);
+  for (const candidate of own.slice(0, 12)) {
+    if (!isObject(candidate) || typeof candidate.id !== "string" || !ID_PATTERN.test(candidate.id) || !Array.isArray(candidate.feeds)) continue;
+    byId.set(candidate.id, candidate as unknown as StarterPackExtension);
+  }
+  const packs: ResolvedStarterPack[] = [];
+  for (const pack of byId.values()) {
+    const title = pickLocalized(pack.title, language);
+    if (!title || !isText(title, 60)) continue;
+    const feeds: ResolvedStarterPack["feeds"] = [];
+    for (const feed of pack.feeds.slice(0, 20)) {
+      if (!isObject(feed) || !isText(feed.title, 80)) continue;
+      const url = feedAddress(feed.url);
+      if (url) feeds.push({ title: feed.title, url, lang: typeof feed.lang === "string" ? feed.lang.toLowerCase().split("-")[0] : "" });
+    }
+    if (feeds.length > 0) packs.push({ id: pack.id, title, description: pickLocalized(pack.description, language) ?? "", feeds });
+  }
+  return packs;
 }

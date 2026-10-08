@@ -119,3 +119,42 @@ test("a password card from the host needs a mount function", () => {
   assert.equal(resolvePasswordCard({ passwordCard: {} }), null);
   assert.equal(resolvePasswordCard({}), null);
 });
+
+test("starter packs of the host are added to the built-in ones, replace them on request, and are checked", async () => {
+  const { resolveStarterPacks, resolveOnboarding } = await import("../src/extensions/host.ts");
+  const { BUILT_IN_STARTER_PACKS, feedsForLanguage } = await import("../src/onboarding/starterPacks.ts");
+  const own = { id: "company", title: { en: "Company", de: "Firma" }, feeds: [
+    { title: "Blog", url: "https://example.org/feed.xml", lang: "de-AT" },
+    { title: "Script", url: "javascript:alert(1)" },
+    { title: "Secret", url: "https://user:pass@example.org/feed" },
+    { title: "", url: "https://example.org/empty" },
+  ] };
+  const added = resolveStarterPacks({ starterPacks: { packs: [own, { id: "Bad Id", title: "x", feeds: [] }, { id: "empty", title: "Empty", feeds: [{ title: "No", url: "ftp://example.org" }] }] } }, BUILT_IN_STARTER_PACKS, "de");
+  assert.deepEqual(added.map((pack) => pack.id), [...BUILT_IN_STARTER_PACKS.map((pack) => pack.id), "company"]);
+  const company = added.at(-1);
+  assert.equal(company.title, "Firma");
+  assert.deepEqual(company.feeds, [{ title: "Blog", url: "https://example.org/feed.xml", lang: "de" }]);
+  assert.deepEqual(resolveStarterPacks({ starterPacks: { replace: true, packs: [own] } }, BUILT_IN_STARTER_PACKS, "en").map((pack) => pack.id), ["company"]);
+  assert.equal(resolveStarterPacks({}, BUILT_IN_STARTER_PACKS, "en").length, BUILT_IN_STARTER_PACKS.length);
+  assert.equal(resolveOnboarding({ onboarding: { mount() {} } }) !== null, true);
+  assert.equal(resolveOnboarding({ onboarding: {} }), null);
+
+  const technology = added.find((pack) => pack.id === "technology");
+  assert.ok(feedsForLanguage(technology, "de").every((feed) => feed.lang === "de" || feed.lang === "en"));
+  assert.equal(feedsForLanguage(technology, "de")[0].lang, "de", "the own language comes first");
+  assert.ok(feedsForLanguage(technology, "ja").some((feed) => feed.lang === "ja"));
+  assert.ok(feedsForLanguage(technology, "en").every((feed) => feed.lang === "en"));
+});
+
+test("the built-in starter packs have unique ids, https addresses and titles in every language", async () => {
+  const { BUILT_IN_STARTER_PACKS } = await import("../src/onboarding/starterPacks.ts");
+  assert.equal(new Set(BUILT_IN_STARTER_PACKS.map((pack) => pack.id)).size, BUILT_IN_STARTER_PACKS.length);
+  const urls = BUILT_IN_STARTER_PACKS.flatMap((pack) => pack.feeds.map((feed) => feed.url));
+  assert.equal(new Set(urls).size, urls.length, "no feed twice");
+  for (const pack of BUILT_IN_STARTER_PACKS) {
+    for (const language of ["en", "de", "ja"]) {
+      assert.ok(pack.title[language] && pack.description[language], `${pack.id} has a ${language} title and description`);
+    }
+    for (const feed of pack.feeds) assert.match(feed.url, /^https:\/\//);
+  }
+});

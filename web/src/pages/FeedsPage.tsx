@@ -6,6 +6,7 @@ import { type SelectOption } from "../components/CustomSelect.tsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.tsx";
 import { ActionMenu } from "../components/ActionMenu.tsx";
 import { FeedRow, formatInterval } from "../components/feeds/FeedRow.tsx";
+import { Welcome } from "../components/onboarding/Welcome.tsx";
 import { AddFeedPanel } from "../components/feeds/AddFeedPanel.tsx";
 import { FolderManager } from "../components/feeds/FolderManager.tsx";
 import { toast } from "../utils/toast.ts";
@@ -291,16 +292,7 @@ export function FeedsPage() {
       {loading ? (
         <LoadingSpinner size="lg" />
       ) : feeds.length === 0 ? (
-        panel !== "add" && (
-          <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <h2 className="text-lg font-semibold">{t("feeds.emptyTitle")}</h2>
-            <p className="max-w-sm text-sm text-[var(--c-text-muted)]">{t("feeds.emptyHint")}</p>
-            <button type="button" onClick={() => setPanel("add")} className="btn-primary mt-2 inline-flex items-center gap-1.5">
-              <PlusIcon className="h-4 w-4" />
-              {t("feeds.addFeed")}
-            </button>
-          </div>
-        )
+        panel !== "add" && <Welcome onSubscribed={load} />
       ) : (
         <>
           <div className="flex flex-col gap-3">

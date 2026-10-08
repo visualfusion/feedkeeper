@@ -15,6 +15,7 @@ import { toast } from "../utils/toast.ts";
 import { announceItemsChanged } from "../utils/badge.ts";
 import { syncOfflineCopy } from "../utils/offlineSync.ts";
 import { RefreshIcon } from "../components/feeds/icons.tsx";
+import { Welcome } from "../components/onboarding/Welcome.tsx";
 
 const PAGE_SIZE = 50;
 
@@ -45,6 +46,7 @@ export function ItemsPage() {
   const { t, i18n } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [feeds, setFeeds] = useState<Feed[]>([]);
+  const [feedsLoaded, setFeedsLoaded] = useState(false);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -302,12 +304,37 @@ export function ItemsPage() {
       .then(([f, fol]) => {
         setFeeds(f);
         setFolders(fol.folders);
+        setFeedsLoaded(true);
       })
       .catch((err) => console.error("Failed to load initial feeds/folders:", err));
   }, []);
 
   const currentFeedId = filterScope.startsWith("feed:") ? Number(filterScope.slice(5)) : undefined;
   const currentFolderId = filterScope.startsWith("folder:") ? Number(filterScope.slice(7)) : undefined;
+
+  /** No search, saved view or feed/folder scope: an empty list then says something about the library as a whole. */
+  const plainView = !search && !bookmarkedOnly && currentFeedId === undefined && currentFolderId === undefined;
+  /** Feeds exist but none has been fetched yet (just subscribed, the first fetch is still running). */
+  const waitingForFirstArticles = plainView && feeds.length > 0 && feeds.every((feed) => !feed.last_polled_at);
+
+  async function reloadFeeds(): Promise<Feed[] | null> {
+    try {
+      const [f, fol] = await Promise.all([api.listFeeds(), api.listFolders().catch(() => ({ folders: [] }))]);
+      setFeeds(f);
+      setFolders(fol.folders);
+      setFeedsLoaded(true);
+      return f;
+    } catch (err) {
+      console.error("Failed to reload feeds:", err);
+      return null;
+    }
+  }
+
+  async function reloadAfterSubscribing() {
+    await reloadFeeds();
+    await load();
+    announceItemsChanged();
+  }
 
   async function load() {
     const version = ++loadVersion.current;
@@ -384,6 +411,21 @@ export function ItemsPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterScope, unreadOnly, bookmarkedOnly, search]);
+
+  // After subscribing the first fetch can still be running: look again until a feed has been fetched, then load its articles.
+  useEffect(() => {
+    if (!waitingForFirstArticles) return;
+    let ticks = 0;
+    const timer = setInterval(() => {
+      ticks++;
+      void reloadFeeds().then((list) => {
+        if (list?.some((feed) => feed.last_polled_at)) void load();
+      });
+      if (ticks >= 45) clearInterval(timer);
+    }, 4000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waitingForFirstArticles]);
 
   const linkMarkedRead = useRef<number | null>(null);
 
@@ -735,11 +777,28 @@ export function ItemsPage() {
       </div>
 
       {loadError ? (
-        <p role="alert" style={{ color: "var(--c-text-muted)" }}>{t("common.error")}</p>
+        <div role="alert" className="flex flex-col items-start gap-3">
+          <p style={{ color: "var(--c-text-muted)" }}>{t("items.loadFailed")}</p>
+          <button type="button" onClick={() => void load()} className="btn-secondary">{t("common.retry")}</button>
+        </div>
       ) : loading && items.length === 0 ? (
         <LoadingSpinner size="lg" />
+      ) : items.length === 0 && plainView && feedsLoaded && feeds.length === 0 ? (
+        <Welcome onSubscribed={reloadAfterSubscribing} />
+      ) : items.length === 0 && waitingForFirstArticles ? (
+        <div role="status" className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <LoadingSpinner size="lg" />
+          <h2 className="text-lg font-semibold">{t("welcome.fetchingTitle")}</h2>
+          <p className="max-w-sm text-sm text-[var(--c-text-muted)]">{t("welcome.fetchingHint")}</p>
+        </div>
+      ) : items.length === 0 && plainView && effectiveUnreadOnly && feeds.length > 0 ? (
+        <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <h2 className="text-lg font-semibold">{t("items.allReadTitle")}</h2>
+          <p className="max-w-sm text-sm text-[var(--c-text-muted)]">{t("items.allReadHint")}</p>
+          <button type="button" onClick={() => setUnreadOnly(false)} className="btn-secondary mt-1">{t("items.all")}</button>
+        </div>
       ) : items.length === 0 ? (
-        <p style={{ color: "var(--c-text-muted)" }}>{bookmarkedOnly && !search ? t("items.noSaved") : t("items.noItems")}</p>
+        <p style={{ color: "var(--c-text-muted)" }}>{bookmarkedOnly && !search ? t("items.noSaved") : search ? t("items.noResults") : t("items.noItems")}</p>
       ) : activeView === "newspaper" ? (
         <NewspaperGrid items={items} onOpen={openArticle} onBookmark={toggleBookmark} onRead={toggleRead} />
       ) : (

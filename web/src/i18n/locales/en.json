@@ -138,7 +138,11 @@
     "refreshing": "Refreshing feeds…",
     "refreshFailed": "Refresh failed. Please try again.",
     "noSaved": "Nothing saved yet. Tap the star to keep an article, including its full text and images, for good.",
-    "unreadIgnoredInSaved": "Saved articles are shown whether read or not."
+    "unreadIgnoredInSaved": "Saved articles are shown whether read or not.",
+    "loadFailed": "The articles could not be loaded.",
+    "allReadTitle": "All caught up",
+    "allReadHint": "You have read everything. New articles show up here as soon as they arrive.",
+    "noResults": "Nothing found."
   },
   "reader": {
     "close": "Close (Esc)",
@@ -298,5 +302,22 @@
     "mcpClaudeHint": "Add this snippet to your claude_desktop_config.json to connect Claude directly to your feeds.",
     "mcpCopyConfig": "Copy Claude config",
     "mcpConfigCopied": "Config copied!"
+  },
+  "welcome": {
+    "title": "Let's fill your reader",
+    "intro": "Add a website, pick a starter pack or import your subscriptions. Your articles appear here as soon as the first feeds have been fetched.",
+    "addTitle": "Add a website",
+    "packsTitle": "Or start with a pack",
+    "packsHint": "A handful of well-known feeds on one topic. You choose which ones to keep.",
+    "subscribePack_one": "Subscribe to {{count}} feed",
+    "subscribePack_other": "Subscribe to {{count}} feeds",
+    "subscribingProgress": "Subscribing… {{done}} of {{total}}",
+    "packAdded_one": "{{count}} feed added.",
+    "packAdded_other": "{{count}} feeds added.",
+    "packPartial": "{{added}} added, {{failed}} could not be added.",
+    "importTitle": "Already use a feed reader?",
+    "importHint": "Import the subscription file (OPML) that your old reader exported.",
+    "fetchingTitle": "Fetching your first articles …",
+    "fetchingHint": "This usually takes a few seconds. The page updates by itself."
   }
 }

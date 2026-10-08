@@ -138,7 +138,11 @@
     "refreshing": "フィードを更新中…",
     "refreshFailed": "更新に失敗しました。もう一度お試しください。",
     "noSaved": "保存した記事はまだありません。星をタップすると、全文と画像を含めて記事を保存できます。",
-    "unreadIgnoredInSaved": "保存した記事は既読・未読にかかわらず表示されます。"
+    "unreadIgnoredInSaved": "保存した記事は既読・未読にかかわらず表示されます。",
+    "loadFailed": "記事を読み込めませんでした。",
+    "allReadTitle": "すべて読みました",
+    "allReadHint": "すべての記事を読みました。新しい記事が届くとここに表示されます。",
+    "noResults": "見つかりませんでした。"
   },
   "reader": {
     "close": "閉じる (Esc)",
@@ -298,5 +302,22 @@
     "mcpClaudeHint": "claude_desktop_config.json にこのスニペットを追加すると、Claude をフィードに接続できます。",
     "mcpCopyConfig": "Claude 設定をコピー",
     "mcpConfigCopied": "設定をコピーしました！"
+  },
+  "welcome": {
+    "title": "リーダーを始めましょう",
+    "intro": "ウェブサイトを追加するか、スターターパックを選ぶか、購読リストをインポートしてください。最初のフィードを取得すると、記事がここに表示されます。",
+    "addTitle": "ウェブサイトを追加",
+    "packsTitle": "またはパックから始める",
+    "packsHint": "テーマごとの定番フィードです。残すものは自分で選べます。",
+    "subscribePack_one": "{{count}} 件のフィードを購読",
+    "subscribePack_other": "{{count}} 件のフィードを購読",
+    "subscribingProgress": "購読中… {{done}} / {{total}}",
+    "packAdded_one": "{{count}} 件のフィードを追加しました。",
+    "packAdded_other": "{{count}} 件のフィードを追加しました。",
+    "packPartial": "{{added}} 件を追加、{{failed}} 件は追加できませんでした。",
+    "importTitle": "すでにフィードリーダーを使っていますか？",
+    "importHint": "以前のリーダーでエクスポートした購読ファイル（OPML）をインポートできます。",
+    "fetchingTitle": "最初の記事を取得しています…",
+    "fetchingHint": "通常は数秒で終わります。ページは自動で更新されます。"
   }
 }

@@ -138,7 +138,11 @@
     "refreshing": "Feeds werden aktualisiert…",
     "refreshFailed": "Aktualisierung fehlgeschlagen. Bitte erneut versuchen.",
     "noSaved": "Noch nichts gemerkt. Tippe auf den Stern, um einen Artikel samt Volltext und Bildern dauerhaft zu sichern.",
-    "unreadIgnoredInSaved": "Die Merkliste zeigt gelesene und ungelesene Artikel."
+    "unreadIgnoredInSaved": "Die Merkliste zeigt gelesene und ungelesene Artikel.",
+    "loadFailed": "Die Artikel konnten nicht geladen werden.",
+    "allReadTitle": "Alles gelesen",
+    "allReadHint": "Du hast alles gelesen. Neue Artikel erscheinen hier, sobald sie da sind.",
+    "noResults": "Nichts gefunden."
   },
   "reader": {
     "close": "Schließen (Esc)",
@@ -298,5 +302,22 @@
     "mcpClaudeHint": "Füge diesen Schnipsel in deine claude_desktop_config.json ein, um Claude mit deinen Feeds zu verbinden.",
     "mcpCopyConfig": "Claude-Konfiguration kopieren",
     "mcpConfigCopied": "Konfiguration kopiert!"
+  },
+  "welcome": {
+    "title": "Füll deinen Reader",
+    "intro": "Füge eine Website hinzu, wähle ein Starter-Paket oder importiere deine Abos. Deine Artikel erscheinen hier, sobald die ersten Feeds abgerufen sind.",
+    "addTitle": "Website hinzufügen",
+    "packsTitle": "Oder starte mit einem Paket",
+    "packsHint": "Ein paar bekannte Feeds zu einem Thema. Du entscheidest, welche du behältst.",
+    "subscribePack_one": "{{count}} Feed abonnieren",
+    "subscribePack_other": "{{count}} Feeds abonnieren",
+    "subscribingProgress": "Abonniere … {{done}} von {{total}}",
+    "packAdded_one": "{{count}} Feed hinzugefügt.",
+    "packAdded_other": "{{count}} Feeds hinzugefügt.",
+    "packPartial": "{{added}} hinzugefügt, {{failed}} ließen sich nicht hinzufügen.",
+    "importTitle": "Schon einen Feedreader im Einsatz?",
+    "importHint": "Importiere die Abo-Datei (OPML), die dein bisheriger Reader exportiert hat.",
+    "fetchingTitle": "Deine ersten Artikel werden geladen …",
+    "fetchingHint": "Das dauert meist nur wenige Sekunden. Die Seite aktualisiert sich selbst."
   }
 }
