@@ -4,18 +4,14 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
-## [0.19.0] - 2026-10-08
-
-### Added
-- An account whose plan does not include the `sync` feature (a hosted service after the trial) can no longer add, import or update feeds: the API answers `403 capability_not_available` (with `manageUrl`) for adding a feed, discovering feeds, importing OPML, refreshing one or all feeds and creating a folder. Reading, exporting and deleting stay available. The web app switches off the buttons for these actions (add, import, refresh, pull to refresh, new folder), explains why in a notice on the articles and feeds pages (and instead of the welcome card for an account without feeds) and links to the plan when the server says where it can be changed.
-
-### Changed
-- The poller does not fetch a feed that only accounts without the `sync` feature subscribe to; a feed that anyone with it subscribes to is fetched as before. Self-hosted instances send no limits and are not affected.
-
 ## [0.18.0] - 2026-10-08
 
 ### Added
 - Extension point `articlesNotice`: a host can show one card above the list of articles, for example what a plan includes. It appears for accounts that already have feeds and only after the person has closed the short tour, so one card is shown at a time. `applies(user)` decides whether it is still to be shown; closing it is up to the host's content.
+- An account whose plan does not include the `sync` feature (a hosted service after the trial) can no longer add, import or update feeds: the API answers `403 capability_not_available` (with `manageUrl`) for adding a feed, discovering feeds, importing OPML, refreshing one or all feeds and creating a folder. Reading, exporting and deleting stay available. The web app switches off the buttons for these actions (add, import, refresh, pull to refresh, new folder), explains why in a notice on the articles and feeds pages (and instead of the welcome card for an account without feeds) and links to the plan when the server says where it can be changed. Self-hosted instances send no limits and are not affected.
+
+### Changed
+- The poller does not fetch a feed that only accounts without the `sync` feature subscribe to; a feed that anyone with it subscribes to is fetched as before.
 
 ## [0.17.0] - 2026-10-08
 
@@ -265,8 +261,7 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 First public release: an RSS and Atom reader with a remote MCP server, multi-user accounts, a trilingual interface (English, German, Japanese), SSRF-guarded feed fetching and a single-file SQLite database.
 
-[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.19.0...HEAD
-[0.19.0]: https://github.com/visualfusion/feedkeeper/compare/v0.18.0...v0.19.0
+[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.18.0...HEAD
 [0.18.0]: https://github.com/visualfusion/feedkeeper/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/visualfusion/feedkeeper/compare/v0.16.2...v0.17.0
 [0.16.2]: https://github.com/visualfusion/feedkeeper/compare/v0.16.1...v0.16.2
