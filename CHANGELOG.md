@@ -8,6 +8,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 - A welcome card for a person without feeds, on the articles page and on the feeds page: add a website by its address, pick a starter pack (news, technology, Apple, science, design; the feeds in the language of the app first) or import an OPML file. A pack subscribes its feeds into a folder with the pack's name.
 - Extension points `starterPacks` and `onboarding` let a host add packs, replace the list, and show its own content above the first steps.
 
+- A short introduction ("A short tour") on the articles page: the list and newspaper views, the unread filter, the star for saving, and folders. Every account sees it once, existing accounts included, as soon as it has feeds; closing it is stored with the account (`POST /api/auth/me/intro`, `intro_dismissed_at` on the user), so it stays closed on every device.
+
 ### Changed
 - The articles page tells the empty cases apart: no feeds (welcome card), feeds that have not been fetched yet (a waiting message that updates itself), everything read ("All caught up" with a button to show all), no search result, and a load error with a retry button.
 - The feeds page no longer shows the "Add feed" button twice while there are no feeds.

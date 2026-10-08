@@ -13,6 +13,7 @@ import {
   setUserAvatar,
   toPublicUser,
   updateDisplayName,
+  dismissIntro,
   updateUserPassword,
 } from "../auth/users.js";
 import { AVATAR_MAX_BYTES, detectAvatarType } from "../auth/avatar.js";
@@ -73,6 +74,12 @@ authRouter.patch("/me", requireSession, (req, res) => {
     return;
   }
   updateDisplayName(req.user!.id, parsed.data.displayName);
+  res.json(toPublicUser(findUserById(req.user!.id)!));
+});
+
+// The introduction to the app is shown once per account; closing it on one device closes it everywhere.
+authRouter.post("/me/intro", requireSession, (req, res) => {
+  dismissIntro(req.user!.id);
   res.json(toPublicUser(findUserById(req.user!.id)!));
 });
 

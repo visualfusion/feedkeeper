@@ -319,5 +319,18 @@
     "importHint": "Import the subscription file (OPML) that your old reader exported.",
     "fetchingTitle": "Fetching your first articles …",
     "fetchingHint": "This usually takes a few seconds. The page updates by itself."
+  },
+  "intro": {
+    "title": "A short tour",
+    "subtitle": "Four things that are good to know. This appears only once.",
+    "viewsTitle": "List or newspaper",
+    "viewsText": "Switch between the list and the newspaper view at the top right.",
+    "unreadTitle": "Unread only",
+    "unreadText": "The dot next to the search shows or hides articles you have already read.",
+    "starTitle": "Save for later",
+    "starText": "The star keeps an article for good, with its full text and images. The star next to the search shows everything you saved.",
+    "foldersTitle": "Folders",
+    "foldersText": "Under Feeds you create folders and sort your subscriptions.",
+    "done": "Got it"
   }
 }

@@ -119,6 +119,8 @@ export interface User {
   role: "admin" | "user";
   created_at: string;
   avatar_updated_at: string | null;
+  /** When the introduction to the app was closed; null while it is still to be shown. */
+  intro_dismissed_at: string | null;
   capabilities?: AccountCapabilities;
 }
 
@@ -245,6 +247,7 @@ export const api = {
   uploadAvatar: (image: Blob) =>
     request<User>("/auth/me/avatar", { method: "PUT", headers: { "Content-Type": image.type }, body: image }),
   deleteAvatar: () => request<User>("/auth/me/avatar", { method: "DELETE" }),
+  dismissIntro: () => request<User>("/auth/me/intro", { method: "POST" }),
   listUsers: () => request<User[]>("/auth/users"),
   createUser: (data: { email: string; password: string; displayName: string; role: "admin" | "user" }) =>
     request<User>("/auth/users", { method: "POST", body: JSON.stringify(data) }),

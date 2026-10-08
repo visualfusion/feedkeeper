@@ -45,3 +45,24 @@ test("profile name and photo updates are scoped to the user", async () => {
   db.prepare("DELETE FROM users WHERE id = ?").run(other.id);
   assert.equal(db.prepare("SELECT COUNT(*) AS count FROM user_avatars").get()?.count, 0);
 });
+
+test("the introduction is marked once per account and stays marked", async () => {
+  process.env.DATABASE_PATH = ":memory:";
+  process.env.SESSION_SECRET = "test-session-secret-at-least-32-characters";
+
+  const { runMigrations } = await import("../src/db/index.js");
+  const users = await import("../src/auth/users.js");
+  runMigrations();
+
+  const first = users.createUser({ email: "intro-a@example.test", password: "correct horse battery", displayName: "A", role: "user" });
+  const second = users.createUser({ email: "intro-b@example.test", password: "correct horse battery", displayName: "B", role: "user" });
+  assert.equal(users.findUserById(first.id)?.intro_dismissed_at, null, "an account has not seen it yet, existing ones included");
+
+  users.dismissIntro(first.id);
+  const marked = users.findUserById(first.id)?.intro_dismissed_at;
+  assert.ok(marked);
+  assert.equal(users.findUserById(second.id)?.intro_dismissed_at, null, "only the account that closed it");
+  users.dismissIntro(first.id);
+  assert.equal(users.findUserById(first.id)?.intro_dismissed_at, marked, "the first time counts");
+  assert.equal(users.toPublicUser(users.findUserById(first.id)!).intro_dismissed_at, marked);
+});

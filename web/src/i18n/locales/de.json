@@ -319,5 +319,18 @@
     "importHint": "Importiere die Abo-Datei (OPML), die dein bisheriger Reader exportiert hat.",
     "fetchingTitle": "Deine ersten Artikel werden geladen …",
     "fetchingHint": "Das dauert meist nur wenige Sekunden. Die Seite aktualisiert sich selbst."
+  },
+  "intro": {
+    "title": "Kurz erklärt",
+    "subtitle": "Vier Dinge, die gut zu wissen sind. Das erscheint nur einmal.",
+    "viewsTitle": "Liste oder Zeitung",
+    "viewsText": "Oben rechts wechselst du zwischen der Liste und der Zeitungsansicht.",
+    "unreadTitle": "Nur Ungelesenes",
+    "unreadText": "Der Punkt neben der Suche blendet bereits gelesene Artikel aus oder ein.",
+    "starTitle": "Für später merken",
+    "starText": "Der Stern speichert einen Artikel dauerhaft, samt Volltext und Bildern. Der Stern neben der Suche zeigt alles, was du gespeichert hast.",
+    "foldersTitle": "Kategorien",
+    "foldersText": "Unter Feeds legst du Kategorien an und sortierst deine Abos.",
+    "done": "Verstanden"
   }
 }

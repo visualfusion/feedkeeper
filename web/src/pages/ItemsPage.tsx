@@ -15,6 +15,7 @@ import { toast } from "../utils/toast.ts";
 import { announceItemsChanged } from "../utils/badge.ts";
 import { syncOfflineCopy } from "../utils/offlineSync.ts";
 import { RefreshIcon } from "../components/feeds/icons.tsx";
+import { Intro } from "../components/onboarding/Intro.tsx";
 import { Welcome } from "../components/onboarding/Welcome.tsx";
 
 const PAGE_SIZE = 50;
@@ -775,6 +776,8 @@ export function ItemsPage() {
           </div>
         </div>
       </div>
+
+      {feedsLoaded && feeds.length > 0 && !loadError && <Intro />}
 
       {loadError ? (
         <div role="alert" className="flex flex-col items-start gap-3">
