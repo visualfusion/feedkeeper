@@ -9,6 +9,8 @@ import { UserAvatar } from "../UserAvatar.tsx";
 import { ExtensionMount } from "./ExtensionMount.tsx";
 import { SettingsCard, SettingBlock, SettingRow, Status, type StatusMessage } from "./ui.tsx";
 
+import { SecuritySettings } from "./SecuritySettings.tsx";
+
 function ProfileCard() {
   const { t } = useTranslation();
   const { user, setCurrentUser } = useAuth();
@@ -182,6 +184,7 @@ export function AccountSettings() {
     <div className="flex flex-col gap-5">
       <ProfileCard />
       <PasswordSection />
+      <SecuritySettings />
     </div>
   );
 }

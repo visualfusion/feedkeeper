@@ -20,7 +20,14 @@ import { AVATAR_MAX_BYTES, detectAvatarType } from "../auth/avatar.js";
 import { verifyPassword } from "../auth/password.js";
 import { getUserCapabilities } from "../auth/capabilities.js";
 
+import { beginMfa, securityVersion } from "../auth/security.js";
+import { createSecurityRouter } from "../auth/securityRoutes.js";
+
 export const authRouter = Router();
+authRouter.use("/security", createSecurityRouter({ completeLogin: (req, res, userId) => {
+  req.session = { userId, securityVersion: securityVersion(userId) };
+  res.json(toPublicUser(findUserById(userId)!));
+} }));
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -47,7 +54,9 @@ authRouter.post("/login", loginLimiter, (req, res) => {
     return;
   }
 
-  req.session!.userId = user.id;
+  const mfa = beginMfa(req, user.id, "web", {});
+  if (mfa) { res.status(403).json(mfa); return; }
+  req.session = { userId: user.id, securityVersion: securityVersion(user.id) };
   res.json(toPublicUser(user));
 });
 

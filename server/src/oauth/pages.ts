@@ -4,6 +4,7 @@ type Lang = "en" | "de" | "ja";
 
 const strings = {
   en: {
+    passkey: "Use a passkey",
     loginTitle: "Sign in to FeedKeeper",
     loginIntro: "{client} wants to connect to your FeedKeeper account. Sign in to continue.",
     email: "Email",
@@ -28,6 +29,7 @@ const strings = {
     forbidden: "The request came from another site and was blocked.",
   },
   de: {
+    passkey: "Mit Passkey anmelden",
     loginTitle: "Bei FeedKeeper anmelden",
     loginIntro: "{client} möchte sich mit deinem FeedKeeper-Konto verbinden. Melde dich an, um fortzufahren.",
     email: "E-Mail",
@@ -52,6 +54,7 @@ const strings = {
     forbidden: "Die Anfrage kam von einer anderen Website und wurde blockiert.",
   },
   ja: {
+    passkey: "パスキーでサインイン",
     loginTitle: "FeedKeeperにサインイン",
     loginIntro: "{client} がFeedKeeperアカウントへの接続を求めています。続けるにはサインインしてください。",
     email: "メールアドレス",
@@ -131,7 +134,8 @@ ${hidden("return_to", input.returnTo)}
 <label class="field">${text(lang, "email")}<input type="email" name="email" required autofocus autocomplete="username"></label>
 <label class="field">${text(lang, "password")}<input type="password" name="password" required autocomplete="current-password"></label>
 <div class="row"><button class="primary" type="submit">${text(lang, "signIn")}</button></div>
-</form>`);
+</form>
+<p><a href="/login?next=${encodeURIComponent(input.returnTo)}">${text(lang, "passkey")}</a></p>`);
 }
 
 export function renderConsent(

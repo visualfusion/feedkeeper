@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { config } from "../config.js";
 import { getUserCapabilities, hasUserCapability } from "../auth/capabilities.js";
+import { hasTotp, securityVersion, sessionIsSecure } from "../auth/security.js";
 import { verifyPassword } from "../auth/password.js";
 import { findUserByEmail, findUserById } from "../auth/users.js";
 import type { TokenScope } from "../auth/tokens.js";
@@ -298,7 +299,7 @@ function resolveOwner(req: Request, res: Response, client: OAuthClient): number 
   const host = getOAuthHost();
   if (host) return host.resolveResourceOwner(req, res);
   const userId = req.session?.userId as number | undefined;
-  if (userId && findUserById(userId)) return userId;
+  if (userId && findUserById(userId) && sessionIsSecure(req, userId)) return userId;
   page(res, 200, renderLogin(req, { clientName: client.client_name, returnTo: req.originalUrl }));
   return null;
 }
@@ -369,7 +370,8 @@ oauthAuthorizeRouter.post("/oauth/authorize/login", sameOriginOnly, loginLimiter
     page(res, 401, renderLogin(req, { clientName: client.client_name, returnTo, failed: true }));
     return;
   }
-  req.session!.userId = user.id;
+  if (hasTotp(user.id)) { res.redirect(303, `/login?next=${encodeURIComponent(returnTo)}`); return; }
+  req.session = { userId: user.id, securityVersion: securityVersion(user.id) };
   res.redirect(303, returnTo);
 });
 

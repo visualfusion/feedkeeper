@@ -4,6 +4,22 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-10-09
+
+### Added
+- Passkeys for every installation: register and name multiple credentials in Settings → Account, sign in without a password, and remove credentials individually. WebAuthn checks the configured origin and requires device PIN or biometric verification.
+- Optional two-factor authentication with an authenticator app (TOTP), QR/manual setup, ten single-use recovery codes and protected security settings. Password and OAuth sign-ins honor the second factor; a user-verified passkey can sign in on its own.
+- Local operator recovery command `npm run security:recover -- --email reader@example.org --confirm` for a lost authenticator and recovery codes. It removes the factor and revokes access without changing the password or passkeys.
+- [Account security guide](docs/account-security.md) covering HTTPS, stable domains, backups, recovery and the shared authentication API.
+
+### Security
+- Enabling or disabling TOTP revokes other browser sessions, device/API tokens, OAuth grants, pairing codes and pending sign-ins. The current browser stays open to save recovery codes. Security changes require fresh identity confirmation; API and read-only tokens cannot change factors.
+- Authenticator secrets are encrypted; recovery codes and short-lived, purpose-bound challenge handles are hashed. Accepted authenticator codes and recovery codes cannot be reused.
+
+### Upgrade notes
+- Back up the database **and `SESSION_SECRET`** before updating. The secret also protects encrypted authenticator keys; rotating it requires authenticator recovery and re-enrollment. Migration `0029` runs automatically; existing accounts keep their current login until they opt in.
+- Set `PUBLIC_URL` to the stable external HTTPS origin before enrolling passkeys. Localhost is supported for development; ordinary HTTP LAN addresses cannot use passkeys.
+
 ## [0.18.0] - 2026-10-08
 
 ### Added
@@ -261,7 +277,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 First public release: an RSS and Atom reader with a remote MCP server, multi-user accounts, a trilingual interface (English, German, Japanese), SSRF-guarded feed fetching and a single-file SQLite database.
 
-[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/visualfusion/feedkeeper/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/visualfusion/feedkeeper/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/visualfusion/feedkeeper/compare/v0.16.2...v0.17.0
 [0.16.2]: https://github.com/visualfusion/feedkeeper/compare/v0.16.1...v0.16.2

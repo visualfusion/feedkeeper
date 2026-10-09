@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { api } from "../api/client.ts";
+import { passkeyLogin, securityRequest } from "../api/security.ts";
+import { ApiError, api } from "../api/client.ts";
 import { useAuth } from "../auth/AuthContext.tsx";
 import { ExtensionMount } from "../components/settings/ExtensionMount.tsx";
 import { FooterLinks } from "../components/FooterLinks.tsx";
@@ -12,6 +13,9 @@ export function LoginPage() {
   const { t } = useTranslation();
   const { refresh } = useAuth();
   const [email, setEmail] = useState("");
+  const [challengeId, setChallengeId] = useState<string>();
+  const [code, setCode] = useState("");
+  const [passkeys, setPasskeys] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -20,6 +24,7 @@ export function LoginPage() {
   const hostForm = resolveLoginForm(useExtensions());
 
   useEffect(() => {
+    void securityRequest<{ passkeys: boolean }>("/config", undefined, "GET").then(result => setPasskeys(result.passkeys)).catch(() => {});
     api
       .getConfig()
       .then((cfg) => {
@@ -38,13 +43,28 @@ export function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.login(email, password);
-      await refresh();
-    } catch {
-      setError(t("login.error"));
+      if (challengeId) await securityRequest("/mfa", { challengeId, code });
+      else await api.login(email, password);
+      await finished();
+    } catch (failure) {
+      if (failure instanceof ApiError && failure.code === "mfa_required") {
+        setChallengeId((failure.data as { challengeId: string }).challengeId); setPassword("");
+      } else setError(t("login.error"));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function finished() {
+    const next = new URLSearchParams(window.location.search).get("next");
+    if (next?.startsWith("/oauth/authorize?")) window.location.assign(next);
+    else await refresh();
+  }
+  async function withPasskey() {
+    setSubmitting(true); setError(null);
+    try { await passkeyLogin(); await finished(); }
+    catch { setError(t("login.error")); }
+    finally { setSubmitting(false); }
   }
 
   return (
@@ -62,7 +82,7 @@ export function LoginPage() {
           <ExtensionMount name="login-form" mount={hostForm.mount} />
         ) : (
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
-            <div>
+            {!challengeId && <><div>
               <label className="text-sm font-medium block mb-1">{t("login.emailLabel")}</label>
               <input
                 type="email"
@@ -83,6 +103,9 @@ export function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
+            </>}
+            {challengeId && <><label htmlFor="mfa-code">{t("security.code")}</label><input id="mfa-code" className="input" autoFocus autoComplete="one-time-code" value={code} onChange={event => setCode(event.target.value)} required /><button type="button" className="btn-secondary" onClick={() => { setChallengeId(undefined); setCode(""); }}>{t("security.cancel")}</button></>}
+            {passkeys && !challengeId && <button type="button" className="btn-secondary" disabled={submitting} onClick={() => void withPasskey()}>{t("security.signInPasskey")}</button>}
             {error && <p className="text-sm text-danger">{error}</p>}
             <button type="submit" disabled={submitting} className="btn-primary">
               {t("login.submit")}

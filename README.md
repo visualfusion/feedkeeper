@@ -83,6 +83,7 @@ Changing `SESSION_SECRET` signs out active browser sessions; feeds and accounts 
 - **Notifications and home screen shortcuts** — optional push notifications for new articles of the feeds you choose (on iPhone and iPad once the app is on the home screen), the number of unread articles of the feeds you choose on the app icon, shortcuts to saved articles and to adding a feed, and sharing a web address from another app straight into the add-feed dialog. Notifications are encrypted end to end and delivered through your browser vendor's push service; the server creates its push keys on first start and keeps them in the database.
 - **Personal profiles** — each account can set its display name and a profile photo.
 - **Online backups** — create verified SQLite backups while the service keeps running.
+- **Passkeys and two-factor authentication** — Sign in without a password, protect password login with an authenticator app, and keep one-time recovery codes. Available on every installation; see [Account security](docs/account-security.md).
 - **Hardened security** — SSRF protection against internal network probing, rate limiting on authentication, and hashed API tokens.
 
 ## How it fits together
