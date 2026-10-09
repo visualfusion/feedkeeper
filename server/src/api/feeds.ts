@@ -6,7 +6,7 @@ import { listSubscriptionsForUser, findFeedById, isUserSubscribed, reorderSubscr
 import { subscribeToFeed, unsubscribeFromFeed, updateFeedSettings, FeedError, MultipleFeedsFoundError } from "../feeds/service.js";
 import { SsrfBlockedError, normalizeUrlCandidate } from "../feeds/ssrfGuard.js";
 import { generateOpml, importOpmlFeeds } from "../feeds/opml.js";
-import { pollFeed } from "../feeds/poller.js";
+import { pollFeed, pollFeeds } from "../feeds/poller.js";
 import { discoverFeeds } from "../feeds/discovery.js";
 import { canAccessFeed, loadFeedIcon } from "../feeds/feedIcon.js";
 import rateLimit from "express-rate-limit";
@@ -219,25 +219,19 @@ feedsRouter.post("/:feedId/refresh", requireSync, async (req, res) => {
     feed: updatedFeed,
     newItems: pollResult.newItems,
     error: pollResult.error,
+    deferred: pollResult.deferred ?? false,
+    retryAt: pollResult.retryAt,
   });
 });
 
 feedsRouter.post("/refresh-all", requireSync, async (req, res) => {
   const subs = listSubscriptionsForUser(req.user!.id);
-  let totalNewItems = 0;
-  let errorCount = 0;
-
-  for (const sub of subs) {
-    const feed = findFeedById(sub.id);
-    if (!feed) continue;
-    const result = await pollFeed(feed);
-    totalNewItems += result.newItems;
-    if (result.error) errorCount++;
-  }
+  const { newItems: totalNewItems, errors: errorCount, deferred } = await pollFeeds(subs);
 
   res.json({
     refreshed: subs.length,
     newItems: totalNewItems,
     errors: errorCount,
+    deferred,
   });
 });

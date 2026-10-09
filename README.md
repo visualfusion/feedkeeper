@@ -63,6 +63,7 @@ Changing `SESSION_SECRET` signs out active browser sessions; feeds and accounts 
 
 - **Categories and feed ordering** — group subscriptions into categories, search and filter the feed list, rename categories in place, and reorder feeds by dragging.
 - **Smart feed discovery** — paste a direct feed link or a website address (like `example.com/blog`); FeedKeeper finds RSS and Atom feeds, including ones listed on a site's feed overview page, and checks each one before subscribing.
+- **Reliable feed updates** — fetch several feeds at once with limits per source. Slow feeds and temporary failures do not hold up other updates, and unfinished work resumes after a restart.
 - **Automatic character encoding** — parses standard UTF-8 as well as legacy ISO-8859-1/Windows-1252 feeds without garbled umlauts or broken symbols.
 - **Saved articles as a lasting archive** — star an article to save it: FeedKeeper keeps its full text and stores its images next to the database, so it stays readable even if the source changes. Saved articles survive cleanups and unsubscribing, ignore the word filter, and their full text is searchable.
 - **Full-text search** — indexed with SQLite FTS5 across titles, snippets, cached full text, and personal notes. Ranked by BM25 relevance with diacritic-insensitive matching and phrase support.
@@ -212,7 +213,7 @@ Every tool call is scoped to the signed-in user — a client can only see and ma
 | `rename_folder` | Rename a folder |
 | `delete_folder` | Delete a folder; its feeds stay subscribed |
 | `move_feed_to_folder` | Move a subscription into or out of a folder |
-| `refresh_feed` | Force an immediate check/poll of a subscribed feed |
+| `refresh_feed` | Request an update of a subscribed feed; respects source pauses and reports pending work |
 | `get_digest` | Unread articles grouped by feed with short snippets, the cheapest way to see what is new |
 | `get_overview` | Counts for the whole account: unread and saved articles, top feeds, folders and failing feeds |
 | `get_new_items` | Fetch unread items, optionally filtered by feed, search, or bookmarks; can leave out article HTML and shorten summaries |
@@ -265,6 +266,12 @@ Found a security issue? Please report it privately as described in [SECURITY.md]
 ## Configuration
 
 See [.env.example](.env.example) for all available environment variables.
+
+### Feed updates
+
+By default, FeedKeeper checks up to four feeds at once, with at most two requests per source hostname. Scheduled and manual updates, new subscriptions, OPML imports and MCP share the same queue. A manual refresh may stay pending when a source is busy or has asked for a pause; the web reader tells you when this happens.
+
+Run **one application process per database**. On hosts with little memory, start with `POLL_CONCURRENCY=2` and `POLL_HOST_CONCURRENCY=1`. Allow 45 seconds for shutdown; the supplied Docker Compose file already does this. See [Feed polling](docs/feed-polling.md) for the settings, logs and upgrade guidance.
 
 ## Extending
 

@@ -23,9 +23,6 @@ export interface PushPayload {
 
 type Sender = (target: PushTarget, payload: string) => Promise<void>;
 
-// Reused for every delivery; it checks the address each connection really uses.
-const pushAgent = createPublicHttpsAgent();
-
 let vapid: { publicKey: string; privateKey: string } | null = null;
 
 /** The server's own push keys, created on first use and kept in the database. */
@@ -50,16 +47,42 @@ export function vapidPublicKey(): string {
   return vapidKeys().publicKey;
 }
 
-let sender: Sender = async (target, payload) => {
-  // The address came from a browser, so it must not lead into the server's own network.
-  await assertPublicHttpUrl(target.endpoint);
-  const { publicKey, privateKey } = vapidKeys();
-  await webpush.sendNotification(target, payload, { TTL: 60 * 60, timeout: 10_000, agent: pushAgent, vapidDetails: { subject: VAPID_SUBJECT, publicKey, privateKey } });
+const defaultSender: Sender = async (target, payload) => {
+  // An absolute deadline includes DNS, connection and response, not just socket inactivity.
+  // Destroying this delivery's agent also closes a stalled request before the next one starts.
+  const agent = createPublicHttpsAgent();
+  let expired = false;
+  let timer: NodeJS.Timeout | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      expired = true;
+      agent.destroy();
+      reject(new DOMException("Push deadline exceeded", "TimeoutError"));
+    }, 10_000);
+  });
+  try {
+    await Promise.race([(async () => {
+      // Browser-supplied endpoints retain preflight and socket-level SSRF protection.
+      await assertPublicHttpUrl(target.endpoint);
+      if (expired) return;
+      const { publicKey, privateKey } = vapidKeys();
+      await webpush.sendNotification(target, payload, { TTL: 60 * 60, timeout: 10_000, agent, vapidDetails: { subject: VAPID_SUBJECT, publicKey, privateKey } });
+    })(), deadline]);
+  } finally {
+    clearTimeout(timer);
+    agent.destroy();
+  }
 };
+let sender: Sender = defaultSender;
 
 /** Replace the function that talks to the push service (tests). */
 export function setPushSender(next: Sender | null): void {
-  sender = next ?? sender;
+  sender = next ?? defaultSender;
+}
+
+/** One attempt. The durable outbox owns recipient cursors and bounded retries. */
+export function sendPushTarget(target: PushTarget, payload: PushPayload): Promise<void> {
+  return sender(target, JSON.stringify(payload));
 }
 
 export function saveDevice(userId: number, target: PushTarget): void {
@@ -91,10 +114,11 @@ function devicesOf(userId: number): PushTarget[] {
 }
 
 /** Deliver to every device of the user; devices the push service no longer knows are forgotten. */
-export async function sendToUser(userId: number, payload: PushPayload): Promise<number> {
+export async function sendToUser(userId: number, payload: PushPayload, signal?: AbortSignal): Promise<number> {
   const body = JSON.stringify(payload);
   let delivered = 0;
   for (const target of devicesOf(userId)) {
+    if (signal?.aborted) break;
     try {
       await sender(target, body);
       delivered++;
@@ -115,8 +139,28 @@ function unreadTotal(userId: number): number {
     .get(userId, userId)!.n;
 }
 
+/** A bounded article snapshot is selected by the outbox's committed upper item ID. */
+export function newItemsPushPayload(feed: { id: number; title: string | null; url: string }, userId: number, label: string | null,
+  latest: { id: number; title: string | null; content_snippet: string | null }[]): PushPayload | null {
+  const muted = db.prepare<[number], { keyword: string }>("SELECT keyword FROM user_muted_keywords WHERE user_id = ?")
+    .all(userId).map(row => row.keyword.toLowerCase());
+  const fresh = latest.filter(item => {
+    const text = `${item.title ?? ""} ${item.content_snippet ?? ""}`.toLowerCase();
+    return !muted.some(keyword => text.includes(keyword));
+  });
+  if (!fresh.length) return null;
+  const first = fresh[0].title?.trim() || feed.url;
+  return {
+    title: label ?? feed.title ?? new URL(feed.url).hostname,
+    body: fresh.length > 1 ? `${first} (+${fresh.length - 1})` : first,
+    url: fresh.length === 1 ? `/items?feed=${feed.id}&article=${fresh[0].id}` : `/items?feed=${feed.id}`,
+    tag: `feed-${feed.id}`,
+    unread: unreadTotal(userId),
+  };
+}
+
 /** Tell the people who asked for it that a feed has new articles. */
-export async function notifyNewItems(feed: { id: number; title: string | null; url: string }, newItems: number): Promise<void> {
+export async function notifyNewItems(feed: { id: number; title: string | null; url: string }, newItems: number, signal?: AbortSignal): Promise<void> {
   const subscribers = db
     .prepare<[number], { user_id: number; label: string | null }>("SELECT user_id, NULLIF(TRIM(label), '') AS label FROM subscriptions WHERE feed_id = ? AND notify = 1")
     .all(feed.id);
@@ -127,24 +171,8 @@ export async function notifyNewItems(feed: { id: number; title: string | null; u
     .all(feed.id, Math.min(newItems, 10));
 
   for (const subscriber of subscribers) {
-    const muted = db
-      .prepare<[number], { keyword: string }>("SELECT keyword FROM user_muted_keywords WHERE user_id = ?")
-      .all(subscriber.user_id)
-      .map((row) => row.keyword.toLowerCase());
-    const fresh = latest.filter((item) => {
-      const text = `${item.title ?? ""} ${item.content_snippet ?? ""}`.toLowerCase();
-      return !muted.some((keyword) => text.includes(keyword));
-    });
-    if (fresh.length === 0) continue;
-
-    const first = fresh[0].title?.trim() || feed.url;
-    await sendToUser(subscriber.user_id, {
-      title: subscriber.label ?? feed.title ?? new URL(feed.url).hostname,
-      body: fresh.length > 1 ? `${first} (+${fresh.length - 1})` : first,
-      // One new article opens straight in the reader, several lead to the feed's list.
-      url: fresh.length === 1 ? `/items?feed=${feed.id}&article=${fresh[0].id}` : `/items?feed=${feed.id}`,
-      tag: `feed-${feed.id}`,
-      unread: unreadTotal(subscriber.user_id),
-    });
+    if (signal?.aborted) break;
+    const payload = newItemsPushPayload(feed, subscriber.user_id, subscriber.label, latest);
+    if (payload) await sendToUser(subscriber.user_id, payload, signal);
   }
 }

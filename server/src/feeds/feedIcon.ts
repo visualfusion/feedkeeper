@@ -3,6 +3,7 @@ import { Resvg } from "@resvg/resvg-js";
 import { extractLargestImageAsPng } from "@humanwhocodes/ico-to-png";
 import { db } from "../db/index.js";
 import { fetchImage } from "./fetcher.js";
+import { readPollSettings } from "./pollSettings.js";
 import { detectImageType } from "./archive.js";
 
 const MAX_ICON_BYTES = 1024 * 1024;
@@ -84,18 +85,35 @@ export function storeFeedIcon(feedId: number, buffer: Buffer, mime: string): Fee
   ).run(feedId, buffer, mime, hash);
 
   const icon: FeedIcon = { buffer, mime, hash };
+  if (cache.size >= MAX_CACHED) cache.delete(cache.keys().next().value!);
   cache.set(feedId, { icon, fetchedAt: Date.now() });
   return icon;
 }
 
 /** Re-check remote candidates during the weekly feed poll, even if a stored icon exists. */
-export async function refreshFeedIcon(feedId: number, siteUrl?: string | null, declaredUrls: string[] = []): Promise<FeedIcon | null> {
+const refreshing = new Map<number, Promise<FeedIcon | null>>();
+export function refreshFeedIcon(feedId: number, siteUrl?: string | null, declaredUrls: string[] = [], signal?: AbortSignal): Promise<FeedIcon | null> {
+  const current = refreshing.get(feedId);
+  if (current) return current;
+  if (refreshing.size >= readPollSettings().maxWaiters) return Promise.resolve(null);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(new DOMException("Icon deadline exceeded", "TimeoutError")), readPollSettings().attemptTimeoutMs);
+  const deadline = signal ? AbortSignal.any([controller.signal, signal]) : controller.signal;
+  const promise = refreshIcon(feedId, siteUrl, declaredUrls, deadline).finally(() => {
+    clearTimeout(timeout);
+    refreshing.delete(feedId);
+  });
+  refreshing.set(feedId, promise);
+  return promise;
+}
+async function refreshIcon(feedId: number, siteUrl: string | null | undefined, declaredUrls: string[], signal: AbortSignal): Promise<FeedIcon | null> {
   const feed = db.prepare<[number], { icon_url: string | null; site_url: string | null; url: string }>(
     "SELECT icon_url, site_url, url FROM feeds WHERE id = ?",
   ).get(feedId);
   for (const url of feed ? candidates({ ...feed, site_url: siteUrl ?? feed.site_url }, declaredUrls) : []) {
+    if (signal.aborted) break;
     try {
-      const { buffer } = await fetchImage(url, MAX_ICON_BYTES);
+      const { buffer } = await fetchImage(url, MAX_ICON_BYTES, signal);
       const mime = detectIconType(buffer);
       if (mime) {
         const icon = storeFeedIcon(feedId, buffer, mime);
@@ -137,9 +155,13 @@ export async function loadFeedIcon(feedId: number): Promise<FeedIcon | null> {
     } catch {
       return refreshFeedIcon(feedId);
     }
+    if (cache.size >= MAX_CACHED) cache.delete(cache.keys().next().value!);
     cache.set(feedId, { icon, fetchedAt: Date.now() });
     return icon;
   }
+  // Capacity pressure is temporary, not evidence that the publisher has no icon.
+  // Do not poison the 24-hour negative cache when another refresh can try shortly.
+  if (!refreshing.has(feedId) && refreshing.size >= readPollSettings().maxWaiters) return null;
   const icon = await refreshFeedIcon(feedId);
   if (!icon) {
     if (cache.size >= MAX_CACHED) cache.delete(cache.keys().next().value!);

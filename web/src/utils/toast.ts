@@ -1,6 +1,6 @@
 export interface Toast {
   id: number;
-  type: "success" | "error";
+  type: "success" | "error" | "info";
   message: string;
 }
 
@@ -35,4 +35,5 @@ function show(type: Toast["type"], message: string) {
 export const toast = {
   success: (message: string) => show("success", message),
   error: (message: string) => show("error", message),
+  info: (message: string) => show("info", message),
 };

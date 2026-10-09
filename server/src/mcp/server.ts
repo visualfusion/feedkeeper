@@ -553,7 +553,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     "refresh_feed",
     {
       title: "Refresh a feed",
-      description: "Forces an immediate poll of a subscribed feed to fetch new items and inspect feed health.",
+      description: "Requests an update of a subscribed feed and returns its health. Respects source pauses; deferred=true means work is still pending.",
       inputSchema: {
         feedId: z.number().int().positive().describe("The ID of the feed to refresh"),
       },
@@ -570,6 +570,8 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
           success: !result.error,
           newItems: result.newItems,
           error: result.error,
+          deferred: result.deferred ?? false,
+          retryAt: result.retryAt,
           feed: updated,
         });
       } catch (error) {

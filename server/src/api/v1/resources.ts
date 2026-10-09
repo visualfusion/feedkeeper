@@ -7,7 +7,7 @@ import { findArchivedImage, fetchItemImage, withArchivedImages, withProxiedImage
 import { discoverFeeds } from "../../feeds/discovery.js";
 import { loadFullText } from "../../feeds/fullText.js";
 import { generateOpml, importOpmlFeeds } from "../../feeds/opml.js";
-import { pollFeed } from "../../feeds/poller.js";
+import { pollFeed, pollFeeds } from "../../feeds/poller.js";
 import { canAccessFeed, loadFeedIcon } from "../../feeds/feedIcon.js";
 import {
   addMutedKeyword,
@@ -146,7 +146,7 @@ async function refresh(userId: number, id: number) {
   const feed = findFeedById(id);
   if (!feed || !isUserSubscribed(userId, id)) return null;
   const result = await pollFeed(feed);
-  return { subscription: subscriptionOf(userId, id), newItems: result.newItems, error: result.error };
+  return { subscription: subscriptionOf(userId, id), ...result };
 }
 
 resourcesRouter.post("/subscriptions/:id/refresh", async (req, res) => {
@@ -157,14 +157,9 @@ resourcesRouter.post("/subscriptions/:id/refresh", async (req, res) => {
 
 resourcesRouter.post("/refresh", async (req, res) => {
   const subscriptions = listSubscriptionsForUser(req.user!.id);
-  let newItems = 0;
-  let errors = 0;
-  for (const subscription of subscriptions) {
-    const result = await refresh(req.user!.id, subscription.id);
-    newItems += result?.newItems ?? 0;
-    if (result?.error) errors++;
-  }
-  res.json({ refreshed: subscriptions.length, newItems, errors });
+  const { newItems, errors, deferred } = await pollFeeds(subscriptions);
+
+  res.json({ refreshed: subscriptions.length, newItems, errors, deferred });
 });
 
 resourcesRouter.get("/subscriptions/:id/icon", imageLimiter, async (req, res) => {

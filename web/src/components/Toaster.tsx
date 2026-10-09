@@ -16,9 +16,9 @@ export function Toaster() {
           className="card animate-fade-in pointer-events-auto flex w-full max-w-md items-start gap-3 px-4 py-3 text-sm"
           style={{ boxShadow: "0 16px 40px -12px rgba(0, 0, 0, 0.35)" }}
         >
-          <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white ${item.type === "error" ? "bg-[var(--c-danger)]" : "bg-[var(--c-green3)]"}`} aria-hidden="true">
+          <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white ${item.type === "error" ? "bg-[var(--c-danger)]" : item.type === "info" ? "bg-[var(--c-text-muted)]" : "bg-[var(--c-green3)]"}`} aria-hidden="true">
             <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              {item.type === "error" ? <path d="M12 7v6M12 17h.01" /> : <path d="m5 12 5 5 9-10" />}
+              {item.type === "error" ? <path d="M12 7v6M12 17h.01" /> : item.type === "info" ? <path d="M12 7h.01M12 11v6" /> : <path d="m5 12 5 5 9-10" />}
             </svg>
           </span>
           <p className="min-w-0 flex-1 text-[var(--c-text)]">{item.message}</p>

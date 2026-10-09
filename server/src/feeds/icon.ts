@@ -71,16 +71,16 @@ export function iconCheckDue(checkedAt: string | null): boolean {
 }
 
 /** Include a linked web-app manifest, which often contains the site's highest-resolution icons. */
-export async function discoverIconUrls(siteUrl: string): Promise<string[]> {
+export async function discoverIconUrls(siteUrl: string, signal?: AbortSignal): Promise<string[]> {
   try {
-    const page = await fetchFeed(siteUrl);
+    const page = await fetchFeed(siteUrl, { signal });
     const candidates = declaredCandidates(page.body, page.finalUrl);
     const manifestTag = headLinks(page.body).find((tag) => attribute(tag, "rel")?.toLowerCase().split(/\s+/).includes("manifest"));
     const href = manifestTag && attribute(manifestTag, "href");
     const manifestUrl = href && httpUrl(href, page.finalUrl);
     if (manifestUrl) {
       try {
-        const manifest = await fetchFeed(manifestUrl);
+        const manifest = await fetchFeed(manifestUrl, { signal });
         const data: unknown = JSON.parse(manifest.body);
         const icons = data && typeof data === "object" && "icons" in data ? data.icons : null;
         for (const entry of Array.isArray(icons) ? icons.slice(0, 32) : []) {

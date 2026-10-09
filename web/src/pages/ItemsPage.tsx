@@ -12,6 +12,7 @@ import { NewspaperGrid } from "../components/NewspaperGrid.tsx";
 import { PullToRefresh } from "../components/PullToRefresh.tsx";
 import { getItemsScrollY, setItemsScrollY, resetItemsScrollY } from "../utils/scrollState.ts";
 import { toast } from "../utils/toast.ts";
+import { reportAllRefresh } from "../utils/refreshFeedback.ts";
 import { announceItemsChanged } from "../utils/badge.ts";
 import { syncOfflineCopy } from "../utils/offlineSync.ts";
 import { RefreshIcon } from "../components/feeds/icons.tsx";
@@ -543,8 +544,7 @@ export function ItemsPage() {
     try {
       const res = await api.refreshAllFeeds();
       await load();
-      toast.success(t("feeds.refreshedAllToast", { count: res.refreshed, newItems: res.newItems }));
-      if (res.errors > 0) toast.error(t("feeds.failingCount", { count: res.errors }));
+      reportAllRefresh(res, t);
     } catch {
       toast.error(t("items.refreshFailed"));
     } finally {

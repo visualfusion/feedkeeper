@@ -43,6 +43,8 @@ export class MultipleFeedsFoundError extends FeedError {
 async function resolveFeedUrl(inputUrl: string): Promise<{ url: string }> {
   const validated = await assertPublicHttpUrl(inputUrl.trim());
   const targetUrl = validated.toString();
+  // A known shared feed needs no second discovery download beside its queued poll.
+  if (findFeedByUrl(targetUrl)) return { url: targetUrl };
 
   try {
     const discovered = await discoverFeeds(targetUrl);
@@ -87,7 +89,7 @@ export async function subscribeToFeed(
 
   // A feed that has never been read successfully and fails right away is not a feed
   // (e.g. a homepage that announces itself as RSS); don't keep the subscription.
-  if (pollResult.error && !findFeedById(feed.id)?.last_success_at) {
+  if (pollResult.error && !pollResult.deferred && !findFeedById(feed.id)?.last_success_at) {
     unsubscribeRepo(userId, feed.id);
     throw new NoFeedsFoundError();
   }

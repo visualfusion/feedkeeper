@@ -13,7 +13,7 @@ import { apiRouter } from "./api/index.js";
 import { mcpRouter } from "./mcp/http.js";
 import { oauthAuthorizeRouter, oauthPublicRouter } from "./oauth/routes.js";
 import { startFullTextScheduler } from "./feeds/fullTextQueue.js";
-import { startPollingScheduler } from "./feeds/poller.js";
+import { installPollingShutdown, startPollingScheduler } from "./feeds/poller.js";
 import { startCleanupScheduler } from "./feeds/cleanup.js";
 import { repairEncodedText } from "./feeds/repository.js";
 import { pruneArchive, scheduleMissingArchives } from "./feeds/archive.js";
@@ -116,6 +116,8 @@ if (existsSync(WEB_DIST)) {
   });
 }
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   console.log(`[feedkeeper] listening on port ${config.port}`);
 });
+
+installPollingShutdown(server);

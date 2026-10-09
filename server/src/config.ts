@@ -1,6 +1,7 @@
 import { config as loadEnv } from "dotenv";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readPollSettings } from "./feeds/pollSettings.js";
 import { parseTrustProxy } from "./trustProxy.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -19,6 +20,7 @@ function required(name: string, fallback?: string): string {
 }
 
 export const config = {
+  polling: readPollSettings(),
   port: Number(process.env.PORT ?? 3000),
   publicUrl: required("PUBLIC_URL", "http://localhost:3000"),
   databasePath: required("DATABASE_PATH", "./data/feedkeeper.sqlite"),

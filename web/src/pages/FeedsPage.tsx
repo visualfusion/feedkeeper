@@ -12,6 +12,7 @@ import { usePlanLimits } from "../utils/planLimits.ts";
 import { AddFeedPanel } from "../components/feeds/AddFeedPanel.tsx";
 import { FolderManager } from "../components/feeds/FolderManager.tsx";
 import { toast } from "../utils/toast.ts";
+import { reportFeedRefresh, reportAllRefresh } from "../utils/refreshFeedback.ts";
 import { DownloadIcon, FolderIcon, PlusIcon, RefreshIcon, SearchIcon, UploadIcon } from "../components/feeds/icons.tsx";
 
 const POLL_PRESETS = [5, 15, 30, 60, 180, 360, 720, 1440];
@@ -162,8 +163,7 @@ export function FeedsPage() {
       const res = await api.refreshFeed(feedId);
       if (res.feed) setFeeds((prev) => prev.map((f) => (f.id === feedId ? res.feed : f)));
       else await load();
-      if (res.error) toast.error(t("feeds.refreshFailedToast", { title: res.feed ? feedName(res.feed) : "", error: res.error }));
-      else toast.success(t("feeds.refreshedToast", { title: res.feed ? feedName(res.feed) : "", count: res.newItems }));
+      reportFeedRefresh(res, res.feed ? feedName(res.feed) : "", t);
     } catch {
       toast.error(t("common.error"));
     } finally {
@@ -180,8 +180,7 @@ export function FeedsPage() {
     try {
       const res = await api.refreshAllFeeds();
       await load();
-      toast.success(t("feeds.refreshedAllToast", { count: res.refreshed, newItems: res.newItems }));
-      if (res.errors > 0) toast.error(t("feeds.failingCount", { count: res.errors }));
+      reportAllRefresh(res, t);
     } catch {
       toast.error(t("common.error"));
     } finally {

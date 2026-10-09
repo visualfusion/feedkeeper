@@ -28,7 +28,7 @@ cp .env.example .env
 
 Edit `.env`:
 
-- `PUBLIC_URL` — the domain you'll add in step 5, e.g. `https://rss.visualfusion.de`.
+- `PUBLIC_URL` — the domain you'll add in step 5, e.g. `https://rss.example.com`.
 - `SESSION_SECRET` — generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
 - `TRUST_PROXY=true` — Uberspace terminates TLS in front of your app, so Express needs to trust its `X-Forwarded-*` headers. If a CDN such as Cloudflare proxies the domain as well, `true` would treat the CDN's edge address as the client, and all visitors behind one edge would share rate limits. List the trusted proxies instead: Uberspace's web server connects from a unique local IPv6 address, so use `uniquelocal` followed by the CDN's published ranges, e.g. `TRUST_PROXY=uniquelocal,173.245.48.0/20,…` with every range from <https://www.cloudflare.com/ips/>. Uberspace's web server replaces `X-Forwarded-For` with the address of the Cloudflare edge, so also set `CLIENT_IP_HEADER=CF-Connecting-IP`; the app accepts that header only from the listed proxies.
 - `ALLOW_SIGNUP=false` — keep this unless you deliberately want open registration.
@@ -45,7 +45,7 @@ npm run setup
 ## 5. Point a domain at it
 
 ```bash
-uberspace web domain add rss.visualfusion.de
+uberspace web domain add rss.example.com
 uberspace web backend set / --http --port 3000
 ```
 
@@ -57,12 +57,15 @@ Uberspace runs long-lived processes through `supervisord`. Create `~/etc/service
 
 ```ini
 [program:feedkeeper]
-command=npm run start
-directory=%(ENV_HOME)s/feedkeeper
+command=node dist/server.js
+directory=%(ENV_HOME)s/feedkeeper/server
 autostart=true
 autorestart=true
 environment=NODE_ENV="production"
+stopwaitsecs=45
 ```
+
+Run Node directly so supervisord waits for the actual server to finish its graceful shutdown. The working directory matches `npm run start` in the server workspace, preserving the location of relative database and archive paths. Keep at least 45 seconds shutdown grace; unfinished feed and notification work resumes on restart. See the [polling operations guide](feed-polling.md).
 
 Then load it:
 

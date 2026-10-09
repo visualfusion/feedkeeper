@@ -85,6 +85,7 @@ test("feed URL changes are validated and consent walls use article-specific retr
     updateFeedSettings(otherId, oldFeed.id, { fullTextMode: "never" });
     assert.deepEqual(await loadFullText(otherId, itemId("walled"), { force: true }), { ok: false, error: "full_text_disabled" });
   } finally {
+    await (await import("../src/feeds/poller.js")).stopPollingScheduler();
     server.close();
     db.close();
   }

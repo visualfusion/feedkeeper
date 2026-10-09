@@ -228,6 +228,7 @@ paths:
     post:
       tags: [Subscriptions]
       summary: Check one feed now
+      description: Concurrent triggers share an attempt. Responses add deferred (boolean) and optional retryAt (Unix milliseconds) when work remains queued; callers must not busy-loop retries.
       parameters: [{ $ref: "#/components/parameters/Id" }]
       responses:
         "200": { description: OK }
@@ -237,7 +238,7 @@ paths:
       tags: [Subscriptions]
       summary: Check all feeds now
       responses:
-        "200": { description: "refreshed, newItems and errors counts" }
+        "200": { description: "refreshed, newItems, errors and deferred counts; deferred work remains queued" }
   /subscriptions/{id}/icon:
     get:
       tags: [Images]

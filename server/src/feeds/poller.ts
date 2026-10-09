@@ -1,12 +1,17 @@
 import Parser from "rss-parser";
-import cron from "node-cron";
+import type { Server } from "node:http";
 import { fetchFeed } from "./fetcher.js";
 import { discoverIconUrls, iconCheckDue } from "./icon.js";
 import { refreshFeedIcon } from "./feedIcon.js";
 import { decodeEntities, plainTitle } from "./text.js";
-import { notifyNewItems } from "../push.js";
+import { enqueueNewItemNotifications, startPushOutbox, stopPushOutbox } from "../pushOutbox.js";
 import { hasUserCapability } from "../auth/capabilities.js";
-import { listFeedsDueForPoll, listSubscriberIds, updateFeedAfterPoll, updateFeedIcon, upsertItems, type Feed } from "./repository.js";
+import { findFeedById, listSubscriberIds, updateFeedAfterPoll, updateFeedIcon, upsertItems, type Feed } from "./repository.js";
+import { db } from "../db/index.js";
+import { configurePollHostCooldowns, PollQueue, type PollResult } from "./pollQueue.js";
+import { feedRequests, PollDeferredError, sourceHost } from "./requestGate.js";
+
+configurePollHostCooldowns();
 
 type CustomItem = Parser.Item & {
   mediaContent?: unknown;
@@ -94,59 +99,85 @@ function extractImageUrl(item: CustomItem): string | null {
   return null;
 }
 
-export async function pollFeed(feed: Feed): Promise<{ newItems: number; error: string | null }> {
-  try {
-    const refreshIconIfDue = async (siteUrl: string | null) => {
-      if (!iconCheckDue(feed.icon_checked_at)) return;
-      const iconUrls = siteUrl ? await discoverIconUrls(siteUrl) : [];
-      updateFeedIcon(feed.id, feed.icon_url);
-      await refreshFeedIcon(feed.id, siteUrl, iconUrls);
-    };
-    const fetched = await fetchFeed(feed.url, {
-      etag: feed.etag ?? undefined,
-      lastModified: feed.last_modified ?? undefined,
-    });
-
-    if (fetched.notModified) {
-      await refreshIconIfDue(feed.site_url);
-      updateFeedAfterPoll(feed.id, { error: null });
-      return { newItems: 0, error: null };
-    }
-
-    const parsed = await parser.parseString(fetched.body);
-
-    const items = parsed.items.map((item) => ({
-      guid: item.guid ?? item.link ?? item.title ?? crypto.randomUUID(),
-      title: plainTitle(item.title),
-      link: item.link,
-      contentSnippet: decodeEntities(item.contentSnippet ?? item.content) ?? undefined,
-      contentHtml: item.contentEncoded ?? item["content:encoded"] ?? item.content ?? null,
-      publishedAt: item.isoDate ?? item.pubDate,
-      imageUrl: extractImageUrl(item),
-    }));
-
-    const newItems = upsertItems(feed.id, items);
-    // A feed's first fetch brings in its whole backlog; only later arrivals are news.
-    if (newItems > 0 && feed.last_success_at) void notifyNewItems(feed, newItems).catch(() => undefined);
-
-    // Refresh the site's declared icon about once a week; failures keep the previous icon.
-    await refreshIconIfDue(parsed.link || feed.site_url);
-
+/** One attempt; the queue owns retries, admission, single-flight and the total deadline. */
+async function pollAttempt(feed: Feed, signal: AbortSignal): Promise<PollResult> {
+  const fetched = await fetchFeed(feed.url, { etag: feed.etag ?? undefined, lastModified: feed.last_modified ?? undefined, signal });
+  const parsed = fetched.notModified ? null : await parser.parseString(fetched.body);
+  signal.throwIfAborted();
+  const current = findFeedById(feed.id);
+  if (!current || current.url !== feed.url) throw new PollDeferredError(Date.now(), current ? sourceHost(current.url) : sourceHost(feed.url));
+  // Recheck hosted capabilities after network I/O, before committing or sending notifications.
+  if (!feedHasActiveSubscriber(feed.id)) return { newItems: 0, error: "feed_poll_not_allowed" };
+  const items = parsed?.items.map(item => ({
+    guid: item.guid ?? item.link ?? item.title ?? crypto.randomUUID(),
+    title: plainTitle(item.title), link: item.link,
+    contentSnippet: decodeEntities(item.contentSnippet ?? item.content) ?? undefined,
+    contentHtml: item.contentEncoded ?? item["content:encoded"] ?? item.content ?? null,
+    publishedAt: item.isoDate ?? item.pubDate, imageUrl: extractImageUrl(item),
+  }));
+  // No await in this transaction. Items, health/validators and job completion become visible together.
+  const newItems = db.transaction(() => {
+    const count = items ? upsertItems(feed.id, items) : 0;
     updateFeedAfterPoll(feed.id, {
-      title: plainTitle(parsed.title),
-      siteUrl: parsed.link,
-      etag: fetched.etag,
-      lastModified: fetched.lastModified,
+      ...(parsed ? { title: plainTitle(parsed.title), siteUrl: parsed.link, etag: fetched.etag, lastModified: fetched.lastModified } : {}),
       error: null,
     });
-
-    return { newItems, error: null };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    updateFeedAfterPoll(feed.id, { error: message });
-    return { newItems: 0, error: message };
-  }
+    if (count > 0 && feed.last_success_at) enqueueNewItemNotifications(feed.id, count);
+    db.prepare("DELETE FROM feed_poll_jobs WHERE feed_id = ?").run(feed.id);
+    return count;
+  })();
+  // Push is committed above and dispatched independently of the feed deadline.
+  startPushOutbox();
+  // Bounded icon maintenance cannot retry a committed feed.
+  try {
+    signal.throwIfAborted();
+    if (iconCheckDue(feed.icon_checked_at)) {
+      const siteUrl = parsed?.link || feed.site_url;
+      const urls = siteUrl ? await discoverIconUrls(siteUrl, signal) : [];
+      signal.throwIfAborted();
+      updateFeedIcon(feed.id, feed.icon_url);
+      await refreshFeedIcon(feed.id, siteUrl, urls, signal);
+    }
+  } catch { /* Keep the successful poll; icon failures are best effort. */ }
+  return { newItems, error: null };
 }
+
+let queue: PollQueue | undefined;
+function pollingQueue(): PollQueue {
+  queue ??= new PollQueue(pollAttempt, feedHasActiveSubscriber);
+  queue.start();
+  startPushOutbox();
+  return queue;
+}
+
+/** Concurrent triggers share the same attempt result. Deferred work survives the HTTP caller. */
+export function pollFeed(feed: Feed): Promise<PollResult> { return pollingQueue().submit(feed); }
+
+/** Bounded consumers for explicit refresh-all. Each feed still uses the shared durable queue. */
+export async function pollFeeds(feeds: Feed[]): Promise<{ newItems: number; errors: number; deferred: number }> {
+  let cursor = 0;
+  let newItems = 0;
+  let errors = 0;
+  let deferred = 0;
+  await Promise.all(Array.from({ length: Math.min(pollingQueue().settings.concurrency, feeds.length) }, async () => {
+    while (cursor < feeds.length) {
+      const result = await pollFeed(feeds[cursor++]);
+      newItems += result.newItems;
+      if (result.error) errors++;
+      if (result.deferred) deferred++;
+    }
+  }));
+  return { newItems, errors, deferred };
+}
+
+/** Bulk imports need no suspended JavaScript task per subscription. */
+export function requestFeedPoll(feed: Feed): void {
+  const queue = pollingQueue();
+  queue.enqueue(feed);
+  queue.kick();
+}
+
+export function pollingMetrics() { return pollingQueue().metrics(); }
 
 /** Fetch and parse a feed without storing anything, to validate a URL before switching to it. */
 export async function probeFeed(url: string): Promise<{ title: string | null; itemCount: number }> {
@@ -163,26 +194,40 @@ export function feedHasActiveSubscriber(feedId: number): boolean {
   return listSubscriberIds(feedId).some((userId) => hasUserCapability(userId, "sync"));
 }
 
-export async function pollDueFeeds(): Promise<void> {
-  const due = listFeedsDueForPoll().filter((feed) => feedHasActiveSubscriber(feed.id));
-  for (const feed of due) {
-    await pollFeed(feed);
-  }
+/** Schedules due work, returning after bounded-page admission rather than a network round. */
+export function pollDueFeeds(): Promise<void> { return pollingQueue().seedDue(); }
+
+let scheduler: NodeJS.Timeout | undefined;
+export function startPollingScheduler(): void {
+  if (scheduler) return;
+  const tick = () => { void pollDueFeeds().catch(() => console.error(JSON.stringify({ event: "feed_poll_seed_error" }))); };
+  tick();
+  scheduler = setInterval(tick, 60_000);
+  scheduler.unref();
 }
 
-export function startPollingScheduler(): void {
-  // Runs every minute; each feed is only actually re-fetched once its own
-  // poll_interval_minutes has elapsed (see listFeedsDueForPoll).
-  let running = false;
-  cron.schedule("* * * * *", async () => {
-    if (running) return;
-    running = true;
-    try {
-      await pollDueFeeds();
-    } catch (error) {
-      console.error("[poller] unexpected failure", error);
-    } finally {
-      running = false;
-    }
-  });
+export async function stopPollingScheduler(): Promise<void> {
+  if (scheduler) clearInterval(scheduler);
+  scheduler = undefined;
+  await Promise.all([queue?.stop(), stopPushOutbox()]);
+  feedRequests.stop();
+}
+
+/** Graceful shutdown for server integrations; process-manager grace should be >= 45 seconds. */
+export function installPollingShutdown(server: Server): void {
+  let stopping = false;
+  const shutdown = () => {
+    if (stopping) return;
+    stopping = true;
+    console.log(JSON.stringify({ event: "feed_poll_shutdown" }));
+    const deadline = setTimeout(() => process.exit(1), 40_000);
+    deadline.unref();
+    const drained = new Promise<void>(resolve => server.close(() => resolve()));
+    void Promise.all([stopPollingScheduler(), drained]).then(() => {
+      server.closeAllConnections();
+      process.exit(0);
+    }, () => process.exit(1));
+  };
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
 }

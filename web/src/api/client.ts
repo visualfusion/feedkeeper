@@ -277,9 +277,9 @@ export const api = {
       body: opmlContent,
     }),
   refreshFeed: (feedId: number) =>
-    request<{ feed: Feed; newItems: number; error: string | null }>(`/feeds/${feedId}/refresh`, { method: "POST" }),
+    request<{ feed: Feed; newItems: number; error: string | null; deferred?: boolean; retryAt?: number }>(`/feeds/${feedId}/refresh`, { method: "POST" }),
   refreshAllFeeds: () =>
-    request<{ refreshed: number; newItems: number; errors: number }>("/feeds/refresh-all", { method: "POST" }),
+    request<{ refreshed: number; newItems: number; errors: number; deferred?: number }>("/feeds/refresh-all", { method: "POST" }),
 
   listFolders: () => request<{ folders: Folder[] }>("/folders"),
   createFolder: (name: string) =>

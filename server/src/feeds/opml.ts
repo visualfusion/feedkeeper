@@ -12,7 +12,7 @@ import {
   type SubscribedFeed,
 } from "./repository.js";
 import { assertPublicHttpUrl, SsrfBlockedError } from "./ssrfGuard.js";
-import { pollFeed } from "./poller.js";
+import { requestFeedPoll } from "./poller.js";
 import { decodeEntities } from "./text.js";
 
 export interface OpmlFeedItem {
@@ -232,18 +232,8 @@ export async function importOpmlFeeds(userId: number, xmlContent: string): Promi
     }
   }
 
-  // Poll newly subscribed feeds asynchronously in background without blocking response
-  if (feedsToPoll.length > 0) {
-    (async () => {
-      for (const feed of feedsToPoll) {
-        try {
-          await pollFeed(feed);
-        } catch {
-          // Last poll errors are tracked in the database feeds table
-        }
-      }
-    })().catch(() => {});
-  }
+  // Durable admission only: no detached serial loop or Promise per imported feed.
+  for (const feed of feedsToPoll) requestFeedPoll(feed);
 
   return result;
 }
