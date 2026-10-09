@@ -4,6 +4,20 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-09
+
+### Changed
+- Feeds update in parallel with configurable limits for the server and each source. Scheduled and manual refreshes, subscriptions and OPML imports share the same queue; a slow feed no longer holds up the rest.
+- Temporary failures retry with backoff, and sources' `Retry-After` requests are respected. Pending updates survive a restart.
+- Push notifications run separately from feed updates and resume after a restart. Concurrent refreshes of the same feed share one fetch and do not send duplicate notifications.
+- The web reader shows when a refresh is still pending, in English, German and Japanese.
+
+### Added
+- Polling settings and queue metrics. See [Feed polling](docs/feed-polling.md) for configuration and upgrade guidance.
+
+### Upgrade notes
+- Back up the database before updating; the two new migrations run automatically. Use one application process per database and allow 45 seconds for shutdown. The supplied Docker Compose file includes the new settings and shutdown grace period.
+
 ## [0.19.0] - 2026-10-09
 
 ### Added
