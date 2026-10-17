@@ -156,8 +156,14 @@ export function parseOpml(xmlContent: string): OpmlFeedItem[] {
     throw new Error("invalid_opml_format");
   }
 
-  return extractOutlines(parsed.opml.body.outline);
+  const feeds = extractOutlines(parsed.opml.body.outline);
+  if (feeds.length > MAX_OPML_FEEDS) {
+    throw new Error("too_many_opml_feeds");
+  }
+  return feeds;
 }
+
+export const MAX_OPML_FEEDS = 2000;
 
 const urlSchema = z.string().url();
 
