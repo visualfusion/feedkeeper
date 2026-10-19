@@ -13,13 +13,21 @@ import {
   setUserAvatar,
   toPublicUser,
   updateDisplayName,
+  dismissIntro,
   updateUserPassword,
 } from "../auth/users.js";
 import { AVATAR_MAX_BYTES, detectAvatarType } from "../auth/avatar.js";
-import { verifyPassword } from "../auth/password.js";
+import { verifyPassword, verifyPasswordOrDummy } from "../auth/password.js";
 import { getUserCapabilities } from "../auth/capabilities.js";
 
+import { beginMfa, revokeBrowserSessions, securityVersion } from "../auth/security.js";
+import { createSecurityRouter } from "../auth/securityRoutes.js";
+
 export const authRouter = Router();
+authRouter.use("/security", createSecurityRouter({ completeLogin: (req, res, userId) => {
+  req.session = { userId, securityVersion: securityVersion(userId) };
+  res.json(toPublicUser(findUserById(userId)!));
+} }));
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -41,12 +49,16 @@ authRouter.post("/login", loginLimiter, (req, res) => {
   }
 
   const user = findUserByEmail(parsed.data.email);
-  if (!user || !verifyPassword(parsed.data.password, user.password_hash)) {
+  // Always check a password, so an unknown address answers as slowly as a wrong password.
+  const passwordMatches = verifyPasswordOrDummy(parsed.data.password, user?.password_hash);
+  if (!user || !passwordMatches) {
     res.status(401).json({ error: "invalid_credentials" });
     return;
   }
 
-  req.session!.userId = user.id;
+  const mfa = beginMfa(req, user.id, "web", {});
+  if (mfa) { res.status(403).json(mfa); return; }
+  req.session = { userId: user.id, securityVersion: securityVersion(user.id) };
   res.json(toPublicUser(user));
 });
 
@@ -73,6 +85,12 @@ authRouter.patch("/me", requireSession, (req, res) => {
     return;
   }
   updateDisplayName(req.user!.id, parsed.data.displayName);
+  res.json(toPublicUser(findUserById(req.user!.id)!));
+});
+
+// The introduction to the app is shown once per account; closing it on one device closes it everywhere.
+authRouter.post("/me/intro", requireSession, (req, res) => {
+  dismissIntro(req.user!.id);
   res.json(toPublicUser(findUserById(req.user!.id)!));
 });
 
@@ -127,6 +145,9 @@ authRouter.post("/change-password", requireSession, loginLimiter, (req, res) => 
   }
 
   updateUserPassword(user.id, parsed.data.newPassword);
+  // Other browsers that were signed in with the old password are signed out; this one stays.
+  revokeBrowserSessions(user.id);
+  req.session = { userId: user.id, securityVersion: securityVersion(user.id) };
   res.status(204).end();
 });
 

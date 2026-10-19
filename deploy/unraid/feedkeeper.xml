@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>FeedKeeper</Name>
+  <Repository>ghcr.io/visualfusion/feedkeeper:latest</Repository>
+  <Registry>https://github.com/visualfusion/feedkeeper/pkgs/container/feedkeeper</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/visualfusion/feedkeeper/issues</Support>
+  <Project>https://github.com/visualfusion/feedkeeper</Project>
+  <Overview>A lightweight RSS reader and remote MCP server: one Node process and one SQLite file, with a newspaper-style reader, full-text search, notes and offline-friendly sync for native apps. Claude, ChatGPT and other MCP clients can read and organise your feeds through the built-in /mcp endpoint. The first account is created in the browser after the first start.</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:3000]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/visualfusion/feedkeeper/main/deploy/unraid/feedkeeper.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/visualfusion/feedkeeper/main/web/public/app-icon-192.png</Icon>
+  <ExtraParams>--user 99:100</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="WebUI Port" Target="3000" Default="3000" Mode="tcp" Description="Port of the web interface." Type="Port" Display="always" Required="true" Mask="false">3000</Config>
+  <Config Name="Data" Target="/app/data" Default="/mnt/user/appdata/feedkeeper" Mode="rw" Description="The database, the archive of saved articles and the session secret. Back this folder up." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/feedkeeper</Config>
+  <Config Name="Public URL" Target="PUBLIC_URL" Default="http://localhost:3000" Mode="" Description="The address you open FeedKeeper at, for example http://192.168.1.10:3000 or https://feeds.example.org. Used for cookies and cross-origin checks." Type="Variable" Display="always" Required="true" Mask="false">http://localhost:3000</Config>
+  <Config Name="Session secret" Target="SESSION_SECRET" Default="" Mode="" Description="Leave empty: a random secret is generated on the first start and kept in the data folder. Set your own (32 or more random characters) only if you want to manage it yourself." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="Allow sign-up" Target="ALLOW_SIGNUP" Default="false" Mode="" Description="Whether new people can register themselves. Keep false on an instance that can be reached from the internet." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="Trust proxy" Target="TRUST_PROXY" Default="false" Mode="" Description="Set to true when a reverse proxy sits in front of FeedKeeper, so client addresses are read from its X-Forwarded-* headers." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="Allow private feeds" Target="ALLOW_PRIVATE_FEEDS" Default="false" Mode="" Description="Allow feeds hosted on your own network. Enable only if every account is trusted to reach those addresses." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+</Container>

@@ -5,11 +5,13 @@ node_modules/
 dist/
 web/dist/
 server/dist/
+dist-npm/
 
 # Runtime data
 *.sqlite
 *.sqlite3
 data/
+image-cache/
 
 # Environment
 .env

@@ -1,0 +1,47 @@
+name: npm package
+
+# Stages the npm package for every version tag. The workflow signs in to npm through GitHub's OIDC token
+# (trusted publishing), so no token is stored. It can only stage: a maintainer approves the staged version on
+# npmjs.com or with `npm stage approve <stage-id>`, which asks for two-factor authentication.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  stage:
+    if: github.repository == 'visualfusion/feedkeeper'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      # Trusted publishing needs npm 11.5.1 or newer, `npm stage` needs 11.15.
+      - name: Update npm
+        run: npm install --global npm@^11.15
+
+      - run: npm ci
+
+      - name: Tag matches the package version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package version ${version}" >&2
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Assemble the package
+        run: npm run pack:npm
+
+      - name: Stage the package
+        run: npm stage publish ./dist-npm

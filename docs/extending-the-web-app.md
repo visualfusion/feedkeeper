@@ -1,6 +1,6 @@
 # Extending the web app
 
-A script that runs on the page can customise the web app without patching it: add pages to the settings, add links to the footers, and replace the sign-in form. Typical uses are an operator who has to link a legal notice and a privacy policy, a company that signs users in through its own single sign-on, or a hosted service with pages of its own. A regular installation needs none of this.
+A script that runs on the page can customise the web app without patching it: add pages to the settings, add links to the footers, replace the sign-in form, and set the page title and description. Typical uses are an operator who has to link a legal notice and a privacy policy, a company that signs users in through its own single sign-on, or a hosted service with pages of its own. A regular installation needs none of this.
 
 The app reads one plain object from `window`. Include the script in the `index.html` you serve, or add it with whatever proxy sits in front of the app.
 
@@ -11,6 +11,7 @@ const extensions = window.feedkeeperExtensions;
 extensions.footerLinks = [/* … */];
 extensions.settings = { sections: [/* … */], hidden: [/* … */] };
 extensions.loginForm = { mount(container) { /* … */ } };
+extensions.meta = { title: "…", description: "…" };
 
 // Tell the app that something changed.
 window.dispatchEvent(new Event("feedkeeper:extensions-changed"));
@@ -29,6 +30,7 @@ extensions.footerLinks = [
 
 - Shown under the sign-in card, at the bottom of the account menu and at the end of every settings page. Without links nothing is shown.
 - `label` and `href` are either one value or values by language code (`de`, `en`, `ja`, …). The app picks the language it is shown in, then the language without region (`de-AT` → `de`), then English, then the first value.
+- `icon` (optional) is a small image shown before the label, an address like the ones below. `placements` (optional) is a list of `"login"`, `"menu"` and `"page"`; without it the link is shown everywhere.
 - An address is a page on the same site (`/impressum`) or an `http(s)` URL; anything else, such as `javascript:` or `//host`, is dropped. External addresses open in a new tab. At most eight links, labels up to 60 characters.
 
 ## Settings sections
@@ -39,7 +41,7 @@ extensions.settings = {
   sections: [{
     id: "plan",                        // ?tab=plan: lowercase letters, digits and dashes
     label: "Plan",
-    shortLabel: "Plan",                // optional, for the chip row on narrow screens
+    shortLabel: "Plan",                // optional and no longer shown; kept so existing hosts keep working
     description: "Your plan and invoices.",
     group: "Billing",                  // heading in the navigation
     icon: ["M4 6h16M4 12h16M4 18h10"], // optional: path data of a 24×24 stroked icon
@@ -57,6 +59,19 @@ extensions.settings = {
 - `mount` receives an empty element each time the section opens. The function it returns runs when the section closes. The section opens through `?tab=<id>`, so links and reloads keep it.
 - Entries with a missing field, an invalid or repeated id, the id of a built-in section, or a `mount` that is not a function are ignored. `admin` sections are left out for other users, and `hidden` only affects built-in ids. A `mount` that throws is logged and leaves an empty section.
 
+## Page title and description
+
+```js
+extensions.meta = {
+  title: { de: "Meine Zeitung", en: "My newspaper", ja: "私の新聞" },
+  description: { en: "The feeds of our team as a daily newspaper." },
+};
+```
+
+- `title` is shown in the browser tab and used for link previews. `description` is what search engines and link previews show. Both are either one value or values by language code, picked like the footer links.
+- A value that is missing, empty, not text or too long (80 characters for the title, 300 for the description) is ignored, and the app keeps its own wording for it. When a language has no value, the English one is used, then the first one given.
+- The title applies to the page the app is served on. It does not change the pages of the host that sit next to the app, such as a landing page.
+
 ## Sign-in form
 
 ```js
@@ -68,6 +83,58 @@ extensions.loginForm = {
 ```
 
 The app keeps its card with the logo and title and puts the host's content where the email and password form is. The server decides who is signed in, so the content signs the user in through the API (or by redirecting) and reloads the page afterwards. The classes of the app (`input`, `btn-primary`, `btn-secondary`) are available for styling; colours follow the light and dark theme through CSS variables such as `--c-text` and `--c-border`.
+
+## Password card
+
+```js
+extensions.passwordCard = {
+  // Optional: only replace the card for some users. Without it the card is always replaced.
+  applies: async (user) => (await fetch("/sso/status").then((r) => r.json())).noPassword,
+  mount(container) {
+    container.textContent = "You sign in through your company; there is no password here.";
+  },
+};
+```
+
+The account page shows a card to change the password. A host that signs people in another way can replace it, for everyone or, with `applies`, for those who have no password. While `applies` is pending nothing is shown; if it fails or answers anything but `true`, the built-in card is used.
+
+## Starter packs and welcome content
+
+A person without feeds sees a welcome card: add a website by its address, pick a starter pack or import a subscription file. The app brings a few packs (news, technology, Apple, science, design). A host can add its own, replace the list, and put its own content above the first steps.
+
+```js
+extensions.starterPacks = {
+  replace: false, // true: show only the host's packs
+  packs: [{
+    id: "company",
+    title: { en: "Our company", de: "Unsere Firma" },
+    description: { en: "News from us and our partners." },
+    feeds: [{ title: "Company blog", url: "https://example.org/feed.xml", lang: "en" }],
+  }],
+};
+extensions.onboarding = {
+  mount(container) {
+    container.textContent = "Welcome! Your trial runs for 14 days.";
+  },
+};
+```
+
+- A pack with the id of a built-in one replaces it. Feeds are shown in the language of the app first, then English; a feed without `lang` is always shown. Only `http(s)` addresses without credentials are accepted, at most 12 packs of 20 feeds.
+- A pack subscribes its feeds into a folder with the pack's name.
+
+## Notice above the articles
+
+```js
+extensions.articlesNotice = {
+  // Optional: whether the notice is shown to this user right now.
+  applies: async () => !localStorage.getItem("notice-closed"),
+  mount(container) {
+    container.innerHTML = '<div class="card p-4">Your plan includes …</div>';
+  },
+};
+```
+
+A host can show one card above the list of articles, for example what a plan includes. It appears for accounts that already have feeds, and only after the person has closed the short tour of the app, so one card is shown at a time. Closing the notice is up to the host's content: store that somewhere and answer `false` from `applies` afterwards.
 
 ## Where it lives
 

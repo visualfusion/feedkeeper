@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -25,6 +25,8 @@ test("the native API manages subscriptions, folders, keywords and articles", asy
   process.env.SESSION_SECRET = "test-session-secret-at-least-32-characters";
   process.env.ALLOW_PRIVATE_FEEDS = "true";
   process.env.ARCHIVE_PATH = mkdtempSync(join(tmpdir(), "feedkeeper-native-archive-"));
+  const cacheDir = mkdtempSync(join(tmpdir(), "feedkeeper-native-cache-"));
+  process.env.IMAGE_CACHE_PATH = cacheDir;
   const { db, runMigrations } = await import("../src/db/index.js");
   const { v1Router } = await import("../src/api/v1/index.js");
   const { createPersonalAccessToken } = await import("../src/auth/tokens.js");
@@ -151,6 +153,8 @@ test("the native API manages subscriptions, folders, keywords and articles", asy
     // The saved article stays readable after unsubscribing.
     assert.equal((await call(`/items/${target}`, device)).status, 200);
   } finally {
+    await archive.stopImageCache();
+    rmSync(cacheDir, { recursive: true, force: true });
     server.close();
     source.close();
   }

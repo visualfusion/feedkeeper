@@ -101,6 +101,7 @@ test("feed icons are served through this server to people who may see the feed",
     assert.equal((await loadFeedIcon(feed.id))?.mime, "image/png");
     assert.deepEqual((await loadFeedIcon(feed.id))?.buffer, PNG);
   } finally {
+    await (await import("../src/feeds/poller.js")).stopPollingScheduler();
     server.close();
   }
 });

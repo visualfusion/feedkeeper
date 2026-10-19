@@ -28,11 +28,13 @@ test("saved articles are archived with full text and local images and outlive th
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const archiveDir = mkdtempSync(join(tmpdir(), "feedkeeper-archive-test-"));
+  const cacheDir = mkdtempSync(join(tmpdir(), "feedkeeper-image-cache-test-"));
 
   process.env.DATABASE_PATH = ":memory:";
   process.env.SESSION_SECRET = "test-session-secret-at-least-32-characters";
   process.env.ALLOW_PRIVATE_FEEDS = "true";
   process.env.ARCHIVE_PATH = archiveDir;
+  process.env.IMAGE_CACHE_PATH = cacheDir;
   const { db, runMigrations } = await import("../src/db/index.js");
   const repo = await import("../src/feeds/repository.js");
   const { subscribeToFeed, unsubscribeFromFeed } = await import("../src/feeds/service.js");
@@ -89,8 +91,10 @@ test("saved articles are archived with full text and local images and outlive th
     assert.equal(repo.removeUnusedFeeds(), 1);
     assert.equal(repo.findItemById(saved), undefined);
   } finally {
+    await archive.stopImageCache();
     server.close();
     db.close();
     rmSync(archiveDir, { recursive: true, force: true });
+    rmSync(cacheDir, { recursive: true, force: true });
   }
 });

@@ -148,7 +148,7 @@ test("native extensions: feed icons, folder icons, notes, editions, and retentio
     // 4. Articles and Article Notes
     const itemId = Number(
       db
-        .prepare("INSERT INTO items (feed_id, guid, title, link, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .prepare("INSERT INTO items (feed_id, guid, title, link, content_snippet, published_at, created_at) VALUES (?, ?, ?, ?, 'A short news report for the curated edition.', ?, ?)")
         .run(feedId, "item-1", "Test Article 1", "https://example.com/item1", new Date().toISOString(), new Date().toISOString())
         .lastInsertRowid,
     );

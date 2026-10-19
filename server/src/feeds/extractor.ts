@@ -3,6 +3,9 @@ import { JSDOM } from "jsdom";
 import { fetch as undiciFetch } from "undici";
 import { assertPublicHttpUrl, createPublicDispatcher, SsrfBlockedError } from "./ssrfGuard.js";
 import type { Agent } from "undici";
+import { articleWorkPool, ArticleHostBusyError, ArticleAccessDeniedError } from "./articleWorkPool.js";
+import { parseRetryAfter } from "./fetcher.js";
+import { sourceHost } from "./requestGate.js";
 import { APP_VERSION } from "../version.js";
 
 type ArticleFetch = typeof globalThis.fetch;
@@ -41,6 +44,33 @@ function cleanConsentDom(doc: Document): void {
       doc.querySelectorAll(sel).forEach((el) => el.remove());
     } catch {
       // ignore invalid selector in edge environments
+    }
+  }
+}
+
+function resolveLazyImages(doc: Document): void {
+  const images = doc.querySelectorAll("img");
+  for (const img of images) {
+    const lazySrc =
+      img.getAttribute("data-lazy-src") ||
+      img.getAttribute("data-src") ||
+      img.getAttribute("data-original") ||
+      img.getAttribute("data-actualsrc");
+    const src = img.getAttribute("src");
+    if (lazySrc && (!src || src.startsWith("data:") || src.length < 10)) {
+      img.setAttribute("src", lazySrc);
+    }
+    const lazySrcset = img.getAttribute("data-lazy-srcset") || img.getAttribute("data-srcset");
+    const srcset = img.getAttribute("srcset");
+    if (lazySrcset && (!srcset || srcset.startsWith("data:"))) {
+      img.setAttribute("srcset", lazySrcset);
+    }
+  }
+  const sources = doc.querySelectorAll("source");
+  for (const source of sources) {
+    const lazySrcset = source.getAttribute("data-lazy-srcset") || source.getAttribute("data-srcset");
+    if (lazySrcset) {
+      source.setAttribute("srcset", lazySrcset);
     }
   }
 }
@@ -96,7 +126,7 @@ export function isCachedConsentSnippet(html: string): boolean {
 const FETCH_USER_AGENT = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 FeedKeeper/${APP_VERSION}`;
 const FETCH_TIMEOUT_MS = 12_000;
 const MAX_REDIRECTS = 5;
-class ArticleHttpError extends Error { constructor(readonly status: number) { super("article_http_error"); } }
+class ArticleHttpError extends Error { constructor(readonly status: number, readonly retryAt: number | undefined, readonly host: string) { super("article_http_error"); } }
 
 const MAX_HTML_BYTES = 2 * 1024 * 1024;
 
@@ -109,11 +139,13 @@ function stripHeavyTags(html: string): string {
     .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, "");
 }
 
-async function fetchArticleHtml(rawUrl: string, signal: AbortSignal, dispatcher: Agent, fetchImpl: ArticleFetch): Promise<{ html: string; url: string } | null> {
+async function fetchArticleHtml(rawUrl: string, signal: AbortSignal, dispatcher: Agent, fetchImpl: ArticleFetch, ownerSignal: AbortSignal): Promise<{ html: string; url: string } | null> {
   let currentUrl = rawUrl;
 
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
+    articleWorkPool().move(ownerSignal, sourceHost(currentUrl));
     const safeUrl = await assertPublicHttpUrl(currentUrl);
+    signal.throwIfAborted();
     const response = await fetchImpl(safeUrl, {
       signal,
       headers: {
@@ -129,15 +161,15 @@ async function fetchArticleHtml(rawUrl: string, signal: AbortSignal, dispatcher:
 
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
-      if (!location) return null;
       await response.body?.cancel();
+      if (!location) return null;
       currentUrl = new URL(location, safeUrl).toString();
       continue;
     }
-    if (!response.ok) { await response.body?.cancel(); throw new ArticleHttpError(response.status); }
+    if (!response.ok) { await response.body?.cancel(); throw new ArticleHttpError(response.status, parseRetryAfter(response.headers.get("retry-after")), sourceHost(safeUrl.toString())); }
 
     const contentLength = Number(response.headers.get("content-length"));
-    if (contentLength > MAX_HTML_BYTES) return null;
+    if (contentLength > MAX_HTML_BYTES) { await response.body?.cancel(); return null; }
 
     const reader = response.body?.getReader();
     if (!reader) return null;
@@ -154,7 +186,7 @@ async function fetchArticleHtml(rawUrl: string, signal: AbortSignal, dispatcher:
       chunks.push(value);
     }
 
-    const html = new TextDecoder().decode(Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))));
+    const html = new TextDecoder().decode(Buffer.concat(chunks, total));
     return { html, url: safeUrl.toString() };
   }
 
@@ -165,6 +197,7 @@ export type ExtractionResult =
   | { status: "ok"; article: ExtractedArticle }
   | { status: "consent_wall" }
   | { status: "partial"; article: ExtractedArticle }
+  | { status: "throttled"; retryAt?: number; host: string; deferred?: boolean }
   | { status: "paywall" | "bot_blocked" | "timeout" | "failed" };
 
 export async function extractArticleFromUrl(rawUrl: string, fetchImpl: ArticleFetch = defaultFetch): Promise<ExtractedArticle | null> {
@@ -173,15 +206,22 @@ export async function extractArticleFromUrl(rawUrl: string, fetchImpl: ArticleFe
 }
 
 /** Like extractArticleFromUrl, but reports whether the site answered with a consent wall. */
-export async function extractArticle(rawUrl: string, fetchImpl: ArticleFetch = defaultFetch): Promise<ExtractionResult> {
-  const safeUrl = await assertPublicHttpUrl(rawUrl);
+export async function extractArticle(rawUrl: string, fetchImpl: ArticleFetch = defaultFetch, priority = 5, authorized: () => boolean = () => true): Promise<ExtractionResult> {
+  return articleWorkPool().run(sourceHost(rawUrl), signal => {
+    if (!authorized()) throw new ArticleAccessDeniedError();
+    return extractArticleContent(rawUrl, fetchImpl, signal);
+  }, priority);
+}
+
+async function extractArticleContent(rawUrl: string, fetchImpl: ArticleFetch, signal: AbortSignal): Promise<ExtractionResult> {
+  signal.throwIfAborted();
   const dispatcher = createPublicDispatcher();
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const fetched = await fetchArticleHtml(safeUrl.toString(), controller.signal, dispatcher, fetchImpl);
+    const fetched = await fetchArticleHtml(rawUrl, AbortSignal.any([signal, controller.signal]), dispatcher, fetchImpl, signal);
     if (!fetched) return { status: "failed" };
 
     const cleanedHtml = stripHeavyTags(fetched.html);
@@ -190,6 +230,7 @@ export async function extractArticle(rawUrl: string, fetchImpl: ArticleFetch = d
     try {
       const paywall = /"isAccessibleForFree"\s*:\s*(?:false|"false")/i.test(fetched.html);
       cleanConsentDom(dom.window.document);
+      resolveLazyImages(dom.window.document);
 
       parsed = new Readability(dom.window.document, { charThreshold: 60 }).parse();
       if (isConsentContent(fetched.url, parsed?.content ?? fetched.html, parsed?.title, parsed?.textContent)) {
@@ -213,10 +254,12 @@ export async function extractArticle(rawUrl: string, fetchImpl: ArticleFetch = d
       },
     };
   } catch (error) {
+    if (error instanceof ArticleHostBusyError) return { status: "throttled", host: error.host, retryAt: error.retryAt, deferred: true };
     if (error instanceof SsrfBlockedError) throw error;
-    if (controller.signal.aborted) return { status: "timeout" };
+    if (signal.aborted || controller.signal.aborted) return { status: "timeout" };
     if (error instanceof ArticleHttpError && [401, 402].includes(error.status)) return { status: "paywall" };
-    if (error instanceof ArticleHttpError && [403, 429, 503].includes(error.status)) return { status: "bot_blocked" };
+    if (error instanceof ArticleHttpError && [429, 503].includes(error.status)) return { status: "throttled", retryAt: error.retryAt, host: error.host };
+    if (error instanceof ArticleHttpError && error.status === 403) return { status: "bot_blocked" };
     return { status: "failed" };
   } finally {
     clearTimeout(timeout);

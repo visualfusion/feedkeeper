@@ -12,7 +12,7 @@ import {
   type SubscribedFeed,
 } from "./repository.js";
 import { assertPublicHttpUrl, SsrfBlockedError } from "./ssrfGuard.js";
-import { pollFeed } from "./poller.js";
+import { requestFeedPoll } from "./poller.js";
 import { decodeEntities } from "./text.js";
 
 export interface OpmlFeedItem {
@@ -141,6 +141,8 @@ function extractOutlines(node: unknown, items: OpmlFeedItem[] = [], currentFolde
   return items;
 }
 
+export const MAX_OPML_FEEDS = 2000;
+
 /**
  * Parses an OPML document string and returns a list of feed URLs and their labels.
  */
@@ -156,7 +158,11 @@ export function parseOpml(xmlContent: string): OpmlFeedItem[] {
     throw new Error("invalid_opml_format");
   }
 
-  return extractOutlines(parsed.opml.body.outline);
+  const feeds = extractOutlines(parsed.opml.body.outline);
+  if (feeds.length > MAX_OPML_FEEDS) {
+    throw new Error("too_many_opml_feeds");
+  }
+  return feeds;
 }
 
 const urlSchema = z.string().url();
@@ -232,18 +238,8 @@ export async function importOpmlFeeds(userId: number, xmlContent: string): Promi
     }
   }
 
-  // Poll newly subscribed feeds asynchronously in background without blocking response
-  if (feedsToPoll.length > 0) {
-    (async () => {
-      for (const feed of feedsToPoll) {
-        try {
-          await pollFeed(feed);
-        } catch {
-          // Last poll errors are tracked in the database feeds table
-        }
-      }
-    })().catch(() => {});
-  }
+  // Durable admission only: no detached serial loop or Promise per imported feed.
+  for (const feed of feedsToPoll) requestFeedPoll(feed);
 
   return result;
 }

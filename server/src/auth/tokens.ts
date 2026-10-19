@@ -79,12 +79,20 @@ export function resolveToken(token: string): ResolvedToken | null {
     return null;
   }
 
-  db.prepare("UPDATE personal_access_tokens SET last_used_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(
-    row.id,
-  );
+  const now = Date.now();
+  const lastTouch = tokenLastTouch.get(row.id) ?? 0;
+  if (!row.last_used_at || now - lastTouch >= TOKEN_TOUCH_INTERVAL_MS) {
+    tokenLastTouch.set(row.id, now);
+    db.prepare("UPDATE personal_access_tokens SET last_used_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(
+      row.id,
+    );
+  }
 
   return { userId: row.user_id, scope: row.scope, kind: row.kind, tokenId: row.id };
 }
+
+const tokenLastTouch = new Map<number, number>();
+const TOKEN_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 
 /** Hand-made tokens only; paired devices are listed separately. */
 export function listTokensForUser(userId: number): Omit<PersonalAccessToken, "token_hash">[] {
@@ -97,6 +105,7 @@ export function listTokensForUser(userId: number): Omit<PersonalAccessToken, "to
 }
 
 export function deleteToken(userId: number, tokenId: number): void {
+  tokenLastTouch.delete(tokenId);
   db.prepare("DELETE FROM personal_access_tokens WHERE id = ? AND user_id = ? AND kind = 'api'").run(tokenId, userId);
 }
 
@@ -109,5 +118,6 @@ export function listDevicesForUser(userId: number): Omit<PersonalAccessToken, "t
 
 /** Revokes a device; its token stops working immediately. Returns whether one was removed. */
 export function deleteDevice(userId: number, deviceId: number): boolean {
+  tokenLastTouch.delete(deviceId);
   return db.prepare("DELETE FROM personal_access_tokens WHERE id = ? AND user_id = ? AND kind = 'device'").run(deviceId, userId).changes > 0;
 }

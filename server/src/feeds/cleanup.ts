@@ -127,15 +127,15 @@ export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
          WHERE i.id NOT IN (SELECT item_id FROM item_bookmarks)
            AND i.id NOT IN (SELECT item_id FROM item_notes)
            AND i.feed_id NOT IN (SELECT id FROM feeds WHERE is_system_inbox = 1)
-           AND NOT EXISTS (SELECT 1 FROM editions e, json_each(e.item_ids) selected
-             WHERE selected.value = i.id AND e.status = 'active' AND julianday(e.expires_at) > julianday('now'))
+           AND i.id NOT IN (SELECT CAST(selected.value AS INTEGER) FROM editions e, json_each(e.item_ids) selected
+             WHERE e.source = 'curated' AND e.status <> 'dismissed')
            AND i.id IN (SELECT item_id FROM item_reads)
            AND NOT EXISTS (
              SELECT 1 FROM subscriptions s
              WHERE s.feed_id = i.feed_id
                AND NOT EXISTS (SELECT 1 FROM item_reads r WHERE r.item_id = i.id AND r.user_id = s.user_id)
            )
-           AND COALESCE(i.published_at, i.created_at) <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-' || ? || ' days')
+           AND COALESCE(julianday(i.published_at), julianday(i.created_at)) <= julianday('now', '-' || ? || ' days')
        )`,
     ).run(settings.retentionReadDays);
     deletedReadItems = res.changes;
@@ -148,9 +148,9 @@ export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
        WHERE id NOT IN (SELECT item_id FROM item_bookmarks)
          AND id NOT IN (SELECT item_id FROM item_notes)
          AND feed_id NOT IN (SELECT id FROM feeds WHERE is_system_inbox = 1)
-         AND NOT EXISTS (SELECT 1 FROM editions e, json_each(e.item_ids) selected
-           WHERE selected.value = items.id AND e.status = 'active' AND julianday(e.expires_at) > julianday('now'))
-         AND COALESCE(published_at, created_at) <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-' || ? || ' days')`,
+         AND id NOT IN (SELECT CAST(selected.value AS INTEGER) FROM editions e, json_each(e.item_ids) selected
+           WHERE e.source = 'curated' AND e.status <> 'dismissed')
+         AND COALESCE(julianday(published_at), julianday(created_at)) <= julianday('now', '-' || ? || ' days')`,
     ).run(settings.retentionMaxDays);
     deletedOldItems = res.changes;
   }
@@ -162,13 +162,13 @@ export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
        WHERE id NOT IN (SELECT item_id FROM item_bookmarks)
          AND id NOT IN (SELECT item_id FROM item_notes)
          AND feed_id NOT IN (SELECT id FROM feeds WHERE is_system_inbox = 1)
-         AND NOT EXISTS (SELECT 1 FROM editions e, json_each(e.item_ids) selected
-           WHERE selected.value = items.id AND e.status = 'active' AND julianday(e.expires_at) > julianday('now'))
+         AND id NOT IN (SELECT CAST(selected.value AS INTEGER) FROM editions e, json_each(e.item_ids) selected
+           WHERE e.source = 'curated' AND e.status <> 'dismissed')
          AND id IN (
            SELECT id FROM (
              SELECT id, ROW_NUMBER() OVER (
                PARTITION BY feed_id
-               ORDER BY COALESCE(published_at, created_at) DESC, id DESC
+               ORDER BY COALESCE(julianday(published_at), julianday(created_at)) DESC, id DESC
              ) as rn
              FROM items
            )
@@ -185,11 +185,14 @@ export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
 
   const totalDeleted = deletedReadItems + deletedOldItems + deletedPerFeedExcess;
 
-  // Optimize query planning; rebuild storage only when this run freed rows.
+  // Optimize query planning; rebuild storage only when this run freed substantial pages.
   db.exec("PRAGMA optimize;");
   if (totalDeleted > 0) {
     try {
-      db.exec("VACUUM;");
+      const freelist = (db.pragma("freelist_count", { simple: true }) as number) ?? 0;
+      if (freelist > 500) {
+        db.exec("VACUUM;");
+      }
     } catch (err) {
       console.warn("[cleanup] VACUUM skipped or could not run:", err);
     }

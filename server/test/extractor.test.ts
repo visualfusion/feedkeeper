@@ -29,3 +29,29 @@ test("article extraction skips oversized responses", async () => {
   assert.equal(await extractArticleFromUrl("https://93.184.216.34/article", mockFetch), null);
   assert.equal(requests, 1);
 });
+
+test("article extraction resolves WordPress lazy-loaded images to src", async () => {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head><title>Mimikama Test</title></head>
+      <body>
+        <article>
+          <h1>Mimikama Test Title</h1>
+          <p>Hier ist ein ausführlicher Artikeltext über ein Gerücht im Internet, der lang genug ist um als vollständiger Inhalt erkannt zu werden. Mehr Text für den Hauptinhalt.</p>
+          <img src="data:image/svg+xml,%3Csvg%3E%3C/svg%3E" data-lazy-src="https://www.mimikama.org/wp-content/uploads/2026/10/real-image.png" alt="Beispiel">
+          <p>Weiterer Text nach dem Bild um die Mindestlänge für Readability locker zu erreichen und sicherzustellen, dass der Artikel als OK eingestuft wird.</p>
+        </article>
+      </body>
+    </html>
+  `;
+  const mockFetch: typeof fetch = async () => new Response(html, {
+    status: 200,
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+
+  const result = await extractArticleFromUrl("https://93.184.216.34/article", mockFetch);
+  assert.ok(result);
+  assert.ok(result.contentHtml.includes('src="https://www.mimikama.org/wp-content/uploads/2026/10/real-image.png"'));
+  assert.ok(!result.contentHtml.includes('src="data:image/svg'));
+});

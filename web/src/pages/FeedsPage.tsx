@@ -6,9 +6,13 @@ import { type SelectOption } from "../components/CustomSelect.tsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.tsx";
 import { ActionMenu } from "../components/ActionMenu.tsx";
 import { FeedRow, formatInterval } from "../components/feeds/FeedRow.tsx";
+import { Welcome } from "../components/onboarding/Welcome.tsx";
+import { PlanNotice } from "../components/PlanNotice.tsx";
+import { usePlanLimits } from "../utils/planLimits.ts";
 import { AddFeedPanel } from "../components/feeds/AddFeedPanel.tsx";
 import { FolderManager } from "../components/feeds/FolderManager.tsx";
 import { toast } from "../utils/toast.ts";
+import { reportFeedRefresh, reportAllRefresh } from "../utils/refreshFeedback.ts";
 import { DownloadIcon, FolderIcon, PlusIcon, RefreshIcon, SearchIcon, UploadIcon } from "../components/feeds/icons.tsx";
 
 const POLL_PRESETS = [5, 15, 30, 60, 180, 360, 720, 1440];
@@ -46,7 +50,7 @@ export function FeedsPage() {
   });
   useEffect(() => {
     if (!searchParams.has("add") && !searchParams.has("url") && !searchParams.has("text")) return;
-    setPanel("add");
+    if (syncAllowed) setPanel("add");
     setSearchParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -80,7 +84,9 @@ export function FeedsPage() {
     return () => window.clearTimeout(timer);
   }, [highlightedId, feeds]);
 
-  const feedName = (feed: Feed) => feed.label ?? feed.title ?? feed.url;
+  // Titles come from the feeds themselves; some contain line breaks and runs of spaces.
+  const { syncAllowed } = usePlanLimits();
+  const feedName = (feed: Feed) => (feed.label ?? feed.title ?? feed.url).replace(/\s+/g, " ").trim();
 
   async function onFeedAdded(feed: Feed) {
     toast.success(t("feeds.subscribedToast", { title: feedName(feed) }));
@@ -157,8 +163,7 @@ export function FeedsPage() {
       const res = await api.refreshFeed(feedId);
       if (res.feed) setFeeds((prev) => prev.map((f) => (f.id === feedId ? res.feed : f)));
       else await load();
-      if (res.error) toast.error(t("feeds.refreshFailedToast", { title: res.feed ? feedName(res.feed) : "", error: res.error }));
-      else toast.success(t("feeds.refreshedToast", { title: res.feed ? feedName(res.feed) : "", count: res.newItems }));
+      reportFeedRefresh(res, res.feed ? feedName(res.feed) : "", t);
     } catch {
       toast.error(t("common.error"));
     } finally {
@@ -175,8 +180,7 @@ export function FeedsPage() {
     try {
       const res = await api.refreshAllFeeds();
       await load();
-      toast.success(t("feeds.refreshedAllToast", { count: res.refreshed, newItems: res.newItems }));
-      if (res.errors > 0) toast.error(t("feeds.failingCount", { count: res.errors }));
+      reportAllRefresh(res, t);
     } catch {
       toast.error(t("common.error"));
     } finally {
@@ -256,17 +260,20 @@ export function FeedsPage() {
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button type="button" onClick={() => setPanel(panel === "add" ? null : "add")} className="btn-primary inline-flex items-center gap-1.5 whitespace-nowrap">
-            <PlusIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("feeds.addFeed")}</span>
-            <span className="sm:hidden">{t("feeds.addFeedShort")}</span>
-          </button>
+          {/* Without feeds the empty state below carries the same button. */}
+          {(loading || feeds.length > 0) && (
+            <button type="button" disabled={!syncAllowed} title={syncAllowed ? undefined : t("plan.unavailable")} onClick={() => setPanel(panel === "add" ? null : "add")} className="btn-primary inline-flex items-center gap-1.5 whitespace-nowrap">
+              <PlusIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("feeds.addFeed")}</span>
+              <span className="sm:hidden">{t("feeds.addFeedShort")}</span>
+            </button>
+          )}
           <ActionMenu
             label={t("feeds.moreActions")}
             items={[
-              { label: refreshingAll ? t("feeds.refreshing") : t("feeds.refreshAll"), icon: <RefreshIcon className={`h-4 w-4 ${refreshingAll ? "animate-spin" : ""}`} />, onSelect: onRefreshAll, disabled: refreshingAll },
+              { label: refreshingAll ? t("feeds.refreshing") : t("feeds.refreshAll"), icon: <RefreshIcon className={`h-4 w-4 ${refreshingAll ? "animate-spin" : ""}`} />, onSelect: onRefreshAll, disabled: refreshingAll || !syncAllowed },
               { label: t("feeds.manageFolders"), icon: <FolderIcon />, onSelect: () => setPanel("folders") },
-              { label: importing ? t("feeds.importing") : t("feeds.importOpml"), icon: <UploadIcon />, onSelect: () => fileInputRef.current?.click(), disabled: importing },
+              { label: importing ? t("feeds.importing") : t("feeds.importOpml"), icon: <UploadIcon />, onSelect: () => fileInputRef.current?.click(), disabled: importing || !syncAllowed },
               { label: t("feeds.exportOpml"), icon: <DownloadIcon />, onSelect: exportOpml },
             ]}
           />
@@ -274,7 +281,8 @@ export function FeedsPage() {
         </div>
       </div>
 
-      {panel === "add" && (
+      {!syncAllowed && feeds.length > 0 && <PlanNotice />}
+      {panel === "add" && syncAllowed && (
         <AddFeedPanel
           folderOptions={folderOptions}
           defaultFolderId={filter.startsWith("folder:") ? Number(filter.slice(7)) : null}
@@ -288,16 +296,7 @@ export function FeedsPage() {
       {loading ? (
         <LoadingSpinner size="lg" />
       ) : feeds.length === 0 ? (
-        panel !== "add" && (
-          <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <h2 className="text-lg font-semibold">{t("feeds.emptyTitle")}</h2>
-            <p className="max-w-sm text-sm text-[var(--c-text-muted)]">{t("feeds.emptyHint")}</p>
-            <button type="button" onClick={() => setPanel("add")} className="btn-primary mt-2 inline-flex items-center gap-1.5">
-              <PlusIcon className="h-4 w-4" />
-              {t("feeds.addFeed")}
-            </button>
-          </div>
-        )
+        panel !== "add" && <Welcome onSubscribed={load} />
       ) : (
         <>
           <div className="flex flex-col gap-3">

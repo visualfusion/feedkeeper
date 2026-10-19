@@ -1,3 +1,4 @@
+import { usePlanLimits } from "../../utils/planLimits.ts";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { api, type Folder } from "../../api/client.ts";
@@ -41,6 +42,7 @@ function FolderNameInput({ folder, onRenamed }: { folder: Folder; onRenamed: () 
 /** Create, rename (click the name) and delete categories. */
 export function FolderManager({ folders, onClose, onChanged }: { folders: Folder[]; onClose: () => void; onChanged: () => Promise<void> }) {
   const { t } = useTranslation();
+  const { syncAllowed } = usePlanLimits();
   const [newName, setNewName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -98,8 +100,8 @@ export function FolderManager({ folders, onClose, onChanged }: { folders: Folder
       )}
 
       <form onSubmit={onCreate} className="flex gap-2">
-        <input type="text" placeholder={t("feeds.newFolderPlaceholder")} className="input flex-1" value={newName} onChange={(e) => setNewName(e.target.value)} />
-        <button type="submit" disabled={submitting || !newName.trim()} className="btn-primary whitespace-nowrap">{t("feeds.addFolder")}</button>
+        <input type="text" disabled={!syncAllowed} placeholder={t("feeds.newFolderPlaceholder")} className="input flex-1" value={newName} onChange={(e) => setNewName(e.target.value)} />
+        <button type="submit" disabled={submitting || !syncAllowed || !newName.trim()} title={syncAllowed ? undefined : t("plan.unavailable")} className="btn-primary whitespace-nowrap">{t("feeds.addFolder")}</button>
       </form>
     </section>
   );

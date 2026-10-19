@@ -1,0 +1,66 @@
+name: feedkeeper
+services:
+  feedkeeper:
+    image: ghcr.io/visualfusion/feedkeeper:latest
+    container_name: feedkeeper
+    restart: unless-stopped
+    stop_grace_period: 45s
+    ports:
+      - target: 3000
+        published: "3000"
+        protocol: tcp
+    environment:
+      # Leave SESSION_SECRET empty: a random secret is generated on the first start and kept in the data volume.
+      SESSION_SECRET: ""
+      # The address you open FeedKeeper at, for example http://192.168.1.10:3000 or https://feeds.example.org.
+      PUBLIC_URL: "http://localhost:3000"
+      ALLOW_SIGNUP: "false"
+      TRUST_PROXY: "false"
+    volumes:
+      - type: volume
+        source: feedkeeper_data
+        target: /app/data
+    x-casaos:
+      envs:
+        - container: PUBLIC_URL
+          description:
+            en_us: "The address you open FeedKeeper at, for example http://192.168.1.10:3000 or https://feeds.example.org."
+        - container: SESSION_SECRET
+          description:
+            en_us: "Leave empty to generate a random secret on the first start (kept in the data volume)."
+        - container: ALLOW_SIGNUP
+          description:
+            en_us: "Whether new people can register themselves. Keep false on an instance reachable from the internet."
+        - container: TRUST_PROXY
+          description:
+            en_us: "Set to true when a reverse proxy sits in front of FeedKeeper."
+      ports:
+        - container: "3000"
+          description:
+            en_us: "Web interface"
+      volumes:
+        - container: /app/data
+          description:
+            en_us: "Database, archive of saved articles and session secret"
+
+volumes:
+  feedkeeper_data:
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: feedkeeper
+  author: visualfusion
+  developer: visualfusion
+  category: Utilities
+  icon: https://raw.githubusercontent.com/visualfusion/feedkeeper/main/web/public/app-icon-192.png
+  index: /
+  port_map: "3000"
+  scheme: http
+  title:
+    en_us: FeedKeeper
+  tagline:
+    en_us: Lightweight RSS reader and MCP server
+  description:
+    en_us: "A lightweight RSS reader and remote MCP server: one Node process and one SQLite file, with a newspaper-style reader, full-text search and sync for native apps. MCP clients such as Claude and ChatGPT can read and organise your feeds through the built-in /mcp endpoint. Create the first account in the browser after the first start."

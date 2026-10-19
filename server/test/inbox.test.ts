@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -38,6 +38,8 @@ test("Universal Inbox: save web clippings, sync, retention protection, and unsub
   process.env.SESSION_SECRET = "test-session-secret-at-least-32-characters";
   process.env.ALLOW_PRIVATE_FEEDS = "true";
   process.env.ARCHIVE_PATH = mkdtempSync(join(tmpdir(), "feedkeeper-inbox-archive-"));
+  const cacheDir = mkdtempSync(join(tmpdir(), "feedkeeper-inbox-cache-"));
+  process.env.IMAGE_CACHE_PATH = cacheDir;
 
   const { db, runMigrations } = await import("../src/db/index.js");
   const { v1Router } = await import("../src/api/v1/index.js");
@@ -45,6 +47,7 @@ test("Universal Inbox: save web clippings, sync, retention protection, and unsub
   const { saveToInbox } = await import("../src/feeds/inbox.js");
   const { runCleanup, updateRetentionSettings } = await import("../src/feeds/cleanup.js");
   const { createMcpServerForUser } = await import("../src/mcp/server.js");
+  const { archiveIdle, stopImageCache } = await import("../src/feeds/archive.js");
 
   runMigrations();
 
@@ -170,6 +173,9 @@ test("Universal Inbox: save web clippings, sync, retention protection, and unsub
     const deletedItem = db.prepare("SELECT * FROM items WHERE id = ?").get(saved.id);
     assert.equal(deletedItem, undefined);
   } finally {
+    await archiveIdle();
+    await stopImageCache();
+    rmSync(cacheDir, { recursive: true, force: true });
     server.close();
     source.close();
   }

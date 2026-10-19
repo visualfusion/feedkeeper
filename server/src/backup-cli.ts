@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, unlinkSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { config } from "./config.js";
 
 function assertHealthy(database: Database.Database): void {
@@ -57,7 +58,13 @@ async function main(): Promise<void> {
 
   if (flag !== "--force") throw new Error("Restore replaces the configured database. Stop FeedKeeper and pass --force.");
   if (!existsSync(filePath) || !statSync(filePath).isFile()) throw new Error(`Backup file not found: ${filePath}`);
-  const source = new Database(filePath, { readonly: true, fileMustExist: true });
+  // A backup is a WAL-mode database, and SQLite needs to create a -shm file next to a database it opens, even for
+  // reading. The backup may sit where nothing can be created (a single file mounted into a container, a read-only
+  // volume), so it is opened from a copy in the temporary folder.
+  const scratch = mkdtempSync(join(tmpdir(), "feedkeeper-restore-"));
+  const copy = join(scratch, "backup.sqlite");
+  copyFileSync(filePath, copy);
+  const source = new Database(copy, { readonly: true, fileMustExist: true });
   try {
     assertHealthy(source);
     mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
@@ -65,6 +72,7 @@ async function main(): Promise<void> {
     await source.backup(databasePath);
   } finally {
     source.close();
+    rmSync(scratch, { recursive: true, force: true });
   }
   const restored = new Database(databasePath, { readonly: true, fileMustExist: true });
   try {

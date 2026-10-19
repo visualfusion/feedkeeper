@@ -47,6 +47,7 @@ test("discovery ignores self-referencing feed links and finds feeds on overview 
     const subscribed = await subscribeToFeed(userId, `${base}/`);
     assert.equal(subscribed.url, `${base}/news.rss`);
   } finally {
+    await (await import("../src/feeds/poller.js")).stopPollingScheduler();
     server.close();
     plainSite.close();
     db.close();

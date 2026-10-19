@@ -85,6 +85,7 @@ test("people who opted in get a push for new articles, but not for a feed's firs
     assert.equal(push.hasDevice(subscriberId, "https://push.example.test/phone"), false);
     assert.match(push.vapidPublicKey(), /^[A-Za-z0-9_-]{80,}$/);
   } finally {
+    await (await import("../src/feeds/poller.js")).stopPollingScheduler();
     server.close();
   }
 });

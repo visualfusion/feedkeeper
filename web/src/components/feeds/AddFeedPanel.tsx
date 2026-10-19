@@ -6,11 +6,13 @@ import { CustomSelect, type SelectOption } from "../CustomSelect.tsx";
 import { CloseIcon } from "./icons.tsx";
 
 /** Subscribe by website or feed URL; lets the user pick when a site offers several feeds. */
-export function AddFeedPanel({ folderOptions, defaultFolderId, initialUrl = "", onClose, onAdded }: {
+export function AddFeedPanel({ folderOptions, defaultFolderId, initialUrl = "", compact = false, onClose, onAdded }: {
   folderOptions: SelectOption[];
   defaultFolderId: number | null;
   /** Address to start with, e.g. one shared from another app. */
   initialUrl?: string;
+  /** Only the address field and the button, without the card around them (for the welcome card). */
+  compact?: boolean;
   onClose: () => void;
   onAdded: (feed: Feed) => Promise<void>;
 }) {
@@ -52,21 +54,21 @@ export function AddFeedPanel({ folderOptions, defaultFolderId, initialUrl = "", 
   }
 
   return (
-    <section className="card animate-fade-in flex flex-col gap-4 p-4 sm:p-5">
-      <div className="flex items-center justify-between">
+    <section className={compact ? "flex flex-col gap-4" : "card animate-fade-in flex flex-col gap-4 p-4 sm:p-5"}>
+      {!compact && <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">{t("feeds.addFeed")}</h2>
         <button type="button" onClick={onClose} className="rounded-lg p-1 text-[var(--c-text-muted)] hover:bg-[var(--c-surface-hover)] hover:text-[var(--c-text)] cursor-pointer" aria-label={t("common.close")}>
           <CloseIcon />
         </button>
-      </div>
+      </div>}
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <form onSubmit={onSubmit} className={`flex flex-col gap-3 ${compact ? "sm:flex-row sm:items-start" : ""}`}>
         <input
           type="text"
           required
-          autoFocus
+          autoFocus={!compact}
           placeholder={t("feeds.urlPlaceholder")}
-          className="input"
+          className={compact ? "input sm:flex-1" : "input"}
           value={url}
           onChange={(e) => {
             setUrl(e.target.value);
@@ -74,8 +76,8 @@ export function AddFeedPanel({ folderOptions, defaultFolderId, initialUrl = "", 
           }}
         />
         <div className="flex flex-col gap-3 sm:flex-row">
-          <input type="text" placeholder={t("feeds.labelPlaceholder")} className="input sm:flex-1" value={label} onChange={(e) => setLabel(e.target.value)} />
-          <CustomSelect value={folderId ? String(folderId) : ""} onChange={(val) => setFolderId(val ? Number(val) : null)} options={folderOptions} className="w-full sm:w-52" placeholder={t("feeds.noFolder")} />
+          {!compact && <input type="text" placeholder={t("feeds.labelPlaceholder")} className="input sm:flex-1" value={label} onChange={(e) => setLabel(e.target.value)} />}
+          {!compact && <CustomSelect value={folderId ? String(folderId) : ""} onChange={(val) => setFolderId(val ? Number(val) : null)} options={folderOptions} className="w-full sm:w-52" placeholder={t("feeds.noFolder")} />}
           <button type="submit" disabled={submitting} className="btn-primary whitespace-nowrap">
             {submitting ? t("feeds.subscribing") : t("feeds.subscribe")}
           </button>

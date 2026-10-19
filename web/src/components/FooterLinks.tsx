@@ -14,7 +14,7 @@ const placements = {
 /** Links an operator or host adds, such as the legal notice; nothing is shown without them. */
 export function FooterLinks({ placement }: { placement: keyof typeof placements }) {
   const { t, i18n } = useTranslation();
-  const links = resolveFooterLinks(useExtensions(), i18n.resolvedLanguage || "en");
+  const links = resolveFooterLinks(useExtensions(), i18n.resolvedLanguage || "en", placement);
   if (links.length === 0) return null;
   return (
     <nav aria-label={t("nav.footerLinks")} className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-[var(--c-text-muted)] ${placements[placement]}`}>
@@ -26,6 +26,7 @@ export function FooterLinks({ placement }: { placement: keyof typeof placements 
             {...(link.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             className="transition-colors hover:text-[var(--c-text)] hover:underline"
           >
+            {link.icon && <img src={link.icon} alt="" width={14} height={14} className="mr-1.5 inline-block align-[-2px]" />}
             {link.label}
           </a>
         </span>

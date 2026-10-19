@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { decodeEntities } from "../src/feeds/text.js";
+import { decodeEntities, plainTitle } from "../src/feeds/text.js";
 
 test("titles lose leftover and double-encoded HTML entities", () => {
   assert.equal(decodeEntities("Meta&#8217;s Muse AI"), "Meta’s Muse AI");
@@ -28,4 +28,11 @@ test("stored titles with leftover entities are repaired once", async () => {
     { title: "AT&T earnings", content_snippet: null },
   ]);
   db.close();
+});
+
+test("a title from a feed is one trimmed line", () => {
+  assert.equal(plainTitle("\n   A List Apart: The Full Feed\t\n  "), "A List Apart: The Full Feed");
+  assert.equal(plainTitle("Meta&#8217;s   Muse\nAI"), "Meta’s Muse AI");
+  assert.equal(plainTitle("  \n "), undefined);
+  assert.equal(plainTitle(null), undefined);
 });

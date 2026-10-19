@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { groupSettingsSections, pickLocalized, resolveFooterLinks, resolveLoginForm, resolveSettingsExtensions } from "../src/extensions/host.ts";
+import { groupSettingsSections, pickLocalized, resolveFooterLinks, resolveLoginForm, resolveMeta, resolvePasswordCard, resolveArticlesNotice, resolveSettingsExtensions } from "../src/extensions/host.ts";
 
 const builtIn = ["account", "general", "users", "database"];
 const section = (id, extra = {}) => ({ id, label: `Label ${id}`, description: "Beschreibung", group: "Kunden", mount: () => {}, ...extra });
@@ -84,8 +84,8 @@ test("footer links follow the language and only ever link to pages or http(s) ad
     ],
   };
   assert.deepEqual(resolveFooterLinks(host, "de"), [
-    { label: "Impressum", href: "/impressum", newTab: false },
-    { label: "Operator", href: "https://example.org/about", newTab: true },
+    { label: "Impressum", href: "/impressum", newTab: false, icon: null },
+    { label: "Operator", href: "https://example.org/about", newTab: true, icon: null },
   ]);
   assert.equal(resolveFooterLinks(host, "en")[0].href, "/en/legal-notice");
   const many = { footerLinks: Array.from({ length: 20 }, (_, index) => ({ label: `Link ${index}`, href: `/page-${index}` })) };
@@ -97,4 +97,94 @@ test("a sign-in form from the host needs a mount function", () => {
   assert.equal(resolveLoginForm({ loginForm: { mount } }).mount, mount);
   assert.equal(resolveLoginForm({ loginForm: {} }), null);
   assert.equal(resolveLoginForm({ loginForm: { mount: "x" } }), null);
+});
+
+test("footer links can carry an icon and be limited to some places", () => {
+  const host = {
+    footerLinks: [
+      { label: "Brand", href: "https://example.org", icon: "/logo.svg", placements: ["login", "page"] },
+      { label: "Everywhere", href: "/all", icon: "javascript:alert(1)" },
+    ],
+  };
+  assert.deepEqual(resolveFooterLinks(host, "en", "menu").map((link) => link.label), ["Everywhere"]);
+  assert.deepEqual(resolveFooterLinks(host, "en", "page").map((link) => [link.label, link.icon]), [["Brand", "/logo.svg"], ["Everywhere", null]]);
+  assert.equal(resolveFooterLinks(host, "en").length, 2);
+});
+
+test("a password card from the host needs a mount function", () => {
+  const mount = () => {};
+  const applies = () => true;
+  assert.deepEqual(resolvePasswordCard({ passwordCard: { mount, applies } }), { mount, applies });
+  assert.deepEqual(resolvePasswordCard({ passwordCard: { mount } }), { mount });
+  assert.equal(resolvePasswordCard({ passwordCard: {} }), null);
+  assert.equal(resolvePasswordCard({}), null);
+});
+
+test("starter packs of the host are added to the built-in ones, replace them on request, and are checked", async () => {
+  const { resolveStarterPacks, resolveOnboarding } = await import("../src/extensions/host.ts");
+  const { BUILT_IN_STARTER_PACKS, feedsForLanguage } = await import("../src/onboarding/starterPacks.ts");
+  const own = { id: "company", title: { en: "Company", de: "Firma" }, feeds: [
+    { title: "Blog", url: "https://example.org/feed.xml", lang: "de-AT" },
+    { title: "Script", url: "javascript:alert(1)" },
+    { title: "Secret", url: "https://user:pass@example.org/feed" },
+    { title: "", url: "https://example.org/empty" },
+  ] };
+  const added = resolveStarterPacks({ starterPacks: { packs: [own, { id: "Bad Id", title: "x", feeds: [] }, { id: "empty", title: "Empty", feeds: [{ title: "No", url: "ftp://example.org" }] }] } }, BUILT_IN_STARTER_PACKS, "de");
+  assert.deepEqual(added.map((pack) => pack.id), [...BUILT_IN_STARTER_PACKS.map((pack) => pack.id), "company"]);
+  const company = added.at(-1);
+  assert.equal(company.title, "Firma");
+  assert.deepEqual(company.feeds, [{ title: "Blog", url: "https://example.org/feed.xml", lang: "de" }]);
+  assert.deepEqual(resolveStarterPacks({ starterPacks: { replace: true, packs: [own] } }, BUILT_IN_STARTER_PACKS, "en").map((pack) => pack.id), ["company"]);
+  assert.equal(resolveStarterPacks({}, BUILT_IN_STARTER_PACKS, "en").length, BUILT_IN_STARTER_PACKS.length);
+  assert.equal(resolveOnboarding({ onboarding: { mount() {} } }) !== null, true);
+  assert.equal(resolveOnboarding({ onboarding: {} }), null);
+
+  const technology = added.find((pack) => pack.id === "technology");
+  assert.ok(feedsForLanguage(technology, "de").every((feed) => feed.lang === "de" || feed.lang === "en"));
+  assert.equal(feedsForLanguage(technology, "de")[0].lang, "de", "the own language comes first");
+  assert.ok(feedsForLanguage(technology, "ja").length > 0 && feedsForLanguage(technology, "ja").every((feed) => feed.lang === "ja"), "Japanese readers get no English feeds where there are Japanese ones");
+  assert.ok(feedsForLanguage({ feeds: [{ lang: "en" }] }, "ja").length === 1, "but a pack without Japanese ones still shows the English ones");
+  assert.ok(feedsForLanguage(technology, "en").every((feed) => feed.lang === "en"));
+});
+
+test("the built-in starter packs have unique ids, https addresses and titles in every language", async () => {
+  const { BUILT_IN_STARTER_PACKS } = await import("../src/onboarding/starterPacks.ts");
+  assert.equal(new Set(BUILT_IN_STARTER_PACKS.map((pack) => pack.id)).size, BUILT_IN_STARTER_PACKS.length);
+  const urls = BUILT_IN_STARTER_PACKS.flatMap((pack) => pack.feeds.map((feed) => feed.url));
+  assert.equal(new Set(urls).size, urls.length, "no feed twice");
+  for (const pack of BUILT_IN_STARTER_PACKS) {
+    for (const language of ["en", "de", "ja"]) {
+      assert.ok(pack.title[language] && pack.description[language], `${pack.id} has a ${language} title and description`);
+    }
+    for (const feed of pack.feeds) assert.match(feed.url, /^https:\/\//);
+  }
+});
+
+test("a notice above the articles needs a mount function, and `applies` is optional", () => {
+  const mount = () => {};
+  const applies = () => true;
+  assert.deepEqual(resolveArticlesNotice({ articlesNotice: { mount, applies } }), { mount, applies });
+  assert.deepEqual(resolveArticlesNotice({ articlesNotice: { mount } }), { mount });
+  assert.equal(resolveArticlesNotice({ articlesNotice: {} }), null);
+  assert.equal(resolveArticlesNotice({ articlesNotice: { mount: "x" } }), null);
+  assert.equal(resolveArticlesNotice(undefined), null);
+});
+
+test("a host sets the page title and description by language, and only usable values replace the app's own", () => {
+  const host = {
+    meta: {
+      title: { de: "FeedKeeper – deine Zeitung", en: "FeedKeeper – your newspaper" },
+      description: { en: "A newspaper made from your feeds." },
+    },
+  };
+  assert.deepEqual(resolveMeta(host, "de"), { title: "FeedKeeper – deine Zeitung", description: "A newspaper made from your feeds." });
+  assert.deepEqual(resolveMeta(host, "de-AT").title, "FeedKeeper – deine Zeitung");
+  assert.deepEqual(resolveMeta(host, "fr").title, "FeedKeeper – your newspaper");
+  assert.deepEqual(resolveMeta({ meta: { title: "  Plain  " } }, "en"), { title: "Plain", description: null });
+  // Too long, empty or not text: the app keeps its own wording.
+  assert.deepEqual(resolveMeta({ meta: { title: "x".repeat(81), description: "y".repeat(301) } }, "en"), { title: null, description: null });
+  assert.deepEqual(resolveMeta({ meta: { title: "   ", description: 5 } }, "en"), { title: null, description: null });
+  for (const broken of [undefined, null, "text", 5, [], {}, { meta: "x" }, { meta: [] }, { meta: { title: {} } }]) {
+    assert.deepEqual(resolveMeta(broken, "en"), { title: null, description: null });
+  }
 });

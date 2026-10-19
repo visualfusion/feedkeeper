@@ -17,6 +17,8 @@
   --c-blue3: #334155; /* Focus ring & steel accent (#334155) */
   --c-blue4: #475569; /* Muted steel accent (#475569) */
   --c-green3: #16a34a; /* Status healthy */
+  --c-success-bg: rgba(22, 163, 74, 0.08);
+  --c-success-border: rgba(22, 163, 74, 0.25);
   --c-copper: #7c2d12; /* Burnt copper from logo (#7c2d12) */
   --c-copper-hover: #9a3412;
   --c-danger: #7c2d12; /* Burnt copper instead of bright red */
@@ -39,6 +41,8 @@
   --c-blue3: #64748b; /* Steel focus ring (#64748b) */
   --c-blue4: #94a3b8; /* Light steel accent (#94a3b8 from logo palette) */
   --c-green3: #22c55e; /* Status healthy */
+  --c-success-bg: rgba(34, 197, 94, 0.12);
+  --c-success-border: rgba(34, 197, 94, 0.3);
   --c-copper: #ea580c; /* Glowing copper for dark background */
   --c-copper-hover: #f97316;
   --c-danger: #ea580c; /* Glowing copper for dark background */
@@ -62,6 +66,8 @@
     --c-blue3: #64748b;
     --c-blue4: #94a3b8;
     --c-green3: #22c55e;
+    --c-success-bg: rgba(34, 197, 94, 0.12);
+    --c-success-border: rgba(34, 197, 94, 0.3);
     --c-copper: #ea580c;
     --c-copper-hover: #f97316;
     --c-danger: #ea580c;

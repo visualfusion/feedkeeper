@@ -1,13 +1,15 @@
+import { sendArticleImage } from "../imageResponse.js";
 import { enqueueArticleContents } from "../../feeds/fullTextQueue.js";
 import { Router, type Request } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { FULL_TEXT_STATUS } from "../items.js";
 import { findArchivedImage, fetchItemImage, withArchivedImages, withProxiedImages } from "../../feeds/archive.js";
+import { ImageCacheBusyError } from "../../feeds/imageCache.js";
 import { discoverFeeds } from "../../feeds/discovery.js";
 import { loadFullText } from "../../feeds/fullText.js";
 import { generateOpml, importOpmlFeeds } from "../../feeds/opml.js";
-import { pollFeed } from "../../feeds/poller.js";
+import { pollFeed, pollFeeds } from "../../feeds/poller.js";
 import { canAccessFeed, loadFeedIcon } from "../../feeds/feedIcon.js";
 import {
   addMutedKeyword,
@@ -18,6 +20,8 @@ import {
   findFeedById,
   findFolderById,
   findItemForUser,
+  findItemsForUser,
+  findSubscriptionForUser,
   findItemNote,
   noteConflictState,
   isUserSubscribed,
@@ -40,7 +44,7 @@ import { SsrfBlockedError, normalizeUrlCandidate } from "../../feeds/ssrfGuard.j
 import { buildOverview } from "../../mcp/digest.js";
 import { decodeCursor, encodeCursor } from "../../mcp/items.js";
 import { readingPositions, serializeItem, serializeSubscriptionDetail } from "./serialize.js";
-import { dismissEdition, editionCandidates, generateEdition, generateEditionSchema, getEdition, getEditionState, type ServerEdition } from "../../native/editions.js";
+import { dismissEdition, editionCandidates, ensureEditionSchema, getEdition, getEditionState, type ServerEdition } from "../../native/editions.js";
 import { getNativePreferences, patchNativePreferences } from "../../native/preferences.js";
 import { NativeError } from "../../native/requests.js";
 import { capabilityDenial, hasUserCapability, requireCapability } from "../../auth/capabilities.js";
@@ -55,7 +59,7 @@ const urlField = z.preprocess((val) => (typeof val === "string" ? normalizeUrlCa
 const invalid = (res: import("express").Response, details?: unknown) => void res.status(400).json({ error: "invalid_input", ...(details ? { details } : {}) });
 
 function subscriptionOf(userId: number, id: number) {
-  const subscription = listSubscriptionsForUser(userId).find((entry) => entry.id === id);
+  const subscription = findSubscriptionForUser(userId, id);
   return subscription ? serializeSubscriptionDetail(subscription) : null;
 }
 
@@ -146,7 +150,7 @@ async function refresh(userId: number, id: number) {
   const feed = findFeedById(id);
   if (!feed || !isUserSubscribed(userId, id)) return null;
   const result = await pollFeed(feed);
-  return { subscription: subscriptionOf(userId, id), newItems: result.newItems, error: result.error };
+  return { subscription: subscriptionOf(userId, id), ...result };
 }
 
 resourcesRouter.post("/subscriptions/:id/refresh", async (req, res) => {
@@ -157,14 +161,9 @@ resourcesRouter.post("/subscriptions/:id/refresh", async (req, res) => {
 
 resourcesRouter.post("/refresh", async (req, res) => {
   const subscriptions = listSubscriptionsForUser(req.user!.id);
-  let newItems = 0;
-  let errors = 0;
-  for (const subscription of subscriptions) {
-    const result = await refresh(req.user!.id, subscription.id);
-    newItems += result?.newItems ?? 0;
-    if (result?.error) errors++;
-  }
-  res.json({ refreshed: subscriptions.length, newItems, errors });
+  const { newItems, errors, deferred } = await pollFeeds(subscriptions);
+
+  res.json({ refreshed: subscriptions.length, newItems, errors, deferred });
 });
 
 resourcesRouter.get("/subscriptions/:id/icon", imageLimiter, async (req, res) => {
@@ -343,9 +342,9 @@ const itemsQuery = z.object({
 type Row = ReturnType<typeof listItemsForUser>[number];
 
 /** Rows ready for a native client: images served by this server where it keeps copies. */
-function prepare(rows: Row[], req: Request, images: "original" | "proxy"): Row[] {
-  const archived = withArchivedImages(rows, origin(req), API_BASE);
-  return images === "proxy" ? withProxiedImages(archived, origin(req), API_BASE) : archived;
+function prepare(rows: Row[], req: Request, images: "original" | "proxy", withContent = true): Row[] {
+  const archived = withArchivedImages(rows, origin(req), API_BASE, withContent);
+  return images === "proxy" ? withProxiedImages(archived, origin(req), API_BASE, withContent) : archived;
 }
 
 const searchQuery = z.object({
@@ -385,7 +384,7 @@ resourcesRouter.get("/search", requireCapability("search.fts"), (req, res) => {
   res.json({
     query: query.q,
     total,
-    items: prepare(rows, req, query.images).map((row) => serializeItem(row, progress, withContent, hasNotes.has(row.id))),
+    items: prepare(rows, req, query.images, withContent).map((row) => serializeItem(row, progress, withContent, hasNotes.has(row.id))),
   });
 });
 
@@ -418,7 +417,7 @@ resourcesRouter.get("/items", (req, res) => {
   const progress = readingPositions(req.user!.id, page.map((row) => row.id));
   const hasNotes = itemsWithNotes(req.user!.id, page.map((row) => row.id));
   res.json({
-    items: prepare(page, req, query.images).map((row) => serializeItem(row, progress, withContent, hasNotes.has(row.id))),
+    items: prepare(page, req, query.images, withContent).map((row) => serializeItem(row, progress, withContent, hasNotes.has(row.id))),
     newestCursor: page[0] ? encodeCursor(page[0]) : null,
     nextCursor: hasMore && page.length ? encodeCursor(page[page.length - 1]) : null,
   });
@@ -429,10 +428,11 @@ resourcesRouter.get("/items/bundle", (req, res) => {
   const parsed = z.object({ ids: z.string().regex(/^\d+(,\d+){0,49}$/), images: z.enum(["original", "proxy"]).default("proxy") }).safeParse(req.query);
   if (!parsed.success) return invalid(res, "ids: up to 50 comma separated article ids");
   const ids = [...new Set(parsed.data.ids.split(",").map(Number))];
-  const rows = ids.map((id) => findItemForUser(req.user!.id, id)).filter((row): row is NonNullable<typeof row> => Boolean(row));
+  const byId = new Map(findItemsForUser(req.user!.id, ids).map((row) => [row.id, row]));
+  const rows = ids.map((id) => byId.get(id)).filter((row): row is NonNullable<typeof row> => Boolean(row));
   const progress = readingPositions(req.user!.id, rows.map((row) => row.id));
   const hasNotes = itemsWithNotes(req.user!.id, rows.map((row) => row.id));
-  res.json({ items: prepare(rows, req, parsed.data.images).map((row) => serializeItem(row, progress, true, hasNotes.has(row.id))) });
+  res.json({ items: prepare(rows, req, parsed.data.images, true).map((row) => serializeItem(row, progress, true, hasNotes.has(row.id))) });
 });
 
 // Explicit extraction side effect; read-only devices continue to consume the shared cache.
@@ -559,12 +559,13 @@ resourcesRouter.get("/notes/export", (req, res) => {
 // ---- Curated Edition ("Deine Zeitung") ------------------------------------
 
 function editionResponse(req: Request, edition: ServerEdition) {
+  const byId = new Map(findItemsForUser(req.user!.id, edition.itemIds).map((row) => [row.id, row]));
   const rows = edition.itemIds
-    .map((id) => findItemForUser(req.user!.id, id))
+    .map((id) => byId.get(id))
     .filter((row): row is NonNullable<typeof row> => Boolean(row));
   const progress = readingPositions(req.user!.id, rows.map((r) => r.id));
   const hasNotes = itemsWithNotes(req.user!.id, rows.map((r) => r.id));
-  const prepared = prepare(rows, req, "original");
+  const prepared = prepare(rows, req, req.query.images === "proxy" ? "proxy" : "original", false);
   return {
     ...edition,
     items: prepared.map((row) => serializeItem(row, progress, false, hasNotes.has(row.id))),
@@ -608,12 +609,17 @@ resourcesRouter.get("/edition/candidates", requireCapability("editions"), (req, 
   res.json({ preferences: getNativePreferences(req.user!.id), current: getEditionState(req.user!.id), candidates: editionCandidates(req.user!.id, new Date(), parsed.data.limit) });
 });
 
+// Older clients may still ensure an edition before reading. Keep that request read-only.
 resourcesRouter.post("/edition/generate", requireCapability("editions"), (req, res) => {
-  const parsed = generateEditionSchema.safeParse(req.body);
+  const parsed = ensureEditionSchema.safeParse(req.body);
   if (!parsed.success) return invalid(res, parsed.error.flatten());
   nativeAction(res, () => {
-    const edition = generateEdition(req.user!.id, parsed.data);
-    if (!edition) return void res.status(404).json({ error: "no_edition", current: getEditionState(req.user!.id) });
+    const current = getEditionState(req.user!.id);
+    if (parsed.data.expectedRevision !== undefined && parsed.data.expectedRevision !== current.revision) {
+      throw new NativeError("revision_conflict", 409, current);
+    }
+    const edition = getEdition(req.user!.id);
+    if (!edition) return void res.status(404).json({ error: "no_edition", current });
     res.json(editionResponse(req, edition));
   });
 });
@@ -675,9 +681,14 @@ resourcesRouter.get("/items/:id/image", imageLimiter, async (req, res) => {
     const image = await fetchItemImage(req.user!.id, Number(req.params.id), src);
     if (image === "forbidden") return void res.status(404).json({ error: "not_found" });
     if (image === "unsupported") return void res.status(415).json({ error: "unsupported_image" });
-    res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
-    res.type(image.mime).send(image.buffer);
-  } catch {
+    sendArticleImage(req, res, image);
+  } catch (error) {
+    if (error instanceof ImageCacheBusyError) {
+      res.setHeader("Retry-After", "1");
+      res.status(503).json({ error: "image_busy" });
+      return;
+    }
+    console.error(`[image_proxy] Failed to fetch image for item ${req.params.id} (${src}):`, error instanceof Error ? error.message : error);
     res.status(502).json({ error: "image_unavailable" });
   }
 });

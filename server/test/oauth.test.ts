@@ -131,6 +131,11 @@ test("a connector signs in with OAuth, PKCE and a consent page, then reaches /mc
     assert.equal(callback.searchParams.get("iss"), "http://localhost:3000");
     const code = callback.searchParams.get("code")!;
 
+    // A client id in HTTP Basic credentials that is not valid percent-encoding is an unknown client, not a server error.
+    const malformed = await post("/oauth/token", { grant_type: "authorization_code", code: "x" }, { authorization: `Basic ${Buffer.from("%E0%A4%A:").toString("base64")}` });
+    assert.equal(malformed.status, 401);
+    assert.equal(((await malformed.json()) as { error: string }).error, "invalid_client");
+
     // A wrong verifier fails and spends the code.
     const wrong = await tokenRequest({ grant_type: "authorization_code", client_id: client.client_id, code, redirect_uri: redirectUri, code_verifier: randomBytes(48).toString("base64url") });
     assert.equal(wrong.body.error, "invalid_grant");

@@ -7,12 +7,14 @@ globalThis.localStorage = {
   setItem: (key, value) => void storage.set(key, String(value)),
   removeItem: (key) => void storage.delete(key),
 };
+const { setOfflineAccount } = await import("../src/utils/offlineAccount.ts");
 const queue = await import("../src/utils/offlineQueue.ts");
 
 const item = (id, read = false, bookmarked = false) => ({ id, read, bookmarked });
 
 test("keeps only the last state per article and action", () => {
   storage.clear();
+  setOfflineAccount(1);
   queue.enqueue("read", 1, true);
   queue.enqueue("read", 1, false);
   queue.enqueue("bookmark", 1, true);
@@ -22,6 +24,7 @@ test("keeps only the last state per article and action", () => {
 
 test("shows pending changes on lists loaded earlier", () => {
   storage.clear();
+  setOfflineAccount(1);
   queue.enqueue("read", 2, true);
   queue.enqueue("bookmark", 3, true);
   const result = queue.applyPending([item(1), item(2), item(3)]);
@@ -30,6 +33,7 @@ test("shows pending changes on lists loaded earlier", () => {
 
 test("a change sent successfully leaves the queue; an unreachable server stops the replay", async () => {
   storage.clear();
+  setOfflineAccount(1);
   queue.enqueue("read", 1, true);
   queue.enqueue("read", 2, true);
   queue.enqueue("bookmark", 3, true);
@@ -45,6 +49,7 @@ test("a change sent successfully leaves the queue; an unreachable server stops t
 
 test("changes survive a busy server or an expired session", async () => {
   storage.clear();
+  setOfflineAccount(1);
   queue.enqueue("read", 1, true);
   const handled = await queue.flushQueue(async () => { throw Object.assign(new Error("busy"), { status: 429 }); }, (error) => error.status === 429);
   assert.equal(handled, 0);
@@ -53,6 +58,7 @@ test("changes survive a busy server or an expired session", async () => {
 
 test("a change the server rejects is dropped instead of blocking the queue", async () => {
   storage.clear();
+  setOfflineAccount(1);
   queue.enqueue("bookmark", 9, true);
   queue.enqueue("read", 1, true);
   const handled = await queue.flushQueue(async (_action, id) => {

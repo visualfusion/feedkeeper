@@ -15,6 +15,7 @@ test("content preparation preserves text, tracks failures and synchronizes revis
   const { currentSeq, listChanges } = await import("../src/sync/changeLog.js");
   const { cachedEditionSources } = await import("../src/native/editionText.js");
   const { getItemForMcp } = await import("../src/mcp/items.js");
+  const { readerHtml } = await import("../src/feeds/articleContent.js");
   const { setCapabilitiesProvider, getCapabilitiesProvider } = await import("../src/auth/capabilities.js");
   runMigrations();
   let requests = 0;
@@ -80,7 +81,7 @@ test("content preparation preserves text, tracks failures and synchronizes revis
     assert.equal(getItemForMcp(user, normal, 40000, 0, undefined, "text")!.content_html, undefined);
     const page = getItemForMcp(user, normal, 40000)!;
     const next = getItemForMcp(user, normal, 40000, page.nextOffset!, page.content.revision)!;
-    assert.equal(page.content_html! + next.content_html!, item.full_content_html);
+    assert.equal(page.content_html! + next.content_html!, readerHtml(item.full_content_html, item.title), "pages reassemble to the reader html, not the stored original");
     repo.updateItemFullContent(normal, "<p>" + full + " revised</p>");
     assert.throws(() => getItemForMcp(user, normal, 40000, 40000, page.content.revision), /content_revision_conflict/);
     assert.throws(() => enqueueArticleContents(other, [normal]), /item_not_found/);

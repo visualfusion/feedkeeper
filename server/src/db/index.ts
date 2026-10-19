@@ -10,7 +10,11 @@ const MIGRATIONS_DIR = join(__dirname, "migrations");
 mkdirSync(dirname(config.databasePath), { recursive: true });
 export const db: DatabaseType = new Database(config.databasePath);
 db.pragma("journal_mode = WAL");
+db.pragma("synchronous = NORMAL");
 db.pragma("foreign_keys = ON");
+db.pragma("busy_timeout = 5000");
+db.pragma("temp_store = MEMORY");
+db.pragma("cache_size = -65536");
 
 function ensureMigrationsTable(): void {
   db.exec(

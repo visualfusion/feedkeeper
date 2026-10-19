@@ -67,6 +67,7 @@ export function isTransient(error: unknown): boolean {
 export interface PublicConfig {
   showGithubLink: boolean;
   githubUrl: string;
+  loginSubtitle?: string;
 }
 
 export interface DiscoveredFeed {
@@ -119,6 +120,8 @@ export interface User {
   role: "admin" | "user";
   created_at: string;
   avatar_updated_at: string | null;
+  /** When the introduction to the app was closed; null while it is still to be shown. */
+  intro_dismissed_at: string | null;
   capabilities?: AccountCapabilities;
 }
 
@@ -175,6 +178,7 @@ export interface Item {
   content_html?: string | null;
   full_content_html?: string | null;
   image_url?: string | null;
+  author?: string | null;
   published_at: string | null;
   read: boolean;
   bookmarked: boolean;
@@ -245,6 +249,7 @@ export const api = {
   uploadAvatar: (image: Blob) =>
     request<User>("/auth/me/avatar", { method: "PUT", headers: { "Content-Type": image.type }, body: image }),
   deleteAvatar: () => request<User>("/auth/me/avatar", { method: "DELETE" }),
+  dismissIntro: () => request<User>("/auth/me/intro", { method: "POST" }),
   listUsers: () => request<User[]>("/auth/users"),
   createUser: (data: { email: string; password: string; displayName: string; role: "admin" | "user" }) =>
     request<User>("/auth/users", { method: "POST", body: JSON.stringify(data) }),
@@ -274,9 +279,9 @@ export const api = {
       body: opmlContent,
     }),
   refreshFeed: (feedId: number) =>
-    request<{ feed: Feed; newItems: number; error: string | null }>(`/feeds/${feedId}/refresh`, { method: "POST" }),
+    request<{ feed: Feed; newItems: number; error: string | null; deferred?: boolean; retryAt?: number }>(`/feeds/${feedId}/refresh`, { method: "POST" }),
   refreshAllFeeds: () =>
-    request<{ refreshed: number; newItems: number; errors: number }>("/feeds/refresh-all", { method: "POST" }),
+    request<{ refreshed: number; newItems: number; errors: number; deferred?: number }>("/feeds/refresh-all", { method: "POST" }),
 
   listFolders: () => request<{ folders: Folder[] }>("/folders"),
   createFolder: (name: string) =>

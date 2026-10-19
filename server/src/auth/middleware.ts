@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { resolveToken, type TokenKind, type TokenScope } from "./tokens.js";
 import { findUserById, toPublicUser, type PublicUser } from "./users.js";
+import { sessionIsSecure } from "./security.js";
 import { RESOURCE_METADATA_URL } from "../oauth/constants.js";
 
 declare global {
@@ -19,7 +20,7 @@ declare global {
 // Web UI auth: cookie session set at login.
 export function requireSession(req: Request, res: Response, next: NextFunction): void {
   const userId = req.session?.userId as number | undefined;
-  if (!userId) {
+  if (!userId || !sessionIsSecure(req, userId)) {
     res.status(401).json({ error: "not_authenticated" });
     return;
   }

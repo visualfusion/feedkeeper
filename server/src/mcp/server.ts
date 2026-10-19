@@ -36,7 +36,7 @@ import { discoverFeeds } from "../feeds/discovery.js";
 import { findUserById } from "../auth/users.js";
 import { getDatabaseStats, runCleanup } from "../feeds/cleanup.js";
 import { APP_VERSION } from "../version.js";
-import { dismissEdition, editionCandidates, generateEdition, generateEditionSchema, getEditionState, publishCuratedEdition, publishEditionFields } from "../native/editions.js";
+import { dismissEdition, editionCandidates, ensureEditionSchema, getEdition, getEditionState, publishCuratedEdition, publishEditionFields } from "../native/editions.js";
 import { getNativePreferences, patchNativePreferences, preferencePatchSchema } from "../native/preferences.js";
 import { NativeError } from "../native/requests.js";
 import { capabilityDenial, hasUserCapability } from "../auth/capabilities.js";
@@ -323,7 +323,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     async ({ feedId, folderId, search, bookmarkedOnly, since, until, limit, includeContent, snippetChars }) =>
       textResult(listItemsForUser(userId, {
         feedId, folderId, search, bookmarkedOnly, limit, unreadOnly: true, publishedSince: since, publishedUntil: until,
-      }).map(({ content_html, full_content_html, ...item }) => ({
+      }).map(({ content_html, full_content_html, content_lead: _lead, lead_version: _leadVersion, ...item }) => ({
         ...item,
         ...(includeContent === false ? {} : { content_html, full_content_html }),
         content_snippet: snippetChars ? truncate(item.content_snippet, snippetChars) : item.content_snippet,
@@ -553,7 +553,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     "refresh_feed",
     {
       title: "Refresh a feed",
-      description: "Forces an immediate poll of a subscribed feed to fetch new items and inspect feed health.",
+      description: "Requests an update of a subscribed feed and returns its health. Respects source pauses; deferred=true means work is still pending.",
       inputSchema: {
         feedId: z.number().int().positive().describe("The ID of the feed to refresh"),
       },
@@ -570,6 +570,8 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
           success: !result.error,
           newItems: result.newItems,
           error: result.error,
+          deferred: result.deferred ?? false,
+          retryAt: result.retryAt,
           feed: updated,
         });
       } catch (error) {
@@ -617,18 +619,22 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
 
   if (scope === "write") server.registerTool("publish_edition", {
     title: "Publish curated edition",
-    description: "Publishes an ordered list of 1 to 24 accessible article IDs. Curated editions override automatic ones until expiry (default 24 hours, maximum seven days). App-only hidden sections and muted keywords are respected. Supply the revision from get_edition as expectedRevision and a UUID requestId for conflict detection and safe retries. Optional title and summary are editorial text; original articles stay unchanged.",
+    description: "Publishes an ordered list of 1 to 24 accessible article IDs. The latest curated edition stays readable until another is published; expiry (default 24 hours, maximum seven days) controls when a new publication is due. App-only hidden sections and muted keywords are respected. Supply the revision from get_edition as expectedRevision and a UUID requestId for conflict detection and safe retries. Optional title and summary are editorial text; original articles stay unchanged. Optional layout (version 1) says how the issue is set: a character (dominant, calm or briefing) and blocks (lead, dossier, feature, standard, briefs, photo, quote) that reference the issue's article IDs at most once each; it never changes the articles.",
     inputSchema: publishEditionFields,
   }, async (input) => capabilityAction("editions", () => publishCuratedEdition(userId, input)));
 
   if (scope === "write") server.registerTool("generate_edition", {
-    title: "Generate an automatic edition",
-    description: "Ensures an automatic edition exists without disturbing a valid current issue. force=true requests a new automatic selection and requires expectedRevision. A valid curated edition must be explicitly dismissed first. Use a stable UUID requestId for retries.",
-    inputSchema: generateEditionSchema.shape,
+    title: "Get the latest curated edition",
+    description: "Compatibility alias for reading the latest curated publication. It never selects articles or publishes an edition. force is accepted for older clients but does not create a replacement; use publish_edition to publish a new curated selection.",
+    inputSchema: ensureEditionSchema.shape,
   }, async (input) => capabilityAction("editions", () => {
-    const parsed = generateEditionSchema.safeParse(input);
+    const parsed = ensureEditionSchema.safeParse(input);
     if (!parsed.success) throw new NativeError("invalid_input");
-    return { edition: generateEdition(userId, parsed.data), current: getEditionState(userId) };
+    const current = getEditionState(userId);
+    if (parsed.data.expectedRevision !== undefined && parsed.data.expectedRevision !== current.revision) {
+      throw new NativeError("revision_conflict", 409, current);
+    }
+    return { edition: getEdition(userId), current };
   }));
 
   if (scope === "write") server.registerTool("dismiss_edition", {

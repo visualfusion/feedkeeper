@@ -10,6 +10,8 @@ export interface User {
   role: "admin" | "user";
   created_at: string;
   avatar_updated_at: string | null;
+  /** When the person closed the introduction to the app; null while it is still to be shown. */
+  intro_dismissed_at: string | null;
 }
 
 // Joins only the avatar timestamp; the image itself is loaded on demand.
@@ -21,6 +23,11 @@ export type PublicUser = Omit<User, "password_hash">;
 export function toPublicUser(user: User): PublicUser {
   const { password_hash, ...rest } = user;
   return rest;
+}
+
+/** Marks the introduction as seen; it stays marked once it is (the first time counts). */
+export function dismissIntro(userId: number): void {
+  db.prepare("UPDATE users SET intro_dismissed_at = COALESCE(intro_dismissed_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) WHERE id = ?").run(userId);
 }
 
 export function findUserByEmail(email: string): User | undefined {

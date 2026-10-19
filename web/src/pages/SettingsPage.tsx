@@ -1,5 +1,5 @@
-import { Fragment, type ReactNode } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Fragment, useSyncExternalStore, type ReactNode } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext.tsx";
 import { AccountSettings } from "../components/settings/AccountSettings.tsx";
@@ -26,18 +26,34 @@ interface Section {
   admin?: boolean;
   /** Set for sections added by a hosting product: the heading they are listed under. */
   group?: string;
-  /** Label for the chip row on narrow screens. */
-  chip?: string;
   render: () => ReactNode;
 }
 
 // Shown when a section from the host brings no icon of its own.
 const DEFAULT_EXTENSION_ICON = ["M4 6h16M4 12h16M4 18h10"];
 
+// The side navigation needs room next to the content; below this width the sections are a list of pages.
+const WIDE_QUERY = "(min-width: 768px)";
+
+function useIsWide(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const query = window.matchMedia(WIDE_QUERY);
+      query.addEventListener("change", notify);
+      return () => query.removeEventListener("change", notify);
+    },
+    () => window.matchMedia(WIDE_QUERY).matches,
+    () => true,
+  );
+}
+
 export function SettingsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isWide = useIsWide();
   const extensions = useExtensions();
 
   const builtIn: Section[] = [
@@ -54,59 +70,130 @@ export function SettingsPage() {
   const extension: Section[] = hostSections.map((section) => ({
     id: section.id,
     label: section.label,
-    chip: section.shortLabel,
     description: section.description,
     group: section.group,
     icon: icon(<>{(section.icon ?? DEFAULT_EXTENSION_ICON).map((path) => <path key={path} d={path} />)}</>),
     render: () => <ExtensionMount name={`settings-${section.id}`} mount={section.mount} />,
   }));
   const available = [...builtIn.filter((section) => !hidden.has(section.id) && (!section.admin || isAdmin)), ...extension];
-  const active = available.find((section) => section.id === searchParams.get("tab")) ?? available[0];
+  const requested = available.find((section) => section.id === searchParams.get("tab"));
+  const active = requested ?? available[0];
 
   const select = (id: string) => {
     setSearchParams(id === available[0].id ? {} : { tab: id }, { replace: true });
     window.scrollTo({ top: 0 });
   };
 
-  const navButton = (section: Section, variant: "side" | "chip") => {
+  // On narrow screens a section is its own page: opening it adds a history entry, so the back button returns to the list.
+  const open = (id: string) => {
+    navigate({ search: `?tab=${encodeURIComponent(id)}` }, { state: { fromList: true } });
+    window.scrollTo({ top: 0 });
+  };
+  const backToList = () => {
+    if ((location.state as { fromList?: boolean } | null)?.fromList) navigate(-1);
+    else navigate({ search: "" }, { replace: true });
+    window.scrollTo({ top: 0 });
+  };
+
+  const navButton = (section: Section) => {
     const isActive = section.id === active.id;
-    const base = "inline-flex items-center gap-2.5 font-medium transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--c-blue3)]";
-    const style = variant === "side"
-      ? `w-full rounded-lg px-3 py-2 text-left text-sm ${isActive ? "bg-[var(--c-mobile-nav-active)] text-[var(--c-text)]" : "text-[var(--c-text-muted)] hover:bg-[var(--c-surface-hover)] hover:text-[var(--c-text)]"}`
-      : `shrink-0 rounded-full border px-3 py-1.5 text-sm ${isActive ? "border-[var(--c-mobile-nav-active-border)] bg-[var(--c-mobile-nav-active)] text-[var(--c-text)]" : "border-[var(--c-border)] text-[var(--c-text-muted)]"}`;
     return (
-      <button key={section.id} type="button" onClick={() => select(section.id)} aria-current={isActive ? "page" : undefined} className={`${base} ${style}`}>
+      <button
+        key={section.id}
+        type="button"
+        onClick={() => select(section.id)}
+        aria-current={isActive ? "page" : undefined}
+        className={`inline-flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--c-blue3)] ${isActive ? "bg-[var(--c-mobile-nav-active)] text-[var(--c-text)]" : "text-[var(--c-text-muted)] hover:bg-[var(--c-surface-hover)] hover:text-[var(--c-text)]"}`}
+      >
         {section.icon}
-        {variant === "chip" ? section.chip ?? section.label : section.label}
+        {section.label}
       </button>
     );
   };
+
+  const listRow = (section: Section) => (
+    <li key={section.id}>
+      <button
+        type="button"
+        onClick={() => open(section.id)}
+        className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left cursor-pointer transition-colors hover:bg-[var(--c-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--c-blue3)]"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-text)]">
+          {section.icon}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-[var(--c-text)]">{section.label}</span>
+          <span className="mt-0.5 block text-xs leading-snug text-[var(--c-text-muted)]">{section.description}</span>
+        </span>
+        <svg className="h-4 w-4 shrink-0 text-[var(--c-text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+      </button>
+    </li>
+  );
 
   const adminSections = available.filter((section) => section.admin && !section.group);
   const extensionGroups = groupSettingsSections(extension);
   const groupHeading = "mt-5 mb-1 px-3 text-xs font-semibold tracking-[0.08em] uppercase text-[var(--c-text-muted)]";
 
+  const listGroups: Array<{ key: string; heading?: string; sections: Section[] }> = [
+    { key: "main", sections: available.filter((section) => !section.admin && !section.group) },
+    ...(adminSections.length > 0 ? [{ key: "admin", heading: t("settings.adminGroup"), sections: adminSections }] : []),
+    ...extensionGroups.map(({ group, sections: members }) => ({ key: group, heading: group, sections: members })),
+  ];
+
+  if (!isWide) {
+    if (!requested) {
+      return (
+        <div className="flex flex-col gap-6">
+          <h1 className="text-2xl font-semibold">{t("settings.title")}</h1>
+          <nav className="flex flex-col gap-6" aria-label={t("settings.title")}>
+            {listGroups.map((group) => (
+              <section key={group.key} aria-label={group.heading ?? t("settings.title")}>
+                {group.heading && (
+                  <h2 className="mb-2 px-1 text-xs font-semibold tracking-[0.08em] uppercase text-[var(--c-text-muted)]">{group.heading}</h2>
+                )}
+                <ul className="card divide-y divide-[var(--c-border)] overflow-hidden p-0">{group.sections.map(listRow)}</ul>
+              </section>
+            ))}
+          </nav>
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col gap-4">
+        <button type="button" onClick={backToList} className="-ml-1 inline-flex w-fit items-center gap-1 rounded-lg px-1 py-1 text-sm font-medium text-[var(--c-text-muted)] cursor-pointer hover:text-[var(--c-text)] focus-visible:outline-2 focus-visible:outline-[var(--c-blue3)]">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m15 6-6 6 6 6" />
+          </svg>
+          {t("settings.title")}
+        </button>
+        <div key={requested.id} className="min-w-0 animate-page-fade">
+          <SectionHeader title={requested.label} description={requested.description} />
+          {requested.render()}
+          <FooterLinks placement="page" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">{t("settings.title")}</h1>
 
-      <div className="md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-10">
-        <nav className="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1 md:hidden" aria-label={t("settings.title")}>
-          {available.map((section) => navButton(section, "chip"))}
-        </nav>
-
-        <nav className="sticky top-24 hidden flex-col gap-0.5 self-start md:flex" aria-label={t("settings.title")}>
-          {available.filter((section) => !section.admin && !section.group).map((section) => navButton(section, "side"))}
+      <div className="grid grid-cols-[13rem_minmax(0,1fr)] gap-10">
+        <nav className="sticky top-24 flex flex-col gap-0.5 self-start" aria-label={t("settings.title")}>
+          {available.filter((section) => !section.admin && !section.group).map(navButton)}
           {adminSections.length > 0 && (
             <>
               <p className={groupHeading}>{t("settings.adminGroup")}</p>
-              {adminSections.map((section) => navButton(section, "side"))}
+              {adminSections.map(navButton)}
             </>
           )}
           {extensionGroups.map(({ group, sections: members }) => (
             <Fragment key={group}>
               <p className={groupHeading}>{group}</p>
-              {members.map((section) => navButton(section, "side"))}
+              {members.map(navButton)}
             </Fragment>
           ))}
         </nav>

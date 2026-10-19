@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { rememberLanguage } from "../i18n/remember.ts";
 import { CustomSelect } from "./CustomSelect.tsx";
 
 const LANGUAGES = [
@@ -13,7 +14,7 @@ export function LanguageSwitcher() {
   return (
     <CustomSelect
       value={i18n.resolvedLanguage ?? "de"}
-      onChange={(lang) => i18n.changeLanguage(lang)}
+      onChange={(lang) => { rememberLanguage(lang); void i18n.changeLanguage(lang); }}
       options={LANGUAGES}
       className="w-44"
       ariaLabel={t("settings.language")}

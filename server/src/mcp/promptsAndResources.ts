@@ -80,7 +80,7 @@ export function registerPromptsAndResources(server: McpServer, userId: number, s
     "feedkeeper://saved",
     { title: "Saved articles", description: "The newest 100 saved articles, without their content.", mimeType: "application/json" },
     (uri) => {
-      const items = listItemsForUser(userId, { bookmarkedOnly: true, limit: 100 }).map(({ content_html: _html, full_content_html: _full, ...item }) => item);
+      const items = listItemsForUser(userId, { bookmarkedOnly: true, limit: 100 }).map(({ content_html: _html, full_content_html: _full, content_lead: _lead, lead_version: _leadVersion, ...item }) => item);
       return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(items, null, 2) }] };
     },
   );

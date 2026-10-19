@@ -1,6 +1,6 @@
 {
   "name": "feedkeeper",
-  "version": "0.16.1",
+  "version": "0.28.4",
   "private": true,
   "description": "Self-hosted, multi-user RSS/Atom feed manager with a remote-capable MCP server.",
   "license": "MIT",
@@ -29,7 +29,9 @@
     "db:backup": "npm run db:backup --workspace server --",
     "db:restore": "npm run db:restore --workspace server --",
     "lint": "npm run lint --workspace server && npm run lint --workspace web && eslint .",
-    "test": "npm run test --workspace server && npm run test --workspace web"
+    "test": "npm run test --workspace server && npm run test --workspace web",
+    "security:recover": "npm run security:recover --workspace server --",
+    "pack:npm": "node scripts/pack-npm.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

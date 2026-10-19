@@ -12,9 +12,15 @@ import { NewspaperGrid } from "../components/NewspaperGrid.tsx";
 import { PullToRefresh } from "../components/PullToRefresh.tsx";
 import { getItemsScrollY, setItemsScrollY, resetItemsScrollY } from "../utils/scrollState.ts";
 import { toast } from "../utils/toast.ts";
+import { reportAllRefresh } from "../utils/refreshFeedback.ts";
 import { announceItemsChanged } from "../utils/badge.ts";
 import { syncOfflineCopy } from "../utils/offlineSync.ts";
 import { RefreshIcon } from "../components/feeds/icons.tsx";
+import { HostNotice } from "../components/onboarding/HostNotice.tsx";
+import { Intro } from "../components/onboarding/Intro.tsx";
+import { PlanNotice } from "../components/PlanNotice.tsx";
+import { usePlanLimits } from "../utils/planLimits.ts";
+import { Welcome } from "../components/onboarding/Welcome.tsx";
 
 const PAGE_SIZE = 50;
 
@@ -45,6 +51,8 @@ export function ItemsPage() {
   const { t, i18n } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [feeds, setFeeds] = useState<Feed[]>([]);
+  const [feedsLoaded, setFeedsLoaded] = useState(false);
+  const { syncAllowed } = usePlanLimits();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -305,12 +313,41 @@ export function ItemsPage() {
       .then(([f, fol]) => {
         setFeeds(f);
         setFolders(fol.folders);
+        setFeedsLoaded(true);
       })
       .catch((err) => console.error("Failed to load initial feeds/folders:", err));
   }, []);
 
   const currentFeedId = filterScope.startsWith("feed:") ? Number(filterScope.slice(5)) : undefined;
   const currentFolderId = filterScope.startsWith("folder:") ? Number(filterScope.slice(7)) : undefined;
+
+  /** No search, saved view or feed/folder scope: an empty list then says something about the library as a whole. */
+  const plainView = !search && !bookmarkedOnly && currentFeedId === undefined && currentFolderId === undefined;
+  /** Feeds exist but none has been fetched yet (just subscribed, the first fetch is still running). */
+  const waitingForFirstArticles = plainView && feeds.length > 0 && feeds.every((feed) => !feed.last_polled_at);
+
+  async function reloadFeeds(): Promise<Feed[] | null> {
+    try {
+      const [f, fol] = await Promise.all([api.listFeeds(), api.listFolders().catch(() => ({ folders: [] }))]);
+      if (f.length === 0 && (searchParams.has("folder") || searchParams.has("feed"))) {
+        setSearchParams({}, { replace: true });
+        setFilterScope("");
+      }
+      setFeeds(f);
+      setFolders(fol.folders);
+      setFeedsLoaded(true);
+      return f;
+    } catch (err) {
+      console.error("Failed to reload feeds:", err);
+      return null;
+    }
+  }
+
+  async function reloadAfterSubscribing() {
+    await reloadFeeds();
+    await load();
+    announceItemsChanged();
+  }
 
   async function load() {
     const version = ++loadVersion.current;
@@ -389,6 +426,21 @@ export function ItemsPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterScope, unreadOnly, bookmarkedOnly, search]);
+
+  // After subscribing the first fetch can still be running: look again until a feed has been fetched, then load its articles.
+  useEffect(() => {
+    if (!waitingForFirstArticles) return;
+    let ticks = 0;
+    const timer = setInterval(() => {
+      ticks++;
+      void reloadFeeds().then((list) => {
+        if (list?.some((feed) => feed.last_polled_at)) void load();
+      });
+      if (ticks >= 45) clearInterval(timer);
+    }, 4000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waitingForFirstArticles]);
 
   const linkMarkedRead = useRef<number | null>(null);
 
@@ -501,8 +553,7 @@ export function ItemsPage() {
     try {
       const res = await api.refreshAllFeeds();
       await load();
-      toast.success(t("feeds.refreshedAllToast", { count: res.refreshed, newItems: res.newItems }));
-      if (res.errors > 0) toast.error(t("feeds.failingCount", { count: res.errors }));
+      reportAllRefresh(res, t);
     } catch {
       toast.error(t("items.refreshFailed"));
     } finally {
@@ -586,15 +637,15 @@ export function ItemsPage() {
               aria-pressed={viewMode === "newspaper"}
               className={`relative z-10 flex h-full min-w-0 items-center justify-center gap-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-[var(--c-blue3)] ${viewMode === "newspaper" ? "text-[var(--c-text)]" : "text-[var(--c-text-muted)] hover:text-[var(--c-text)]"}`}
             >
-              <svg className={`h-4 w-4 transition-transform duration-200 motion-reduce:transition-none ${viewMode === "newspaper" ? "scale-105" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="19" height="17" rx="2" /><path d="M6 7h7v6H6zM16 7h2M16 10h2M6 16h12M6 18h8" /></svg>
+              <svg className={`h-4 w-4 transition-transform duration-200 motion-reduce:transition-none ${viewMode === "newspaper" ? "scale-105" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" /><path d="M18 14h-8" /><path d="M15 18h-5" /><path d="M10 6h8v4h-8V6Z" /></svg>
               <span className="hidden sm:inline">{t("items.newspaperView")}</span>
             </button>
           </div>
           <button
             type="button"
             onClick={refreshArticles}
-            disabled={refreshingAll}
-            title={refreshingAll ? t("items.refreshing") : t("items.refresh")}
+            disabled={refreshingAll || !syncAllowed}
+            title={!syncAllowed ? t("plan.unavailable") : refreshingAll ? t("items.refreshing") : t("items.refresh")}
             aria-label={refreshingAll ? t("items.refreshing") : t("items.refresh")}
             className="btn-secondary hidden h-11 w-11 shrink-0 items-center justify-center p-0! sm:flex"
           >
@@ -739,12 +790,33 @@ export function ItemsPage() {
         </div>
       </div>
 
+      {feedsLoaded && feeds.length > 0 && !syncAllowed && <PlanNotice />}
+      {feedsLoaded && feeds.length > 0 && !loadError && <Intro />}
+      {feedsLoaded && feeds.length > 0 && !loadError && <HostNotice />}
+
       {loadError ? (
-        <p role="alert" style={{ color: "var(--c-text-muted)" }}>{t("common.error")}</p>
+        <div role="alert" className="flex flex-col items-start gap-3">
+          <p style={{ color: "var(--c-text-muted)" }}>{t("items.loadFailed")}</p>
+          <button type="button" onClick={() => void load()} className="btn-secondary">{t("common.retry")}</button>
+        </div>
       ) : loading && items.length === 0 ? (
         <LoadingSpinner size="lg" />
+      ) : items.length === 0 && feedsLoaded && feeds.length === 0 ? (
+        <Welcome onSubscribed={reloadAfterSubscribing} />
+      ) : items.length === 0 && waitingForFirstArticles ? (
+        <div role="status" className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <LoadingSpinner size="lg" />
+          <h2 className="text-lg font-semibold">{t("welcome.fetchingTitle")}</h2>
+          <p className="max-w-sm text-sm text-[var(--c-text-muted)]">{t("welcome.fetchingHint")}</p>
+        </div>
+      ) : items.length === 0 && plainView && effectiveUnreadOnly && feeds.length > 0 ? (
+        <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <h2 className="text-lg font-semibold">{t("items.allReadTitle")}</h2>
+          <p className="max-w-sm text-sm text-[var(--c-text-muted)]">{t("items.allReadHint")}</p>
+          <button type="button" onClick={() => setUnreadOnly(false)} className="btn-secondary mt-1">{t("items.all")}</button>
+        </div>
       ) : items.length === 0 ? (
-        <p style={{ color: "var(--c-text-muted)" }}>{bookmarkedOnly && !search ? t("items.noSaved") : t("items.noItems")}</p>
+        <p style={{ color: "var(--c-text-muted)" }}>{bookmarkedOnly && !search ? t("items.noSaved") : search ? t("items.noResults") : t("items.noItems")}</p>
       ) : activeView === "newspaper" ? (
         <NewspaperGrid items={items} onOpen={openArticle} onBookmark={toggleBookmark} onRead={toggleRead} />
       ) : (
@@ -995,7 +1067,7 @@ export function ItemsPage() {
   );
 
   return (
-    <PullToRefresh disabled={loading || Boolean(selectedArticle) || mobileSearchOpen} onRefresh={refreshArticles}>
+    <PullToRefresh disabled={loading || !syncAllowed || Boolean(selectedArticle) || mobileSearchOpen} onRefresh={refreshArticles}>
       {content}
     </PullToRefresh>
   );

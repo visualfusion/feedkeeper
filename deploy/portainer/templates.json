@@ -1,0 +1,37 @@
+{
+  "version": "3",
+  "templates": [
+    {
+      "type": 3,
+      "title": "FeedKeeper",
+      "description": "Lightweight RSS reader and remote MCP server: one Node process and one SQLite file, with a newspaper-style reader, full-text search and sync for native apps.",
+      "note": "Open the web interface on port 3000 after the stack is up and create the first account there. Set PUBLIC_URL to the address you open FeedKeeper at.",
+      "categories": ["productivity", "webserver"],
+      "platform": "linux",
+      "logo": "https://raw.githubusercontent.com/visualfusion/feedkeeper/main/web/public/app-icon-192.png",
+      "repository": {
+        "url": "https://github.com/visualfusion/feedkeeper",
+        "stackfile": "compose.yaml"
+      },
+      "env": [
+        {
+          "name": "SESSION_SECRET",
+          "label": "Session secret",
+          "description": "A long random secret (32 or more characters) that signs session cookies. Generate one with: openssl rand -hex 32"
+        },
+        {
+          "name": "PUBLIC_URL",
+          "label": "Public URL",
+          "description": "The address you open FeedKeeper at, for example http://192.168.1.10:3000 or https://feeds.example.org",
+          "default": "http://localhost:3000"
+        },
+        {
+          "name": "ALLOW_SIGNUP",
+          "label": "Allow sign-up",
+          "description": "Whether new people can register themselves. Keep false on an instance reachable from the internet.",
+          "default": "false"
+        }
+      ]
+    }
+  ]
+}

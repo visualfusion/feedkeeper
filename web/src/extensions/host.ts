@@ -20,7 +20,7 @@ export interface SettingsExtensionSection {
   /** The `?tab=` value of the section. Lowercase letters, digits and dashes; must not clash with a built-in section. */
   id: string;
   label: string;
-  /** Shorter label for the chip row on narrow screens. */
+  /** No longer shown: narrow screens list the sections with `label` and `description`. Still accepted so existing hosts keep working. */
   shortLabel?: string;
   description: string;
   /** Heading in the navigation. Sections with the same group are listed together, in order of appearance. */
@@ -39,6 +39,47 @@ export interface FooterLink {
   href: Localized;
   /** Open in a new tab. */
   newTab?: boolean;
+  /** A small image shown in front of the label (an address on this site or an `http(s)` URL). */
+  icon?: string;
+  /** Where the link is shown; every place when left out. */
+  placements?: FooterPlacement[];
+}
+
+export type FooterPlacement = "login" | "menu" | "page";
+const FOOTER_PLACEMENTS: readonly FooterPlacement[] = ["login", "menu", "page"];
+
+export interface PasswordCardExtension {
+  /** Whether the host's card replaces the password card for this user, for example for accounts that signed in without a password. */
+  applies?: (user: { id: number; email: string; display_name: string | null }) => boolean | Promise<boolean>;
+  /** Fills the container in place of the password card. */
+  mount: (container: HTMLElement) => void | (() => void);
+}
+
+export interface StarterPackExtension {
+  /** Lowercase letters, digits and dashes. A pack with the id of a built-in one replaces it. */
+  id: string;
+  title: Localized;
+  description?: Localized;
+  feeds: Array<{ title: string; url: string; lang?: string }>;
+}
+
+export interface OnboardingExtension {
+  /** Fills the container at the top of the welcome card that a person without feeds sees. */
+  mount: (container: HTMLElement) => void | (() => void);
+}
+
+export interface ArticlesNoticeExtension {
+  /** Whether the notice is shown to this user right now, for example until the person has closed it. Without it the notice always shows. */
+  applies?: (user: { id: number; email: string; display_name: string | null }) => boolean | Promise<boolean>;
+  /** Fills the container of the notice above the articles. Closing it is up to the host's content (then it answers `false` from `applies` the next time). */
+  mount: (container: HTMLElement) => void | (() => void);
+}
+
+export interface MetaExtension {
+  /** The title of the page: the browser tab and what link previews show. */
+  title?: Localized;
+  /** The description that search engines and link previews show for the page. */
+  description?: Localized;
 }
 
 export interface LoginFormExtension {
@@ -128,10 +169,11 @@ export interface ResolvedFooterLink {
   label: string;
   href: string;
   newTab: boolean;
+  icon: string | null;
 }
 
 /** The footer links the host asks for, in its language-specific wording; invalid ones are left out. */
-export function resolveFooterLinks(extensions: unknown, language: string): ResolvedFooterLink[] {
+export function resolveFooterLinks(extensions: unknown, language: string, placement?: FooterPlacement): ResolvedFooterLink[] {
   const list = isObject(extensions) && Array.isArray(extensions.footerLinks) ? extensions.footerLinks : [];
   const links: ResolvedFooterLink[] = [];
   for (const entry of list.slice(0, 8)) {
@@ -139,7 +181,9 @@ export function resolveFooterLinks(extensions: unknown, language: string): Resol
     const label = pickLocalized(entry.label, language);
     const href = pickLocalized(entry.href, language);
     if (!label || !isText(label, 60) || !href || !safeHref(href)) continue;
-    links.push({ label, href, newTab: entry.newTab === true || /^https?:/i.test(href) });
+    if (placement && Array.isArray(entry.placements) && !entry.placements.some((value) => value === placement && FOOTER_PLACEMENTS.includes(value))) continue;
+    const icon = typeof entry.icon === "string" && safeHref(entry.icon) ? entry.icon : null;
+    links.push({ label, href, newTab: entry.newTab === true || /^https?:/i.test(href), icon });
   }
   return links;
 }
@@ -148,4 +192,91 @@ export function resolveFooterLinks(extensions: unknown, language: string): Resol
 export function resolveLoginForm(extensions: unknown): LoginFormExtension | null {
   const login = isObject(extensions) ? extensions.loginForm : undefined;
   return isObject(login) && typeof login.mount === "function" ? (login as unknown as LoginFormExtension) : null;
+}
+
+/** The replacement for the password card of the account page, if the host provides a usable one. */
+export function resolvePasswordCard(extensions: unknown): PasswordCardExtension | null {
+  const card = isObject(extensions) ? extensions.passwordCard : undefined;
+  if (!isObject(card) || typeof card.mount !== "function") return null;
+  return { mount: card.mount as PasswordCardExtension["mount"], ...(typeof card.applies === "function" ? { applies: card.applies as PasswordCardExtension["applies"] } : {}) };
+}
+
+/** Whether the host asks for its welcome content above the first steps of a person without feeds. */
+export function resolveOnboarding(extensions: unknown): OnboardingExtension | null {
+  const onboarding = isObject(extensions) ? extensions.onboarding : undefined;
+  return isObject(onboarding) && typeof onboarding.mount === "function" ? (onboarding as unknown as OnboardingExtension) : null;
+}
+
+export interface ResolvedStarterPack {
+  id: string;
+  title: string;
+  description: string;
+  feeds: Array<{ title: string; url: string; lang: string }>;
+}
+
+/** Only `http(s)` addresses without credentials can be subscribed to. */
+function feedAddress(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 500) return null;
+  try {
+    const url = new URL(value);
+    return (url.protocol === "https:" || url.protocol === "http:") && !url.username && !url.password ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The starter packs the host adds to the built-in ones, or, with `replace: true`, instead of them. Packs and feeds
+ * that are malformed are left out; at most 12 packs of 20 feeds.
+ */
+export function resolveStarterPacks<T extends { id: string; title: Localized; description?: Localized; feeds: Array<{ title: string; url: string; lang?: string }> }>(
+  extensions: unknown, builtIn: T[], language: string,
+): ResolvedStarterPack[] {
+  const host = isObject(extensions) && isObject(extensions.starterPacks) ? extensions.starterPacks : {};
+  const own = Array.isArray(host.packs) ? host.packs : [];
+  const byId = new Map<string, { id: string; title: Localized; description?: Localized; feeds: Array<{ title: string; url: string; lang?: string }> }>();
+  if (host.replace !== true) for (const pack of builtIn) byId.set(pack.id, pack);
+  for (const candidate of own.slice(0, 12)) {
+    if (!isObject(candidate) || typeof candidate.id !== "string" || !ID_PATTERN.test(candidate.id) || !Array.isArray(candidate.feeds)) continue;
+    byId.set(candidate.id, candidate as unknown as StarterPackExtension);
+  }
+  const packs: ResolvedStarterPack[] = [];
+  for (const pack of byId.values()) {
+    const title = pickLocalized(pack.title, language);
+    if (!title || !isText(title, 60)) continue;
+    const feeds: ResolvedStarterPack["feeds"] = [];
+    for (const feed of pack.feeds.slice(0, 20)) {
+      if (!isObject(feed) || !isText(feed.title, 80)) continue;
+      const url = feedAddress(feed.url);
+      if (url) feeds.push({ title: feed.title, url, lang: typeof feed.lang === "string" ? feed.lang.toLowerCase().split("-")[0] : "" });
+    }
+    if (feeds.length > 0) packs.push({ id: pack.id, title, description: pickLocalized(pack.description, language) ?? "", feeds });
+  }
+  return packs;
+}
+
+/** The host's notice above the list of articles, if it provides a usable one. */
+export function resolveArticlesNotice(extensions: unknown): ArticlesNoticeExtension | null {
+  const notice = isObject(extensions) ? extensions.articlesNotice : undefined;
+  if (!isObject(notice) || typeof notice.mount !== "function") return null;
+  return { mount: notice.mount as ArticlesNoticeExtension["mount"], ...(typeof notice.applies === "function" ? { applies: notice.applies as ArticlesNoticeExtension["applies"] } : {}) };
+}
+
+export interface ResolvedMeta {
+  title: string | null;
+  description: string | null;
+}
+
+/**
+ * The page title and description the host asks for, in the language the app is shown in. A value that is missing,
+ * not text or too long is left out, so the app keeps its own wording for it.
+ */
+export function resolveMeta(extensions: unknown, language: string): ResolvedMeta {
+  const meta = isObject(extensions) && isObject(extensions.meta) ? extensions.meta : {};
+  const title = pickLocalized(meta.title, language)?.trim() ?? null;
+  const description = pickLocalized(meta.description, language)?.trim() ?? null;
+  return {
+    title: title && isText(title, 80) ? title : null,
+    description: description && isText(description, 300) ? description : null,
+  };
 }

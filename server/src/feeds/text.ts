@@ -18,6 +18,12 @@ function decodeOnce(text: string): string {
   });
 }
 
+/** A title as one line of text: entities decoded, line breaks and runs of spaces collapsed to one space, trimmed. */
+export function plainTitle(text: string | null | undefined): string | undefined {
+  const cleaned = decodeEntities(text)?.replace(/\s+/g, " ").trim();
+  return cleaned || undefined;
+}
+
 /**
  * Decode HTML entities in plain-text fields such as titles. Some feeds encode twice
  * (`&amp;#8217;`), so decoding repeats until the text stops changing.

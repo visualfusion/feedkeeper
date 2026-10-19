@@ -1,3 +1,4 @@
+import { offlineAccountId } from "./offlineAccount.ts";
 import type { Item } from "../api/client.ts";
 
 export const OFFLINE_CACHE = "fk-offline";
@@ -8,6 +9,7 @@ export const SYNCED_KEY = "fk_saved_synced_at";
 
 /** Everything needed to read without a connection. */
 export interface OfflineSnapshot {
+  userId: number;
   savedAt: string;
   /** Saved articles, in the order they were saved. */
   saved: Item[];
@@ -46,26 +48,31 @@ export function setOfflineEnabled(enabled: boolean): void {
 }
 
 export async function readSnapshot(): Promise<OfflineSnapshot | null> {
-  if (!supported()) return null;
+  const userId = offlineAccountId();
+  if (!supported() || userId === null) return null;
   try {
-    const response = await (await caches.open(OFFLINE_CACHE)).match(SNAPSHOT_KEY);
-    return response ? ((await response.json()) as OfflineSnapshot) : null;
+    const response = await (await caches.open(`${OFFLINE_CACHE}-${userId}`)).match(SNAPSHOT_KEY);
+    const snapshot = response ? await response.json() as OfflineSnapshot : null;
+    return offlineAccountId() === userId && snapshot?.userId === userId ? snapshot : null;
   } catch {
     return null;
   }
 }
 
 export async function writeSnapshot(snapshot: OfflineSnapshot): Promise<void> {
-  if (!supported()) return;
-  const cache = await caches.open(OFFLINE_CACHE);
+  const userId = offlineAccountId();
+  if (!supported() || userId === null || snapshot.userId !== userId) return;
+  const cache = await caches.open(`${OFFLINE_CACHE}-${userId}`);
+  if (offlineAccountId() !== userId) return;
   await cache.put(SNAPSHOT_KEY, new Response(JSON.stringify(snapshot), { headers: { "Content-Type": "application/json" } }));
 }
 
 export async function deleteSnapshot(): Promise<void> {
   if (!supported()) return;
-  await caches.delete(OFFLINE_CACHE).catch(() => undefined);
+  const userId = offlineAccountId();
+  await caches.delete(userId === null ? OFFLINE_CACHE : `${OFFLINE_CACHE}-${userId}`);
   try {
-    localStorage.removeItem(SYNCED_KEY);
+    localStorage.removeItem(userId === null ? SYNCED_KEY : `${SYNCED_KEY}-${userId}`);
   } catch {
     // Ignore localStorage errors
   }

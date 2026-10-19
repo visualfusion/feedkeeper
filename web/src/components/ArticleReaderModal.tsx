@@ -46,6 +46,8 @@ export function ArticleReaderModal({
   const [extracting, setExtracting] = useState(false);
   const [showFullText, setShowFullText] = useState(false);
   const [extractedByline, setExtractedByline] = useState<string | null>(null);
+  // The author the feed names; the extractor's guess only fills in when it has none.
+  const byline = item?.author || extractedByline;
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [consentWall, setConsentWall] = useState(false);
   // The subscription can opt out of fetching articles from the website.
@@ -322,10 +324,10 @@ export function ArticleReaderModal({
 
             {/* Meta information row */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-[var(--c-text-muted)] pb-5 border-b border-[var(--c-border)] mb-6 font-medium">
-              {extractedByline && <span>{extractedByline}</span>}
+              {byline && <span>{byline}</span>}
               {formattedDate && (
                 <>
-                  {extractedByline && <span>•</span>}
+                  {byline && <span>•</span>}
                   <span className="inline-flex items-center gap-1.5">
                     <svg className="w-3.5 h-3.5 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -344,7 +346,7 @@ export function ArticleReaderModal({
                   </span>
                 </>
               )}
-              {(extractedByline || formattedDate) && <span>•</span>}
+              {(byline || formattedDate) && <span>•</span>}
               <span>{t("reader.readingTime", { count: readingTime })}</span>
             </div>
 

@@ -1,7 +1,7 @@
 import Parser from "rss-parser";
 import { fetchFeed } from "./fetcher.js";
 import { assertPublicHttpUrl } from "./ssrfGuard.js";
-import { decodeEntities } from "./text.js";
+import { decodeEntities, plainTitle } from "./text.js";
 
 const rssParser = new Parser();
 
@@ -20,7 +20,7 @@ const FEED_MIME_TYPES = [
 ];
 
 const MAX_PROBES = 15;
-const COMMON_PATHS = ["/feed", "/rss.xml", "/atom.xml", "/feed.xml", "/index.xml", "/rss", "/rss.php?feed=RSS2.0", "/rss.php?feed=ATOM1.0"];
+const COMMON_PATHS = ["/feed/", "/feed", "/rss.xml", "/atom.xml", "/feed.xml", "/index.xml", "/rss/", "/rss", "/rss.php?feed=RSS2.0", "/rss.php?feed=ATOM1.0"];
 // Feed-looking URLs anywhere in a page, including JSON embedded in attributes.
 const FEED_URL_IN_TEXT = /https?:\/\/[^\s"'<>\\]+?(?:\.rss|\.atom|\/feed\/?|\/(?:rss|atom|feed)\.xml)(?=["'\s<>\\]|$)/gi;
 
@@ -38,17 +38,21 @@ function sameUrl(a: string, b: string): boolean {
 }
 
 async function parseFeedAt(url: string): Promise<{ feed: DiscoveredFeed | null; html: string | null; finalUrl: string }> {
-  const fetched = await fetchFeed(url);
-  const finalUrl = fetched.finalUrl || url;
   try {
-    const parsed = await rssParser.parseString(fetched.body);
-    if (parsed.items && (parsed.title || parsed.description || parsed.items.length > 0)) {
-      return { feed: { url: finalUrl, title: decodeEntities(parsed.title) ?? null, type: "application/rss+xml" }, html: null, finalUrl };
+    const fetched = await fetchFeed(url);
+    const finalUrl = fetched.finalUrl || url;
+    try {
+      const parsed = await rssParser.parseString(fetched.body);
+      if (parsed.items && (parsed.title || parsed.description || parsed.items.length > 0)) {
+        return { feed: { url: finalUrl, title: plainTitle(parsed.title) ?? null, type: "application/rss+xml" }, html: null, finalUrl };
+      }
+    } catch {
+      // Not a feed; the caller may look for feed links in the HTML instead.
     }
+    return { feed: null, html: fetched.body, finalUrl };
   } catch {
-    // Not a feed; the caller may look for feed links in the HTML instead.
+    return { feed: null, html: null, finalUrl: url };
   }
-  return { feed: null, html: fetched.body, finalUrl };
 }
 
 /**
@@ -86,20 +90,28 @@ export async function discoverFeeds(inputUrl: string): Promise<DiscoveredFeed[]>
   // 1. The URL is already a feed.
   const page = await parseFeedAt(targetUrl);
   if (page.feed) return [page.feed];
-  if (!page.html) return [];
+
+  // 1b. If the URL did not end in a slash, try with a trailing slash (e.g. /feed -> /feed/)
+  if (!targetUrl.endsWith("/")) {
+    const slashCandidate = await parseFeedAt(targetUrl + "/");
+    if (slashCandidate.feed) return [slashCandidate.feed];
+  }
 
   // 2. Feeds announced or linked on the page.
-  const fromPage = await keepRealFeeds(extractFeedsFromHtml(page.html, page.finalUrl), page.finalUrl);
-  if (fromPage.length > 0) return fromPage;
+  if (page.html) {
+    const fromPage = await keepRealFeeds(extractFeedsFromHtml(page.html, page.finalUrl), page.finalUrl);
+    if (fromPage.length > 0) return fromPage;
+  }
 
   // 3. Common feed paths; some lead to an overview page that lists the site's feeds.
+  const probeBase = page.finalUrl || targetUrl;
   for (const path of COMMON_PATHS) {
     try {
-      const candidateUrl = new URL(path, page.finalUrl).toString();
+      const candidateUrl = new URL(path, probeBase).toString();
       if (sameUrl(candidateUrl, targetUrl)) continue;
       const candidate = await parseFeedAt(candidateUrl);
       if (candidate.feed) return [candidate.feed];
-      if (candidate.html && !sameUrl(candidate.finalUrl, page.finalUrl)) {
+      if (candidate.html && !sameUrl(candidate.finalUrl, probeBase)) {
         const listed = await keepRealFeeds(extractFeedsFromHtml(candidate.html, candidate.finalUrl), candidate.finalUrl);
         if (listed.length > 0) return listed;
       }
