@@ -4,6 +4,180 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.28.4] - 2026-10-18
+
+### Fixed
+- Resolve lazy-loaded images in article extraction: convert `data-lazy-src`, `data-src`, `data-original`, and responsive `data-lazy-srcset` / `data-srcset` attributes into standard `src` and `srcset` attributes before readability extraction. Inline images on WordPress blogs and publishers using client-side lazy loaders are no longer omitted or replaced with empty placeholders.
+- Add diagnostic logging for article image proxy failures: log upstream fetch errors (such as publisher WAF challenges or network timeouts) to aid troubleshooting without exposing internal network details to clients.
+
+## [0.28.3] - 2026-10-18
+
+### Fixed
+- Feed auto-discovery resilience: parsing network or HTTP errors (such as Cloudflare challenges on website landing pages) no longer abort the entire discovery pipeline, allowing alternate common feed paths to be probed.
+- Feed candidate paths: added trailing-slash paths `/feed/` and `/rss/` to common feed discovery probes and probe trailing slash URL variants when direct feed inspection returns no result.
+- Subscription error reporting: distinguish feed poll failures during initial subscription so clients receive specific errors (such as HTTP 403 or network errors) instead of generic no-feeds-found errors.
+
+## [0.28.2] - 2026-10-18
+
+### Fixed
+- Exclude textless media and read-more-only entries from edition candidates and publication, regardless of publisher. Keep short reports and transcripts eligible, and leave library entries and existing editions unchanged.
+- Remove repeated author and date lines wrapped in standalone inline elements from reader content. Keep author attribution when no author is available separately, and preserve inline mentions within the story.
+
+## [0.28.1] - 2026-10-17
+
+### Fixed
+- Remove orphan product-card headers and empty ad-slot labels, including wrappers left by full-text extraction, with German, English and Japanese label recognition. Preserve actual advertising, affiliate disclosures and sponsored-article labels.
+- Collapse identical adjacent desktop/mobile image copies in reader HTML while preserving distinct sources, links, responsive sources, captions and repetitions separated by text. Stored publisher HTML remains unchanged.
+
+## [0.28.0] - 2026-10-17
+
+### Added
+- Empty gallery filtering: a gallery term in the URL path together with empty or read-more-only feed/body text marks an item as an empty gallery. Normal lists, search, notifications and edition curation omit these entries; short articles and photo captions remain visible. Bookmarked or annotated items remain in lists/search, and direct reads and sync retain the original data.
+- Native clients can inspect `content.isEmptyGallery` (advertised by `item.empty-gallery`). Reclassification advances the content revision and emits an ordinary `item_content` sync update rather than a deletion.
+
+### Fixed
+- Isolate web offline article snapshots and queued changes by authenticated account. Clear private service-worker responses on login, expired sessions and account switches, and prevent late responses from refilling a later session's cache. Refresh account bindings across browser tabs.
+
+### Upgrade notes
+- Legacy web offline copies without account ownership are discarded; sign in online once to download a fresh account-bound copy.
+- Migration `0040_empty_gallery.sql` adds the classification and schedules existing articles for the bounded metadata backfill. Existing entries are classified gradually after startup; new/updated feed entries and downloaded full text are classified immediately. No publisher content, saved state, notes or existing editions are removed. Subscription unread counts keep their existing raw-count semantics, as with keyword filtering.
+
+## [0.27.2] - 2026-10-16
+
+### Changed
+- Database performance tuning: SQLite connections configure WAL pragmas (`synchronous = NORMAL`, `busy_timeout = 5000`, `temp_store = MEMORY`, `cache_size = -65536`) for lower disk latency during concurrent writes.
+- Change log hydration and sequence tracking: change entity lookups for item content, read/bookmark states and notes are batched into single queries instead of separate lookups per change row. Monotonic sequence numbers survive change log pruning through dedicated triggers and `sync_state.last_seq`.
+- Query planning and memory footprint: item search separates article ID ranking and pagination into a common table expression before joining full HTML columns, avoiding large text copies in temporary sort tables. Unused feed and retention cleanup queries avoid correlated subqueries over JSON arrays.
+- Reader noise cleanup and worker scheduling: leading character counting short-circuits once the beginning of the article is passed, eliminating quadratic range traversals. Full-text worker queues back off adaptively, and image cache lookups reject known missing images immediately before queueing.
+
+### Fixed
+- FTS5 update trigger: the update trigger for full-text search columns matches the virtual table's schema, avoiding index inconsistencies during article updates.
+- Token and OAuth touch throttling: access token and OAuth grant `last_used_at` timestamps are throttled in-memory to update at most once every 5 minutes, eliminating redundant database writes on frequent API requests.
+- Full-text host cooldowns: internal queue deferrals no longer place the entire publisher host on cooldown, preserving throughput for other queued items from the same host.
+
+### Upgrade notes
+- Migration `0039_performance_indexes.sql` adds composite indexes for cascade deletes, housekeeping, item pagination and full-text candidates, and configures monotonic sync state sequence floor triggers.
+
+## [0.27.1] - 2026-10-16
+
+### Fixed
+- An author that a feed's next poll adds or changes now moves the item's content revision, so clients that already hold the item (and sync by revision) learn of it. Before, only items that a client fetched after the poll showed their author. Migration `0038_author_revision.sql` adds the trigger; the extraction status is untouched, so no full text is fetched again.
+- The English forms of the byline, comment-rules and ad-label rules: `Posted by`, `Words by` and similar bylines, headings such as "Community guidelines" and "House rules", and labels such as "Ad", "Sponsored content" and "Paid content" are handled like their German counterparts.
+
+### Upgrade notes
+- Migration `0038_author_revision.sql` adds a trigger. After the update, the next poll of each feed moves the revision of the items that gain an author, so synced clients fetch those items once more; no full text is fetched again.
+
+## [0.27.0] - 2026-10-16
+
+### Added
+- Authors: items carry the `author` their feed names (`dc:creator`, RSS `author`, Atom `author`), advertised as `item.author`. When there are several, all of them are listed, joined by commas. An address without a name (`staff@site.test`), a generic name (`admin`, `editorial staff`) and the publication's own name are left out; `staff@site.test (Anna Muster)` becomes `Anna Muster`. The API, the legacy item API and MCP return it, and the web reader shows it beside the date. Items get their author on the next poll of their feed; a poll that names none keeps a known one.
+
+### Changed
+- A byline in the article text that only repeats the feed's author (`by Anna Muster | 15.10.2026`) is left out of the reader's HTML, since clients now show the name beside the date.
+
+### Fixed
+- Product cards of shop links: a card whose picture is only a CSS background (which no reader draws) and that holds a link and a price (a label such as "Produkthinweis", the product name and its price) is left out of the reader as a whole, so no label stands over an empty space and no price of the day outlasts the article. The article's own links and its affiliate disclosure stay.
+- Video players in the reader: the play-button picture of a player (alt text such as "Video starten" or "Abspielen", or a file named `play_icon.svg`) is a picture no reader can draw without the publisher's script, and showed up as a broken image. It is removed; a player that is only a script-driven button without an address is left out with its label. What has an address stays as one plain link to the video, marked `data-media="video"`: a player's two links to the same video become one, and embeds of YouTube, Vimeo and Dailymotion as well as `<video>` elements with a source turn into a link as well. Embeds of other sites are left as they were.
+- Page chrome at the edges of an article: a byline that ends in the date (`by Anna Muster | 15.10.2026 - 11:41`) keeps the author and loses the date, which the reader shows in its head. A comment section's house rules at the end of the text ("Comment rules", "Comment policy") go with everything below them. An ad label such as "Advertisement" or "Sponsored" with no ad behind it, because a script fills the slot, is dropped; sponsored content itself and its label stay. German labels are handled the same way.
+
+### Upgrade notes
+- Migration `0037_item_author.sql` adds one nullable column to `items`; nothing needs to be done. Existing items show an author once their feed is polled again.
+
+## [0.26.6] - 2026-10-16
+
+### Changed
+- `ipaddr.js` 2.5.0 in the address check for feed hosts. It reports more special-purpose ranges as non-public and parses short forms such as `127.1` as loopback; nothing that was blocked before is allowed now (#20).
+
+### Fixed
+- Structured data as article text: JSON-LD that a page framework renders as an element of any name (`<component type="application/ld+json">`), or that stands alone as a block, no longer shows up in the reader.
+- A line that is only a date or a reading time (`15. Oktober 2026, 10:51 Uhr`, `2 min`, `4 min read`) near the start of an article is dropped from the reader, which shows both in its own head; the same lines further into the story stay. German and English month names are recognised.
+- Badges in two colour schemes: a link that holds several images with the same label and no other text (a light and a dark variant that the publisher's stylesheet switches between) no longer shows all of them at full size in the reader. The link keeps its label as text, or its first image when it has none. The call to action itself stays.
+- A feed's thumbnail as the hero picture: when the feed names a small size of a picture (for example `…__wide__148` or `…-720x405.jpg`) and the article shows the same picture in a clearly larger size, that size becomes the item's picture, up to 2000 px wide. It applies to new items and as soon as an article's full text is stored.
+
+## [0.26.5] - 2026-10-15
+
+### Added
+- A reverse-proxy guide ([docs/reverse-proxy.md](docs/reverse-proxy.md)) for exposing FeedKeeper over HTTPS with Caddy, nginx or Traefik: hostname and `PUBLIC_URL`, HSTS, `TRUST_PROXY` for single and chained proxies, when `CLIENT_IP_HEADER` is needed (Cloudflare and hosts that overwrite `X-Forwarded-For`), nginx's request-body limit for OPML imports, and optional buffering settings for the stateless MCP endpoint. It is linked from the README and the Raspberry Pi guide. Thanks to @Aaqibhafeezkhan for writing it (#32).
+
+## [0.26.4] - 2026-10-14
+
+### Fixed
+- Pictures that a publisher wraps in its own element (`<a-img src="…">` around an `<img>` that only holds a grey placeholder) are shown in the reader HTML: the wrapper's address replaces the placeholder and the wrapper is removed.
+
+## [0.26.3] - 2026-10-14
+
+### Changed
+- The reader HTML also drops a standalone date and a short section link (up to three words) that stand before the first paragraph, as publishers repeat them from the page head.
+
+## [0.26.2] - 2026-10-14
+
+### Changed
+- Curated editions remain readable between publications, including after their publication window expires. Edition reads and legacy ensure requests return the last curated issue; candidates remain available for producers to publish a new selection.
+- The reader HTML no longer carries tracking and scripting attributes (`data-*` hooks, `aria-*`, `role`, `on*` handlers, microdata) or ids that nothing links to. Links keep `href`, `rel` (including `sponsored`) and `target`, images keep their lazy-load sources, and ids that an in-article link points to stay. Pages that put a long JSON blob on every link are a fraction of their size.
+
+### Fixed
+- The internal `content_lead` and `lead_version` columns are no longer part of the raw item output of the MCP tools and the web app's item list; the lead is served as `lead` by the native API.
+
+### Upgrade notes
+- The edition contract now serves curated publications only. Legacy `POST /edition/generate` and MCP `generate_edition` calls remain compatible reads and never publish a replacement, including with `force`. Producers publish through `publish_edition`; `edition.automatic` is no longer advertised. Migration 0036 retires active legacy automatic slots without changing existing curated issues.
+
+## [0.26.1] - 2026-10-14
+
+### Added
+- Items carry a `lead`: the beginning of the article as one line of plain text, up to about 600 characters, without breadcrumbs, credits, calls to action and similar page chrome. It is advertised as the `item.lead` feature, derived when content is stored and refreshed when it changes, and comes from the downloaded text when there is one and from the cleaned feed summary otherwise. Clients can use it for teasers instead of deriving text from the HTML.
+
+### Changed
+- Article text is cleaned of page chrome that publisher pages put inside the body. The reader HTML (`contentHtml`, `fullTextHtml`) loses breadcrumbs, in-page jump links, a standalone date line, a headline repeated at the start, media labels, language switchers and consent placeholders of embedded posts; credits, disclosures, sponsored and affiliate content stay. Snippets, the text format of MCP `get_item` and the text used for edition curation also lose credit lines, tag lists, calls to action, advertising notices and recommendation tails, and snippets lose the footers that feed plugins append. Nothing is stored differently, so the rules apply to existing articles too. See `docs/full-text.md`.
+- The reader HTML no longer carries typography: fonts, sizes, colours, alignment, classes and presentational tags are removed, so clients set the type themselves. Structure (headings, paragraphs, lists, quotes, tables, links, images) and emphasis (bold, italic, including emphasis that was only an inline style) are kept.
+
+### Fixed
+- Feeds that give an item only a `guid` that is a web address (no `link` element) now use it as the article address, so the full text can be fetched for such items. Existing items pick it up on the next poll.
+- A feed that alternates between a full and a shortened variant of the same item no longer changes the stored content, and so its content revision, on every poll. The summary is kept together with the longer body it belongs to.
+
+### Upgrade notes
+- Migration 0035 adds two nullable columns to the items table. Leads of stored articles are derived in the background after the first start, in small batches, and are served derived on the spot until then.
+
+## [0.26.0] - 2026-10-14
+
+### Added
+- Curated editions can carry a presentation plan (`layout`), published through `publish_edition` and advertised as the `edition.layout` feature. It names a character for the day (one topic dominates, a calm day, many short items) and blocks in reading order: lead, dossier (an overview topic with its stories), feature, standard, briefs, photo and quote. It says what matters and what belongs together; clients decide how to set it. The plan is validated against the issue, returned with the edition and in sync, and ignored by older clients. Issues without a plan are unchanged.
+
+### Upgrade notes
+- Migration 0034 adds a nullable column to the editions table and changes nothing else.
+
+## [0.25.1] - 2026-10-13
+
+### Changed
+- The shortlist of edition candidates (`get_edition_candidates` and agents that curate an edition) gives every source its fair share instead of being filled with whatever is freshest. A source can take at most the shortlist size divided by the number of sources, rotated by what the last editions already showed, and quiet sources keep all their articles. A single source can still fill the whole list. The automatic edition is unchanged.
+
+## [0.25.0] - 2026-10-13
+
+### Changed
+- On narrow screens the settings are a list of pages instead of a row of chips: each section shows its icon, name and description under its group heading, opens as its own page and has a back link. The side navigation on wide screens is unchanged. Sections added by a hosting product appear in the list automatically, and `shortLabel` is still accepted but no longer shown.
+
+## [0.24.1] - 2026-10-13
+
+### Fixed
+- Opening FeedKeeper over plain `http://` (for example `http://localhost:3000` or an address in the home network) in Safari showed a blank page. The server now sends `upgrade-insecure-requests` and HSTS only when `PUBLIC_URL` is an `https://` address.
+
+### Changed
+- The connected clients under Settings → MCP are now called AI assistants instead of apps, so they are not confused with the FeedKeeper apps.
+- The welcome card starts with its heading, and the short introduction card uses the same icons as the controls it describes.
+
+## [0.24.0] - 2026-10-13
+
+### Changed
+- Full-text preparation continuously fills available workers. Reader requests and background work share article jobs, with configurable concurrency, host limits and bounded waiting.
+- Normal proxied article images expire after at most six hours and support conditional requests. Archived images keep their fixed version.
+
+### Fixed
+- Broad relevance searches compute article rankings once, keeping the API responsive while feeds are updating.
+- Slow sources and retry delays no longer hold up unrelated full-text jobs. HTTP 429/503 responses respect `Retry-After`, and interrupted jobs resume after shutdown.
+- The web offline cache refreshes ordinary article images instead of keeping them indefinitely.
+
+### Upgrade notes
+- Migration 0033 extends the existing full-text queue. Run one process per database and stop the old process before upgrading. See [full-text fetching](docs/full-text.md) for settings and rollback.
+
 ## [0.23.1] - 2026-10-13
 
 ### Fixed
@@ -367,7 +541,26 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 First public release: an RSS and Atom reader with a remote MCP server, multi-user accounts, a trilingual interface (English, German, Japanese), SSRF-guarded feed fetching and a single-file SQLite database.
 
-[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.23.1...HEAD
+[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.28.4...HEAD
+[0.28.4]: https://github.com/visualfusion/feedkeeper/compare/v0.28.3...v0.28.4
+[0.28.3]: https://github.com/visualfusion/feedkeeper/compare/v0.28.2...v0.28.3
+[0.28.2]: https://github.com/visualfusion/feedkeeper/compare/v0.28.1...v0.28.2
+[0.28.1]: https://github.com/visualfusion/feedkeeper/compare/v0.28.0...v0.28.1
+[0.28.0]: https://github.com/visualfusion/feedkeeper/compare/v0.27.2...v0.28.0
+[0.27.2]: https://github.com/visualfusion/feedkeeper/compare/v0.27.1...v0.27.2
+[0.27.1]: https://github.com/visualfusion/feedkeeper/compare/v0.27.0...v0.27.1
+[0.27.0]: https://github.com/visualfusion/feedkeeper/compare/v0.26.6...v0.27.0
+[0.26.6]: https://github.com/visualfusion/feedkeeper/compare/v0.26.5...v0.26.6
+[0.26.5]: https://github.com/visualfusion/feedkeeper/compare/v0.26.4...v0.26.5
+[0.26.4]: https://github.com/visualfusion/feedkeeper/compare/v0.26.3...v0.26.4
+[0.26.3]: https://github.com/visualfusion/feedkeeper/compare/v0.26.2...v0.26.3
+[0.26.2]: https://github.com/visualfusion/feedkeeper/compare/v0.26.1...v0.26.2
+[0.26.1]: https://github.com/visualfusion/feedkeeper/compare/v0.26.0...v0.26.1
+[0.26.0]: https://github.com/visualfusion/feedkeeper/compare/v0.25.1...v0.26.0
+[0.25.1]: https://github.com/visualfusion/feedkeeper/compare/v0.25.0...v0.25.1
+[0.25.0]: https://github.com/visualfusion/feedkeeper/compare/v0.24.1...v0.25.0
+[0.24.1]: https://github.com/visualfusion/feedkeeper/compare/v0.24.0...v0.24.1
+[0.24.0]: https://github.com/visualfusion/feedkeeper/compare/v0.23.1...v0.24.0
 [0.23.1]: https://github.com/visualfusion/feedkeeper/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/visualfusion/feedkeeper/compare/v0.22.1...v0.23.0
 [0.22.1]: https://github.com/visualfusion/feedkeeper/compare/v0.22.0...v0.22.1

@@ -468,6 +468,7 @@ paths:
     post:
       tags: [Articles]
       summary: Fetch and cache the full article
+      description: Concurrent callers share a durable article job. At most 64 callers wait, for up to 30 seconds. A caller timeout leaves background work intact; consume later results through ordinary item reads or sync.
       parameters:
         - { $ref: "#/components/parameters/Id" }
         - { name: force, in: query, schema: { type: boolean } }
@@ -476,17 +477,21 @@ paths:
         "403": { $ref: "#/components/responses/CapabilityDenied" }
         "200": { description: The article with `fullTextHtml`, content: { application/json: { schema: { $ref: "#/components/schemas/Item" } } } }
         "409": { description: full_text_disabled for this subscription }
-        "504": { description: Publisher request timed out }
+        "503": { description: queue_full or source_busy; wait before trying again }
+        "504": { description: Extraction or consumer waiting deadline exceeded; durable work may continue }
         "422": { description: consent_wall, paywall, bot_blocked, partial or could_not_extract_content }
   /items/{id}/image:
     get:
       tags: [Images]
       summary: An image the article shows, through this server
+      description: Normal images use a private cache lifetime of at most six hours and a content ETag. Archive images have a separate immutable route.
       parameters:
+        - { name: If-None-Match, in: header, schema: { type: string } }
         - { $ref: "#/components/parameters/Id" }
         - { name: src, in: query, required: true, schema: { type: string } }
       responses:
         "200": { description: A raster image, content: { "image/*": { schema: { type: string, format: binary } } } }
+        "304": { description: Image content is unchanged }
         "404": { $ref: "#/components/responses/NotFound" }
         "415": { description: Not a supported image }
         "502": { description: Image source unavailable or download timed out }
@@ -563,9 +568,9 @@ paths:
       tags: [Edition]
       summary: Central curated edition
       description: |
-        The active automatic or MCP-curated issue, preserving itemIds order. Reading and
-        refreshing do not reshuffle it. This GET never generates an issue. Expired and dismissed
-        issues return 404 with current EditionState; network errors must not discard offline copies.
+        The latest curated issue, preserving itemIds order even after its publication window expires. Reading and
+        refreshing do not reshuffle it. This GET never generates an issue.
+        A missing or explicitly dismissed issue returns 404 with current EditionState; network errors must not discard offline copies.
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Edition" } } } }
         "404": { description: "no_edition, with current EditionState", content: { application/json: { schema: { $ref: "#/components/schemas/EditionError" } } } }
@@ -573,8 +578,8 @@ paths:
       tags: [Edition]
       summary: Dismiss or delete active curated edition
       description: |
-        Dismisses the shared issue and retains its revision. Automatic scheduling waits until
-        the next time slot. New clients supply expectedRevision and requestId; an empty body
+        Dismisses the shared issue and retains its revision. A producer must publish its replacement.
+        New clients supply expectedRevision and requestId; an empty body
         remains supported for older clients. The receipt is retained for at least 35 days.
       requestBody:
         content:
@@ -619,13 +624,9 @@ paths:
   /edition/generate:
     post:
       tags: [Edition]
-      summary: Ensure an automatic issue exists or request a new selection
-      description: |
-        Defaults to keeping an active issue, including a curated one. force=true requires
-        expectedRevision and never replaces active curation; dismiss that issue explicitly first.
-        An unchanged selection keeps its ID and revision. With no eligible articles or a dismissal
-        in the current slot this returns 404. Reading is not a trigger for replacement.
-        requestId replays the original result for at least 35 days; a new action needs a new UUID.
+      summary: Read the latest curated issue (legacy compatibility endpoint)
+      deprecated: true
+      description: Legacy ensure requests return the last curated publication. No request, including force, selects or publishes articles. expectedRevision still detects stale state; publishers use the MCP publish_edition tool.
       requestBody:
         required: true
         content:
@@ -637,18 +638,18 @@ paths:
               properties:
                 requestId: { type: string, format: uuid }
                 expectedRevision: { type: integer, minimum: 0 }
-                force: { type: boolean, default: false, description: Requires expectedRevision when true }
+                force: { type: boolean, default: false, description: Requires expectedRevision when true; never publishes a replacement }
       responses:
         "403": { $ref: "#/components/responses/CapabilityDenied" }
-        "200": { description: Active issue, content: { application/json: { schema: { $ref: "#/components/schemas/Edition" } } } }
+        "200": { description: Latest curated issue, content: { application/json: { schema: { $ref: "#/components/schemas/Edition" } } } }
         "400": { $ref: "#/components/responses/Invalid" }
         "404": { description: "no_edition, with current EditionState", content: { application/json: { schema: { $ref: "#/components/schemas/EditionError" } } } }
-        "409": { description: "revision_conflict or curated_edition_active with current EditionState, or request_id_reused", content: { application/json: { schema: { $ref: "#/components/schemas/EditionError" } } } }
+        "409": { description: "revision_conflict with current EditionState", content: { application/json: { schema: { $ref: "#/components/schemas/EditionError" } } } }
   /native-preferences:
     get:
       tags: [NativePreferences]
       summary: Shared app presentation and edition preferences
-      description: Defaults have revision 0 and updatedAt null until first written. Reading preferences never opts a web-only user into automatic editions. These settings have no effect on web folder ordering or web article filters.
+      description: Defaults have revision 0 and updatedAt null until first written. Reading preferences never publishes an edition. These settings have no effect on web folder ordering or web article filters.
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/NativePreferences" } } } }
     patch:
@@ -837,6 +838,9 @@ components:
         status: { type: string, enum: [pending, ready, feed_only, consent_wall, paywall, bot_blocked, timeout, partial, failed] }
         attemptedAt: { type: [string, "null"], format: date-time }
         retryAt: { type: [string, "null"], format: date-time }
+        isEmptyGallery:
+          type: boolean
+          description: "Shared publisher classification advertised by item.empty-gallery. Gallery path and only empty/read-more text; no minimum article length. Ordinary lists/search omit these items unless saved or annotated by the caller. Direct reads and sync remain available."
     Item:
       type: object
       properties:
@@ -844,10 +848,12 @@ components:
         subscriptionId: { type: integer }
         subscriptionTitle: { type: [string, "null"] }
         title: { type: [string, "null"] }
+        author: { type: [string, "null"], description: "The author or authors the feed names, joined by commas (`Anna Muster, Ben Beispiel`). Present when item.author is advertised. Null when the feed names none, or only an address, a generic name such as admin or the publication itself." }
         url: { type: [string, "null"] }
         publishedAt: { type: [string, "null"] }
         addedAt: { type: string }
         snippet: { type: [string, "null"] }
+        lead: { type: [string, "null"], description: "The beginning of the article as one line of plain text, at most about 600 characters, without breadcrumbs, credits, calls to action and similar page chrome. Present when item.lead is advertised. Prefer it over deriving a teaser from the HTML." }
         imageUrl: { type: [string, "null"] }
         hasFullText: { type: boolean }
         content: { $ref: "#/components/schemas/ArticleContent" }
@@ -890,7 +896,7 @@ components:
       properties:
         id: { type: string, description: Opaque issue identity; newly published issues use UUIDs }
         revision: { type: integer }
-        source: { type: string, enum: [automatic, curated] }
+        source: { type: string, enum: [curated] }
         period: { type: string, enum: [morning, midday, evening, late] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -906,7 +912,88 @@ components:
               minItems: 1
               maxItems: 5
               items: { $ref: "#/components/schemas/EditionOverviewBlock" }
+        layout:
+          description: Optional presentation plan; present when edition.layout is advertised. Null for unstructured issues. Clients map the roles onto their own columns, sizes and type and set stories the plan does not cover, or blocks they do not know, as plain stories in the order of itemIds.
+          oneOf:
+            - { type: "null" }
+            - { $ref: "#/components/schemas/EditionLayout" }
         itemIds: { type: array, minItems: 1, maxItems: 24, uniqueItems: true, items: { type: integer, minimum: 1 } }
+    EditionLayout:
+      type: object
+      required: [version, character, blocks]
+      additionalProperties: false
+      properties:
+        version: { type: integer, const: 1 }
+        character:
+          type: string
+          enum: [dominant, calm, briefing]
+          description: One topic dominates the day, a quiet day with room for pictures, or many short items
+        blocks:
+          type: array
+          minItems: 1
+          maxItems: 24
+          description: In reading order. Each story of the issue appears in at most one block; the lead is first.
+          items: { $ref: "#/components/schemas/EditionLayoutBlock" }
+    EditionLayoutBlock:
+      description: Discriminated by type. Unknown types must be set as plain stories by clients.
+      oneOf:
+        - type: object
+          required: [type, itemId]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: lead }
+            itemId: { type: integer, minimum: 1 }
+            kicker: { type: string, minLength: 1, maxLength: 40, description: One short phrase without closing punctuation }
+        - type: object
+          required: [type, topic, itemIds]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: dossier }
+            topic: { type: integer, minimum: 1, maximum: 5, description: 1-based position in overview; one dossier per topic }
+            itemIds: { type: array, minItems: 1, maxItems: 4, items: { type: integer, minimum: 1 } }
+        - type: object
+          required: [type, itemId]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: feature }
+            itemId: { type: integer, minimum: 1 }
+            kicker: { type: string, minLength: 1, maxLength: 40 }
+        - type: object
+          required: [type, stories]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: standard }
+            stories:
+              type: array
+              minItems: 1
+              maxItems: 3
+              items:
+                type: object
+                required: [itemId]
+                additionalProperties: false
+                properties:
+                  itemId: { type: integer, minimum: 1 }
+                  kicker: { type: string, minLength: 1, maxLength: 40 }
+        - type: object
+          required: [type, itemIds]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: briefs }
+            itemIds: { type: array, minItems: 2, maxItems: 8, items: { type: integer, minimum: 1 } }
+            title: { type: string, minLength: 1, maxLength: 60 }
+        - type: object
+          required: [type, itemId]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: photo }
+            itemId: { type: integer, minimum: 1 }
+        - type: object
+          required: [type, itemId, text]
+          additionalProperties: false
+          properties:
+            type: { type: string, const: quote }
+            itemId: { type: integer, minimum: 1 }
+            text: { type: string, minLength: 1, maxLength: 160, description: Quoted from the article; the issuer vouches for it }
     EditionOverviewBlock:
       type: object
       required: [id, heading, segments]

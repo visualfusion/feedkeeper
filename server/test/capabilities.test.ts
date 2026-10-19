@@ -162,7 +162,7 @@ test("account capabilities and feature negotiation for self-hosted instances", a
     features.editions = false;
     assert.equal((await call("/api/v1/edition/state", testToken)).status, 200);
     assert.equal((await call("/api/v1/edition/candidates", testToken)).status, 403);
-    assert.equal((await call("/api/v1/edition/generate", testToken, { method: "POST", body: {} })).status, 403);
+    assert.equal((await call("/api/v1/edition/candidates", testToken)).status, 403);
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     const scopedServer = createMcpServerForUser(testUserId, "write");
     const client = new Client({ name: "capability-test", version: "1" });

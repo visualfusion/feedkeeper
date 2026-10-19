@@ -1,24 +1,32 @@
+import { offlineAccountId } from "./offlineAccount.ts";
 import type { Item } from "../api/client.ts";
 
 /** A change made without a connection, replayed once the server is reachable again. */
 export type ItemAction = "read" | "bookmark";
 
-const STORAGE_KEY = "fk_offline_queue";
+const storageKey = () => {
+  const userId = offlineAccountId();
+  return userId === null ? null : `fk_offline_queue-${userId}`;
+};
 const listeners = new Set<() => void>();
 
 // Keyed by action and article, so toggling twice offline leaves only the final state.
 function load(): Map<string, boolean> {
+  const key = storageKey();
+  if (key === null) return new Map();
   try {
-    return new Map(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as [string, boolean][]);
+    return new Map(JSON.parse(localStorage.getItem(key) ?? "[]") as [string, boolean][]);
   } catch {
     return new Map();
   }
 }
 
 function save(queue: Map<string, boolean>): void {
+  const key = storageKey();
+  if (key === null) return;
   try {
-    if (queue.size === 0) localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, JSON.stringify([...queue]));
+    if (queue.size === 0) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify([...queue]));
   } catch {
     // Ignore localStorage errors
   }
@@ -77,7 +85,9 @@ export function applyPending(items: Item[]): Item[] {
 /** Send queued changes in order; stops at the first one that should be retried later. */
 export async function flushQueue(send: (action: ItemAction, itemId: number, value: boolean) => Promise<unknown>, transient: (error: unknown) => boolean): Promise<number> {
   let handled = 0;
+  const userId = offlineAccountId();
   for (const { action, itemId, value } of pendingActions()) {
+    if (userId === null || offlineAccountId() !== userId) return handled;
     try {
       await send(action, itemId, value);
     } catch (error) {
@@ -85,6 +95,7 @@ export async function flushQueue(send: (action: ItemAction, itemId: number, valu
       // anything else (for example an article that no longer exists) cannot succeed later either.
       if (transient(error)) return handled;
     }
+    if (offlineAccountId() !== userId) return handled;
     dequeue(action, itemId);
     handled++;
   }

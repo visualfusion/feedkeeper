@@ -125,9 +125,11 @@ test("the change log and offline mutations keep devices in step", async () => {
 
     // An article removed later is reported as deleted, and forgotten once the log is tidied up.
     db.prepare("DELETE FROM items WHERE id = ?").run(c);
-    assert.equal(find((await sync(0)).changes, "item_state", c)?.op, "delete");
+    const afterDelete = await sync(0);
+    assert.equal(find(afterDelete.changes, "item_state", c)?.op, "delete");
     pruneChangeLog();
     assert.equal(db.prepare("SELECT COUNT(*) AS n FROM changes WHERE entity = 'item_state' AND entity_id = ?").get(c)?.n, 0);
+    assert.equal((await call(`/sync?since=${afterDelete.nextSeq}`, ownerId)).status, 200);
 
     // Old deletions are forgotten; a client that is behind them must start over, a new one is fine.
     const behind = (await sync(0)).nextSeq;

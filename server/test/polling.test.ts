@@ -228,3 +228,11 @@ test("invalid configuration fails rather than silently removing limits", () => {
   process.env.POLL_CONCURRENCY = previous;
   assert.equal(new FeedHttpError(503, 1, "example.test").status, 503);
 });
+
+test("an item without a link element uses its guid when that is a web address", async () => {
+  const { itemLink } = await import("../src/feeds/poller.js");
+  assert.equal(itemLink({ guid: "https://uncrate.com/a-story/" }), "https://uncrate.com/a-story/");
+  assert.equal(itemLink({ link: "https://example.test/l", guid: "https://example.test/g" }), "https://example.test/l");
+  assert.equal(itemLink({ guid: "urn:uuid:1234" }), undefined);
+  assert.equal(itemLink({}), undefined);
+});

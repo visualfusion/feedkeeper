@@ -4,6 +4,29 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 
+test("curated-only upgrade retires generated slots without restoring or changing curated publications", () => {
+  const db = new Database(":memory:");
+  db.pragma("foreign_keys = ON");
+  const directory = fileURLToPath(new URL("../src/db/migrations/", import.meta.url));
+  for (const name of readdirSync(directory).filter((name) => name.endsWith(".sql") && name < "0036").sort()) {
+    db.exec(readFileSync(directory + name, "utf8"));
+  }
+  const automatic = Number(db.prepare("INSERT INTO users (email, password_hash, display_name) VALUES ('automatic@test.local', 'unchanged', 'Automatic')").run().lastInsertRowid);
+  const curated = Number(db.prepare("INSERT INTO users (email, password_hash, display_name) VALUES ('curated@test.local', 'unchanged', 'Curated')").run().lastInsertRowid);
+  const insert = db.prepare("INSERT INTO editions (user_id, edition_id, revision, source, status, item_ids, created_at, updated_at, expires_at) VALUES (?, ?, 98, ?, 'active', '[42]', '2026-10-14T06:00:00Z', '2026-10-14T06:00:00Z', '2026-10-14T09:00:00Z')");
+  insert.run(automatic, "generated", "automatic");
+  insert.run(curated, "original-morning", "curated");
+  const original = db.prepare("SELECT * FROM editions WHERE user_id = ?").get(curated);
+  db.exec(readFileSync(directory + "0036_curated_only_editions.sql", "utf8"));
+  assert.deepEqual(db.prepare("SELECT * FROM editions WHERE user_id = ?").get(curated), original);
+  const retired = db.prepare("SELECT edition_id, status, revision FROM editions WHERE user_id = ?").get(automatic)!;
+  assert.equal(retired.edition_id, "generated", "no older publication is restored");
+  assert.equal(retired.status, "expired", "retirement must not block the curator as an explicit dismissal would");
+  assert.equal(retired.revision, 99);
+  assert.equal(db.prepare("SELECT password_hash FROM users WHERE id = ?").get(automatic)?.password_hash, "unchanged");
+  db.close();
+});
+
 test("edition upgrade preserves accounts, notes, symbols and an existing curated issue", () => {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");

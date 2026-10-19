@@ -20,7 +20,7 @@ export interface SettingsExtensionSection {
   /** The `?tab=` value of the section. Lowercase letters, digits and dashes; must not clash with a built-in section. */
   id: string;
   label: string;
-  /** Shorter label for the chip row on narrow screens. */
+  /** No longer shown: narrow screens list the sections with `label` and `description`. Still accepted so existing hosts keep working. */
   shortLabel?: string;
   description: string;
   /** Heading in the navigation. Sections with the same group are listed together, in order of appearance. */

@@ -178,6 +178,7 @@ export interface Item {
   content_html?: string | null;
   full_content_html?: string | null;
   image_url?: string | null;
+  author?: string | null;
   published_at: string | null;
   read: boolean;
   bookmarked: boolean;

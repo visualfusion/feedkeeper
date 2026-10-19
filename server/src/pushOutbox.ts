@@ -112,8 +112,8 @@ export class PushOutbox {
     }
     const feed = db.prepare<[number], { id: number; title: string | null; url: string }>("SELECT id,title,url FROM feeds WHERE id = ?").get(event.feed_id);
     if (!feed) return; // Feed deletion cascades the event.
-    const latest = db.prepare<[number, number, number], { id: number; title: string | null; content_snippet: string | null }>(`
-      SELECT id,title,content_snippet FROM items WHERE feed_id = ? AND id <= ? ORDER BY id DESC LIMIT ?`)
+    const latest = db.prepare<[number, number, number], { id: number; title: string | null; content_snippet: string | null; is_empty_gallery: number }>(`
+      SELECT id,title,content_snippet,is_empty_gallery FROM items WHERE feed_id = ? AND id <= ? ORDER BY id DESC LIMIT ?`)
       .all(event.feed_id, event.max_item_id, event.item_count);
     const payload = newItemsPushPayload(feed, subscription.user_id, subscription.label, latest);
     if (!payload) { this.advanceSubscription(event, subscription.id); return; }

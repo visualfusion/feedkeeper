@@ -57,7 +57,7 @@ OAuth grants live in their own table (`oauth_grants`, migration `0027_oauth.sql`
 - `/mcp` accepts `api` and `oauth` tokens. The native API accepts `api` and `device` tokens and rejects OAuth tokens, so a connector never reaches `/api/v1`.
 - `/mcp` still requires the `mcp` capability on every request, and the consent page checks it before issuing a code (with `manageUrl` on the error page).
 
-Settings → MCP lists the connected apps (`GET /api/oauth-grants`) and disconnects them (`DELETE /api/oauth-grants/:id`).
+Settings → MCP lists the connected AI assistants (`GET /api/oauth-grants`) and disconnects them (`DELETE /api/oauth-grants/:id`).
 
 ## Limits and configuration
 

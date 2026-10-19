@@ -163,20 +163,11 @@ export function Welcome({ onSubscribed }: { onSubscribed: () => void | Promise<v
   return (
     <section className="card flex flex-col gap-6 p-5 sm:p-7 shadow-xs" aria-labelledby="welcome-title">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-[var(--c-blue1)]/10 text-[var(--c-blue1)] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 11a9 9 0 0 1 9 9" />
-              <path d="M4 4a16 16 0 0 1 16 16" />
-              <circle cx="5" cy="19" r="1" />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <h2 id="welcome-title" className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--c-text)]" style={{ fontFamily: "Manrope, sans-serif" }}>
-              {t("welcome.title")}
-            </h2>
-            <p className="max-w-xl text-xs sm:text-sm text-[var(--c-text-muted)] mt-0.5 leading-relaxed">{t("welcome.intro")}</p>
-          </div>
+        <div className="min-w-0">
+          <h2 id="welcome-title" className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--c-text)]" style={{ fontFamily: "Manrope, sans-serif" }}>
+            {t("welcome.title")}
+          </h2>
+          <p className="max-w-xl text-xs sm:text-sm text-[var(--c-text-muted)] mt-0.5 leading-relaxed">{t("welcome.intro")}</p>
         </div>
       </div>
 

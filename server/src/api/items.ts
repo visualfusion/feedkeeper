@@ -1,3 +1,4 @@
+import { sendArticleImage } from "./imageResponse.js";
 import { Router, type Request } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
@@ -12,6 +13,8 @@ import {
   findItemById,
 } from "../feeds/repository.js";
 import { loadFullText, type FullTextError } from "../feeds/fullText.js";
+import { readerHtml } from "../feeds/articleContent.js";
+import { cleanSnippet } from "../feeds/contentNoise.js";
 import { fetchItemImage, pruneArchive, scheduleArchive, withArchivedImages, withProxiedImages } from "../feeds/archive.js";
 import { ImageCacheBusyError } from "../feeds/imageCache.js";
 
@@ -22,7 +25,7 @@ export const FULL_TEXT_STATUS: Record<FullTextError, number> = {
   full_text_disabled: 409,
   consent_wall: 422,
   could_not_extract_content: 422,
-  extraction_failed: 502,
+  extraction_failed: 502, queue_full: 503, source_busy: 503,
 };
 
 export const itemsRouter = Router();
@@ -57,8 +60,11 @@ itemsRouter.get("/", (req, res) => {
   // Offline copies also get the images of articles that are not archived, through this server.
   const items = parsed.data.offline ? withProxiedImages(archived, origin) : archived;
   res.json(
-    items.map((item) => ({
+    items.map(({ content_lead: _lead, lead_version: _leadVersion, ...item }) => ({
       ...item,
+      content_snippet: cleanSnippet(item.content_snippet, item.title),
+      content_html: readerHtml(item.content_html, item.title, item.author),
+      full_content_html: readerHtml(item.full_content_html, item.title, item.author),
       read: Boolean(item.read),
       bookmarked: Boolean(item.bookmarked),
     })),
@@ -77,8 +83,7 @@ itemsRouter.get("/:itemId/image", imageLimiter, async (req, res) => {
     } else if (image === "unsupported") {
       res.status(415).json({ error: "unsupported_image" });
     } else {
-      res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
-      res.type(image.mime).send(image.buffer);
+      sendArticleImage(req, res, image);
     }
   } catch (error) {
     if (error instanceof ImageCacheBusyError) {
@@ -139,10 +144,11 @@ itemsRouter.post("/:itemId/extract-content", async (req, res) => {
     return;
   }
 
-  const [served] = withArchivedImages([{ id: result.id, link: findItemById(result.id)?.link ?? null, full_content_html: result.fullContentHtml }], requestOrigin(req));
+  const currentItem = findItemById(result.id);
+  const [served] = withArchivedImages([{ id: result.id, link: currentItem?.link ?? null, full_content_html: result.fullContentHtml }], requestOrigin(req));
   res.json({
     id: result.id,
-    full_content_html: served.full_content_html,
+    full_content_html: readerHtml(served.full_content_html, result.title ?? currentItem?.title, currentItem?.author),
     ...(result.cached ? {} : { title: result.title, byline: result.byline }),
     cached: result.cached,
   });

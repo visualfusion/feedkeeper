@@ -34,6 +34,22 @@ test("a search with Japanese or Cyrillic words matches every word, not only the 
     assert.equal(needsSubstringSearch("Köln café reader"), false);
     assert.notEqual(formatFtsQuery("reader"), "");
   });
+  await t.test("broad relevance searches preserve paging, private notes and account boundaries", async () => {
+    const { setItemNote } = await import("../src/feeds/repository.js");
+    db.transaction(() => {
+      for (let i = 0; i < 1000; i++) item(`broad-${i}`, `Harbour story ${i}`, "Harbour research and context");
+    })();
+    setItemNote(user, latinOnly, "Harbour note without a matching article body");
+    const hiddenFeed = Number(db.prepare("INSERT INTO feeds(url,title) VALUES ('https://private.example.test/feed','Private')").run().lastInsertRowid);
+    db.prepare("INSERT INTO items(feed_id,guid,title) VALUES (?, 'hidden', 'Harbour private story')").run(hiddenFeed);
+    const first = searchItemsForUser(user, {query: "harbour", sort: "relevance", limit: 100});
+    assert.equal(first.total, 1001); assert.equal(first.items.length, 100);
+    const next = searchItemsForUser(user, {query: "harbour", sort: "relevance", limit: 100, offset: 100});
+    assert.equal(new Set([...first.items, ...next.items].map(row => row.id)).size, 200);
+    const last = searchItemsForUser(user, {query: "harbour", sort: "relevance", limit: 100, offset: 1000});
+    assert.deepEqual(last.items.map(row => row.id), [latinOnly], "indexed matches precede note-only results");
+    assert.equal(searchItemsForUser(user, {query: "harbour", sort: "date", limit: 100}).total, 1001);
+  });
   await t.test("which queries cannot use the index", () => {
     for (const query of ["新聞", "RSS 新聞", "Новости", "αβγ test", "日本語 \"phrase\""]) assert.equal(needsSubstringSearch(query), true, query);
     for (const query of ["reader", "Zürich", "naïve café", "\"日本語 phrase\"", "hello, world!", "2026"]) assert.equal(needsSubstringSearch(query), false, query);

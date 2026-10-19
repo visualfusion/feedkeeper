@@ -141,10 +141,11 @@ function unreadTotal(userId: number): number {
 
 /** A bounded article snapshot is selected by the outbox's committed upper item ID. */
 export function newItemsPushPayload(feed: { id: number; title: string | null; url: string }, userId: number, label: string | null,
-  latest: { id: number; title: string | null; content_snippet: string | null }[]): PushPayload | null {
+  latest: { id: number; title: string | null; content_snippet: string | null; is_empty_gallery?: number }[]): PushPayload | null {
   const muted = db.prepare<[number], { keyword: string }>("SELECT keyword FROM user_muted_keywords WHERE user_id = ?")
     .all(userId).map(row => row.keyword.toLowerCase());
   const fresh = latest.filter(item => {
+    if (item.is_empty_gallery) return false;
     const text = `${item.title ?? ""} ${item.content_snippet ?? ""}`.toLowerCase();
     return !muted.some(keyword => text.includes(keyword));
   });

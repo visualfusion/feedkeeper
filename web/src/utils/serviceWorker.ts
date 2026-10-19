@@ -1,7 +1,8 @@
+import { setOfflineAccount } from "./offlineAccount.ts";
 import { updateBadge } from "./badge.ts";
 import { clearQueue } from "./offlineQueue.ts";
 import { cancelSync } from "./offlineSync.ts";
-import { API_CACHE, deleteSnapshot } from "./offlineStore.ts";
+import { API_CACHE, OFFLINE_CACHE } from "./offlineStore.ts";
 
 /** Register the service worker in production builds so the app starts without a connection. */
 export function registerServiceWorker(): void {
@@ -28,7 +29,8 @@ export async function clearOfflineData(): Promise<void> {
   cancelSync();
   clearQueue();
   updateBadge(0);
+  setOfflineAccount(null);
   if (!("caches" in window)) return;
-  await caches.delete(API_CACHE).catch(() => undefined);
-  await deleteSnapshot();
+  const names = await caches.keys();
+  await Promise.all(names.filter(name => name === API_CACHE || name === OFFLINE_CACHE || name.startsWith(`${OFFLINE_CACHE}-`)).map(name => caches.delete(name)));
 }

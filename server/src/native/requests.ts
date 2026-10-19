@@ -1,3 +1,4 @@
+import cron from "node-cron";
 import { createHash } from "node:crypto";
 import { db } from "../db/index.js";
 
@@ -28,4 +29,12 @@ export function nativeRequest<T>(userId: number, requestId: string | undefined, 
     }
     return result;
   })();
+}
+
+/** Receipts outlive the native offline window; publication metadata stays in the edition slot. */
+export function startNativeRequestCleanup(): void {
+  cron.schedule("0 * * * *", () => {
+    db.prepare("DELETE FROM native_requests WHERE created_at < ?")
+      .run(new Date(Date.now() - 35 * 86_400_000).toISOString());
+  });
 }

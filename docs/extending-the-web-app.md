@@ -41,7 +41,7 @@ extensions.settings = {
   sections: [{
     id: "plan",                        // ?tab=plan: lowercase letters, digits and dashes
     label: "Plan",
-    shortLabel: "Plan",                // optional, for the chip row on narrow screens
+    shortLabel: "Plan",                // optional and no longer shown; kept so existing hosts keep working
     description: "Your plan and invoices.",
     group: "Billing",                  // heading in the navigation
     icon: ["M4 6h16M4 12h16M4 18h10"], // optional: path data of a 24×24 stroked icon

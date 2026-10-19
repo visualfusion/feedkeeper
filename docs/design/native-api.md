@@ -307,6 +307,28 @@ revision but must not advance the downloaded-body revision. Keep the previous of
 body until its replacement has actually been received. Failed extraction never deletes
 good feed or reader content. Retention still protects active editions, bookmarks and notes.
 
+### Empty gallery classification
+
+`item.empty-gallery` in `/meta.features` advertises `Item.content.isEmptyGallery`.
+The flag describes publisher content, not a user's decision: a gallery term must appear
+as a complete URL path component (including hyphen-separated components), and both the
+feed summary and available reader/feed body must be empty or a read-more placeholder.
+No host/title blacklist or minimum article length is used; a real sentence or caption
+keeps the item visible. Bookmarks and notes do not change the shared flag.
+
+Ordinary item lists and FTS search filter these items before pagination, except for the
+caller's bookmarked/annotated items. Edition candidates and new curated publications
+exclude them even when saved; existing editions are retained. Notifications omit empty
+gallery entries from their original bounded snapshot without replacing them with older
+articles. Subscription unread counters retain their raw-count semantics, as for muted
+keywords; clients adjust their locally visible counts as needed.
+
+Direct item/bundle reads, notes, saved archives and sync remain available. A classification
+change advances `content.revision` and sends `item_content` with `isEmptyGallery`, never a
+deletion. Clients may hide the corresponding cached item while preserving saves/notes.
+The startup metadata backfill classifies old rows in bounded batches; feed imports and
+content updates classify synchronously. No extra publisher fetch or AI call is needed.
+
 GET /items and /items/bundle with images=proxy use the authenticated server proxy for all
 referenced body and lead images; actual image fetching remains lazy, ownership-checked,
 SSRF-guarded and restricted to verified raster formats. A client must download its reader's

@@ -25,6 +25,7 @@ const archiveWrites = new Set<string>();
 async function storeArchivedImage(destination: string, image: CachedImage): Promise<void> {
   const temporary = `${destination}.tmp`;
   archiveWrites.add(temporary);
+  archiveWrites.add(destination);
   try {
     await unlink(temporary).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; });
     if (image.path) await link(image.path, temporary).catch(() => writeFile(temporary, image.buffer, { mode: 0o600 }));
@@ -162,13 +163,17 @@ export async function archiveItem(itemId: number): Promise<void> {
       if (!type) continue;
       const fileName = `${itemId}-${createHash("sha256").update(url).digest("hex").slice(0, 16)}.${type.ext}`;
       const destination = join(archiveDir(), fileName);
-      await storeArchivedImage(destination, image);
-      // The last bookmark or article may have disappeared while the image was loading.
-      if (!hasBookmark(itemId) || !findItemById(itemId)) {
-        unlinkSync(destination);
-        continue;
+      try {
+        await storeArchivedImage(destination, image);
+        // The last bookmark or article may have disappeared while the image was loading.
+        if (!hasBookmark(itemId) || !findItemById(itemId)) {
+          unlinkSync(destination);
+          continue;
+        }
+        insert.run(itemId, url, fileName, type.mime, buffer.length);
+      } finally {
+        archiveWrites.delete(destination);
       }
-      insert.run(itemId, url, fileName, type.mime, buffer.length);
     } catch (error) {
       // Leave the durable bookmark pending so startup can finish it later.
       if (error instanceof ImageCacheBusyError || imageCacheStopping) return;
@@ -272,7 +277,7 @@ export function findArchivedImage(userId: number, imageId: number): { path: stri
 }
 
 /** Swap image URLs of archived articles for their local copies before sending them to the browser. */
-export function withArchivedImages<T extends { id: number; link: string | null; image_url?: string | null; content_html?: string | null; full_content_html?: string | null }>(items: T[], origin: string, apiBase = "/api"): T[] {
+export function withArchivedImages<T extends { id: number; link: string | null; image_url?: string | null; content_html?: string | null; full_content_html?: string | null }>(items: T[], origin: string, apiBase = "/api", withContent = true): T[] {
   const archived = archivedImagesFor(items.map((item) => item.id));
   return items.map((item) => {
     const images = archived.get(item.id);
@@ -281,8 +286,8 @@ export function withArchivedImages<T extends { id: number; link: string | null; 
     return {
       ...item,
       image_url: hero && images.has(hero) ? archivedImageUrl(origin, images.get(hero)!, apiBase) : item.image_url,
-      content_html: item.content_html ? rewriteArchivedImages(item.content_html, item.link, images, origin, apiBase) : item.content_html,
-      full_content_html: item.full_content_html ? rewriteArchivedImages(item.full_content_html, item.link, images, origin, apiBase) : item.full_content_html,
+      content_html: withContent && item.content_html ? rewriteArchivedImages(item.content_html, item.link, images, origin, apiBase) : item.content_html,
+      full_content_html: withContent && item.full_content_html ? rewriteArchivedImages(item.full_content_html, item.link, images, origin, apiBase) : item.full_content_html,
     };
   });
 }
@@ -297,14 +302,14 @@ export function itemImageUrls(item: ImageSource): string[] {
 }
 
 function proxiedImageUrl(origin: string, itemId: number, imageUrl: string, apiBase = "/api"): string {
-  return `${origin.replace(/\/$/, "")}${apiBase}/items/${itemId}/image?src=${encodeURIComponent(imageUrl).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)}`;
+  return `${origin.replace(/\/$/, "")}${apiBase}/items/${itemId}/image?src=${encodeURIComponent(imageUrl).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)}&v=2`;
 }
 
 /**
  * For offline copies: point the first images of articles that are not archived at an endpoint
  * of this server, so the browser can store them without cross-origin requests.
  */
-export function withProxiedImages<T extends ImageSource & { id: number }>(items: T[], origin: string, apiBase = "/api"): T[] {
+export function withProxiedImages<T extends ImageSource & { id: number }>(items: T[], origin: string, apiBase = "/api", withContent = true): T[] {
   const own = `${origin.replace(/\/$/, "")}/api/`;
   return items.map((item) => {
     const urls = new Set(itemImageUrls(item).filter((url) => !url.startsWith(own)));
@@ -314,19 +319,24 @@ export function withProxiedImages<T extends ImageSource & { id: number }>(items:
     return {
       ...item,
       image_url: hero && urls.has(hero) ? proxiedImageUrl(origin, item.id, hero, apiBase) : item.image_url,
-      content_html: item.content_html ? rewriteImageSources(item.content_html, item.link, replace) : item.content_html,
-      full_content_html: item.full_content_html ? rewriteImageSources(item.full_content_html, item.link, replace) : item.full_content_html,
+      content_html: withContent && item.content_html ? rewriteImageSources(item.content_html, item.link, replace) : item.content_html,
+      full_content_html: withContent && item.full_content_html ? rewriteImageSources(item.full_content_html, item.link, replace) : item.full_content_html,
     };
   });
 }
 
 /** Download one of an article's own images for the offline copy, or null when it is not one of them. */
-export async function fetchItemImage(userId: number, itemId: number, imageUrl: string): Promise<{ buffer: Buffer; mime: string } | "forbidden" | "unsupported"> {
+export async function fetchItemImage(userId: number, itemId: number, imageUrl: string): Promise<CachedImage | "forbidden" | "unsupported"> {
   const item = findItemForUser(userId, itemId);
-  if (!item || !itemImageUrls(item).includes(imageUrl)) return "forbidden";
+  if (!item) return "forbidden";
+  const isMatch = (it: typeof item) => {
+    const hero = it.image_url ? resolveImageUrl(it.image_url, it.link) : null;
+    return hero === imageUrl || itemImageUrls(it).includes(imageUrl);
+  };
+  if (!isMatch(item)) return "forbidden";
   const image = await sharedImage(item, imageUrl);
   // Access or the article's image list can change while a shared download is running.
   const current = findItemForUser(userId, itemId);
-  if (!current || !itemImageUrls(current).includes(imageUrl)) return "forbidden";
+  if (!current || !isMatch(current)) return "forbidden";
   return image;
 }

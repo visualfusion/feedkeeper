@@ -164,8 +164,16 @@ export class PollQueue {
         continue;
       }
       // A URL may have been changed since enqueue. Do not dispatch under its old host budget.
-      if (sourceHost(feed.url) !== job.host) {
-        db.prepare("UPDATE feed_poll_jobs SET host = ? WHERE feed_id = ?").run(sourceHost(feed.url), feed.id);
+      let currentHost: string;
+      try {
+        currentHost = sourceHost(feed.url);
+      } catch {
+        db.prepare("DELETE FROM feed_poll_jobs WHERE feed_id = ?").run(job.feed_id);
+        this.resolve(job.feed_id, { newItems: 0, error: "invalid_feed_url" });
+        continue;
+      }
+      if (currentHost !== job.host) {
+        db.prepare("UPDATE feed_poll_jobs SET host = ? WHERE feed_id = ?").run(currentHost, feed.id);
         continue;
       }
       const waiter = this.waiters.get(feed.id);

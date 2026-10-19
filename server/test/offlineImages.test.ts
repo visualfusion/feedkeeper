@@ -46,7 +46,7 @@ test("offline copies point at article images served through this server", async 
 
     const origin = "https://feeds.example.test";
     const [served] = archive.withProxiedImages([stored], origin);
-    const proxied = (url: string) => `${origin}/api/items/${item.id}/image?src=${encodeURIComponent(url)}`;
+    const proxied = (url: string) => `${origin}/api/items/${item.id}/image?src=${encodeURIComponent(url)}&v=2`;
     assert.equal(served.image_url, proxied(`${base}/lead.png`));
     assert.ok((served.content_html ?? "").includes(`src="${proxied(`${base}/inline.png`)}"`));
 

@@ -11,6 +11,7 @@ import { db } from "../db/index.js";
 import { configurePollHostCooldowns, PollQueue, type PollResult } from "./pollQueue.js";
 import { feedRequests, PollDeferredError, sourceHost } from "./requestGate.js";
 import { normalizePublishedAt } from "./dates.js";
+import { authorLine } from "./author.js";
 
 configurePollHostCooldowns();
 
@@ -18,6 +19,7 @@ type CustomItem = Parser.Item & {
   mediaContent?: unknown;
   mediaThumbnail?: unknown;
   contentEncoded?: string;
+  author?: string;
   "media:content"?: unknown;
   "media:thumbnail"?: unknown;
   "content:encoded"?: string;
@@ -100,6 +102,12 @@ function extractImageUrl(item: CustomItem): string | null {
   return null;
 }
 
+/** The article address: its link, or its guid when the feed gives only that and the guid is a web address. */
+export function itemLink(item: { link?: string; guid?: string }): string | undefined {
+  if (item.link) return item.link;
+  return item.guid && /^https?:\/\//i.test(item.guid) ? item.guid : undefined;
+}
+
 /** One attempt; the queue owns retries, admission, single-flight and the total deadline. */
 async function pollAttempt(feed: Feed, signal: AbortSignal): Promise<PollResult> {
   const fetched = await fetchFeed(feed.url, { etag: feed.etag ?? undefined, lastModified: feed.last_modified ?? undefined, signal });
@@ -111,10 +119,11 @@ async function pollAttempt(feed: Feed, signal: AbortSignal): Promise<PollResult>
   if (!feedHasActiveSubscriber(feed.id)) return { newItems: 0, error: "feed_poll_not_allowed" };
   const items = parsed?.items.map(item => ({
     guid: item.guid ?? item.link ?? item.title ?? crypto.randomUUID(),
-    title: plainTitle(item.title), link: item.link,
+    title: plainTitle(item.title), link: itemLink(item),
     contentSnippet: decodeEntities(item.contentSnippet ?? item.content) ?? undefined,
     contentHtml: item.contentEncoded ?? item["content:encoded"] ?? item.content ?? null,
     publishedAt: normalizePublishedAt(item.isoDate ?? item.pubDate) ?? undefined, imageUrl: extractImageUrl(item),
+    author: authorLine([item.creator, item.author], { title: current.title, url: current.site_url ?? current.url }),
   }));
   // No await in this transaction. Items, health/validators and job completion become visible together.
   const newItems = db.transaction(() => {
@@ -133,10 +142,10 @@ async function pollAttempt(feed: Feed, signal: AbortSignal): Promise<PollResult>
   try {
     signal.throwIfAborted();
     if (iconCheckDue(feed.icon_checked_at)) {
+      updateFeedIcon(feed.id, feed.icon_url);
       const siteUrl = parsed?.link || feed.site_url;
       const urls = siteUrl ? await discoverIconUrls(siteUrl, signal) : [];
       signal.throwIfAborted();
-      updateFeedIcon(feed.id, feed.icon_url);
       await refreshFeedIcon(feed.id, siteUrl, urls, signal);
     }
   } catch { /* Keep the successful poll; icon failures are best effort. */ }
@@ -211,6 +220,8 @@ export async function stopPollingScheduler(): Promise<void> {
   if (scheduler) clearInterval(scheduler);
   scheduler = undefined;
   const { stopImageCache } = await import("./archive.js");
+  const { stopFullTextScheduler } = await import("./fullTextQueue.js");
+  await stopFullTextScheduler();
   await stopImageCache();
   await Promise.all([queue?.stop(), stopPushOutbox()]);
   feedRequests.stop();

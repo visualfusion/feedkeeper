@@ -35,7 +35,9 @@ Replace `raspberrypi.local` with your hostname, or with the address of the Pi in
 
 ## 4. HTTPS and a domain
 
-For access from outside your home network, put a reverse proxy with HTTPS in front. With [Caddy](https://caddyserver.com), the whole configuration is:
+For access from outside your home network, put a reverse proxy with HTTPS in front. The full [reverse proxy guide](reverse-proxy.md) covers Caddy, nginx, Traefik/Docker Compose, forwarded client IPs, and MCP client configuration. The small Caddy setup below is a minimal single-proxy option.
+
+With [Caddy](https://caddyserver.com), the whole configuration is:
 
 ```text
 feeds.example.org {
@@ -50,7 +52,7 @@ PUBLIC_URL=https://feeds.example.org
 TRUST_PROXY=true
 ```
 
-and run `docker compose up -d` again. Keep `ALLOW_SIGNUP=false` on an instance that can be reached from the internet.
+and run `docker compose up -d` again. Keep `ALLOW_SIGNUP=false` on an instance that can be reached from the internet. When the same-host proxy is in place, also change the port mapping in `compose.yaml` from `3000:3000` to `127.0.0.1:3000:3000` and recreate the container. That prevents clients on the LAN/WAN from bypassing HTTPS through port 3000.
 
 ## 5. Storage and backups
 

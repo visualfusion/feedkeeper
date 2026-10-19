@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { cancelSync } from "../utils/offlineSync.ts";
+import { setOfflineAccount } from "../utils/offlineAccount.ts";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { api, ApiError, type User } from "../api/client.ts";
 import { resetItemsScrollY } from "../utils/scrollState.ts";
 import { disablePush } from "../utils/push.ts";
@@ -19,16 +21,20 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const refreshVersion = useRef(0);
   const [user, setUser] = useState<User | null>(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [loading, setLoading] = useState(true);
   const [unreachable, setUnreachable] = useState(false);
 
   async function refresh() {
+    const version = ++refreshVersion.current;
+    cancelSync();
     setLoading(true);
     setUnreachable(false);
     try {
       const status = await api.onboardingStatus();
+      if (version !== refreshVersion.current) return;
       if (status.needsOnboarding) {
         setNeedsOnboarding(true);
         setUser(null);
@@ -36,11 +42,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setNeedsOnboarding(false);
       try {
-        setUser(await api.me());
+        const authenticated = await api.me();
+        if (version !== refreshVersion.current) return;
+        setOfflineAccount(authenticated.id);
+        setUser(authenticated);
       } catch (error) {
+        if (version !== refreshVersion.current) return;
         if (error instanceof ApiError && error.status === 401) {
           setUser(null);
-          void clearOfflineData();
+          await clearOfflineData();
         } else if (error instanceof ApiError && error.status === 0) {
           setUnreachable(true);
         } else {
@@ -49,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (err) {
+      if (version !== refreshVersion.current) return;
       if (err instanceof ApiError && err.status === 0) {
         setUnreachable(true);
       } else {
@@ -56,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setUser(null);
     } finally {
-      setLoading(false);
+      if (version === refreshVersion.current) setLoading(false);
     }
   }
 
@@ -70,7 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    refresh();
+    void refresh();
+    const accountChanged = (event: StorageEvent) => {
+      if (event.key === "fk_offline_owner") void refresh();
+    };
+    window.addEventListener("storage", accountChanged);
+    return () => window.removeEventListener("storage", accountChanged);
   }, []);
 
   return (

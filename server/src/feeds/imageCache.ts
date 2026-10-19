@@ -9,7 +9,7 @@ import { readPollSettings } from "./pollSettings.js";
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const KEY = /^[0-9a-f]{64}$/;
 type Entry = { key: string; size: number; expires: number; used: number };
-export type CachedImage = { buffer: Buffer; mime: string; path?: string };
+export type CachedImage = { buffer: Buffer; mime: string; path?: string; cacheTtlMs?: number };
 type Download = { buffer: Buffer; path?: string; cacheTtlMs?: number };
 type Loader = (signal: AbortSignal) => Promise<Download>;
 
@@ -42,6 +42,15 @@ export class ImageCache {
   async get(scope: number | string, url: string, load: Loader): Promise<CachedImage | "unsupported"> {
     if (this.stopping) throw new ImageCacheBusyError();
     const key = createHash("sha256").update(`${scope}\0${url}`).digest("hex");
+    const missing = this.negative.get(key);
+    if (missing) {
+      if (missing.expires > this.now()) {
+        this.counters.negativeHits++;
+        if (missing.result === "unsupported") return "unsupported";
+        throw new FeedHttpError(missing.result, undefined, "");
+      }
+      this.negative.delete(key);
+    }
     const shared = this.running.get(key);
     if (shared) { this.counters.shared++; return shared.promise; }
     if (this.active >= this.settings.concurrency && this.waiting.length >= this.settings.maxWaiters) {
@@ -163,7 +172,7 @@ export class ImageCache {
         if (buffer.length === entry.size && type) {
           entry.used = this.now();
           this.counters.hits++;
-          return { buffer, mime: type.mime, path: this.file(key) };
+          return { buffer, mime: type.mime, path: this.file(key), cacheTtlMs: Math.max(0, entry.expires - this.now()) };
         }
       } catch { /* Re-fetch evicted or damaged files through the guarded downloader. */ }
     }
@@ -177,6 +186,7 @@ export class ImageCache {
       if (!type) { this.rememberNegative(key, "unsupported"); return "unsupported"; }
       const result: CachedImage = { buffer: image.buffer, mime: type.mime, path: image.path };
       const ttl = Math.min(this.settings.ttlMs, image.cacheTtlMs ?? this.settings.ttlMs);
+      result.cacheTtlMs = ttl;
       if (this.diskAvailable && ttl > 0 && image.buffer.length <= this.settings.maxBytes) {
         try {
           await this.serialize(async () => {
