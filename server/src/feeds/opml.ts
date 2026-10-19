@@ -141,6 +141,8 @@ function extractOutlines(node: unknown, items: OpmlFeedItem[] = [], currentFolde
   return items;
 }
 
+export const MAX_OPML_FEEDS = 2000;
+
 /**
  * Parses an OPML document string and returns a list of feed URLs and their labels.
  */
@@ -162,8 +164,6 @@ export function parseOpml(xmlContent: string): OpmlFeedItem[] {
   }
   return feeds;
 }
-
-export const MAX_OPML_FEEDS = 2000;
 
 const urlSchema = z.string().url();
 
