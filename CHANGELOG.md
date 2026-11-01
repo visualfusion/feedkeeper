@@ -4,6 +4,14 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.35.2] - 2026-11-01
+
+### Fixed
+- Online backups transfer all remaining database pages in a single step instead of small default batches. When concurrent background writes occur while backing up larger databases, SQLite would otherwise repeatedly restart page copying from the beginning and time out.
+
+### Upgrade notes
+- No action is needed. No database migration.
+
 ## [0.35.1] - 2026-10-28
 
 ### Added
