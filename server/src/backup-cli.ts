@@ -33,7 +33,11 @@ async function main(): Promise<void> {
     process.umask(0o077);
     const { db } = await import("./db/index.js");
     try {
-      await db.backup(filePath);
+      await db.backup(filePath, {
+        progress({ remainingPages }) {
+          return remainingPages;
+        },
+      });
       const saved = new Database(filePath, { readonly: true, fileMustExist: true });
       try {
         assertHealthy(saved);
@@ -69,7 +73,11 @@ async function main(): Promise<void> {
     assertHealthy(source);
     mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
     process.umask(0o077);
-    await source.backup(databasePath);
+    await source.backup(databasePath, {
+      progress({ remainingPages }) {
+        return remainingPages;
+      },
+    });
   } finally {
     source.close();
     rmSync(scratch, { recursive: true, force: true });
