@@ -4,6 +4,17 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.35.4] - 2026-11-02
+
+### Added
+- Metadata-only video landing pages (a poster image and broadcast metadata without editorial prose) are converted into a clean video card in the reader while keeping attribution lines intact.
+- Content rule `lazy-images` replaces missing image sources, `data:` placeholders and inline `onerror` script fragments (`this.src=…`) accidentally parsed as image URLs with the real lazy-loaded image address during extraction and in the reader.
+- Feed summaries and derived leads strip leading timestamped bylines, standalone image filenames and copyright notices before choosing the lead text (`LEAD_VERSION` 3), and remove repeated section-plus-`<time>` datelines at the start of an article across German, English and Japanese.
+- The built-in MCP server now provides server instructions describing FeedKeeper's capabilities to connected AI clients and refines the `save_to_inbox` tool title.
+
+### Upgrade notes
+- No action is needed. No database migration. Stored leads are derived again in the background.
+
 ## [0.35.3] - 2026-11-02
 
 ### Added
