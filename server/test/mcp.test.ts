@@ -54,6 +54,7 @@ test("MCP cursors isolate users and read-only tokens expose no write tools", asy
     assert.equal(names.includes("mark_read"), scope === "write");
     assert.equal(names.includes("unsubscribe_feed"), scope === "write");
     assert.equal(names.includes("cleanup_database"), false);
+    assert.match(client.getInstructions() ?? "", /personal RSS reader/);
     await client.close();
     await server.close();
   }

@@ -70,7 +70,15 @@ function selectedItemIds({ itemId, itemIds }: { itemId?: number; itemIds?: numbe
 // instance is created per request (see mcp/http.ts) so tool handlers can
 // safely close over `userId` without leaking data between users.
 export function createMcpServerForUser(userId: number, scope: TokenScope): McpServer {
-  const server = new McpServer({ name: "feedkeeper", version: APP_VERSION });
+  const server = new McpServer(
+    { name: "feedkeeper", version: APP_VERSION },
+    {
+      instructions:
+        "FeedKeeper is a personal RSS reader, article archiver, and news curation service. " +
+        "Use it to read, search, and triage RSS/Atom feeds, fetch full article text, manage reading lists, " +
+        "and read or publish curated newspaper editions.",
+    },
+  );
 
   server.registerTool(
     "list_feeds",
@@ -162,8 +170,8 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
   if (scope === "write") server.registerTool(
     "save_to_inbox",
     {
-      title: "Save article or note to Inbox",
-      description: "Saves a web article URL, raw HTML, text clipping, or markdown note directly into the user's Universal Inbox.",
+      title: "Save article or clipping to Inbox",
+      description: "Saves a web article URL, raw HTML, text clipping, or note directly into the user's Universal Inbox.",
       inputSchema: {
         url: mcpUrlSchema.optional().describe("Web page URL to fetch, extract, and save"),
         title: z.string().max(500).optional().describe("Optional custom title"),
