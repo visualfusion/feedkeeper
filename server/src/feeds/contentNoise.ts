@@ -1,6 +1,9 @@
 import { JSDOM } from "jsdom";
 import { CONSENT_ANCHORS, CONSENT_COMPANIONS } from "./content/patterns/consent/index.js";
+import { SIDEBAR_HEADINGS } from "./content/patterns/sidebars/index.js";
 import { resolveEmbeds } from "./content/embeds/index.js";
+import { loadingPlaceholders } from "./content/noise/loading.js";
+import { trackingPixels } from "./content/noise/pixels.js";
 import { teaserLinks } from "./content/noise/teaserLinks.js";
 import { markVideoTeasers } from "./content/noise/videoTeasers.js";
 import { type NoiseStats, flat, pruneEmpty } from "./content/shared.js";
@@ -81,6 +84,7 @@ function isStructuredData(text: string): boolean {
 
 function removeReaderNoise(root: DocumentFragment, title: string | null | undefined, stats: NoiseStats, author?: string | null): boolean {
   let changed = false;
+  const total = (root.textContent ?? "").length;
   const drop = (element: Element, rule: string) => {
     if (!element.parentNode) return;
     const parent = element.parentNode;
@@ -92,20 +96,26 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
 
   // A feed's own text ends with "[mehr]": the link to the article is no part of what is read.
   if (teaserLinks.apply(root, stats)) changed = true;
+  if (loadingPlaceholders.apply(root, stats)) changed = true;
+  if (trackingPixels.apply(root, stats)) changed = true;
 
   for (const selector of BREADCRUMB_MARKERS) {
     try { root.querySelectorAll(selector).forEach(element => drop(element, "breadcrumb")); } catch { /* selector unsupported by the DOM */ }
   }
-  // Breadcrumbs without markup hints: a short list near the start whose items are single short links.
+  // Short list of single links near the start (breadcrumbs) or in the tail (topic/tag chips).
   for (const list of root.querySelectorAll("ol, ul")) {
     const items = [...list.children].filter(child => child.tagName === "LI");
-    if (items.length < 2 || items.length > 8 || charsBefore(root, list) > 300) continue;
+    if (items.length < 2 || items.length > 8) continue;
+    const before = charsBefore(root, list);
+    const isHead = before <= 300;
+    const isTail = (total - before) <= TAIL_CHARACTERS;
+    if (!isHead && !isTail) continue;
     const onlyLinks = items.every(item => {
       const links = item.querySelectorAll("a");
       const label = flat(item.textContent);
       return links.length === 1 && label.length > 0 && label.length <= 30 && flat(links[0].textContent) === label;
     });
-    if (onlyLinks) drop(list, "breadcrumb");
+    if (onlyLinks) drop(list, isHead ? "breadcrumb" : "topic-list");
   }
 
   // A product card of a shop link: its picture is a CSS background, which no reader draws, and its price is a snapshot
@@ -208,7 +218,6 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
   }
 
   // A comment section's house rules at the end of the text: no reader has comments, so heading and what follows go.
-  const total = (root.textContent ?? "").length;
   for (const block of leafBlocks(root)) {
     if (!block.parentNode || !COMMENT_RULES_HEADING.test(flat(block.textContent))) continue;
     if (total - charsBefore(root, block) > TAIL_CHARACTERS) continue;
@@ -219,6 +228,32 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
     }
     drop(block, "comment-rules");
     break;
+  }
+
+  // A consent wall, tracking choice or publisher welcome at the end: heading and everything below go.
+  for (const block of leafBlocks(root)) {
+    if (!block.parentNode || !CONSENT_WALL_HEADING.test(flat(block.textContent))) continue;
+    if (total - charsBefore(root, block) > TAIL_CHARACTERS) continue;
+    let node: Node = block;
+    while (node.parentNode && node !== root) {
+      while (node.nextSibling) node.nextSibling.remove();
+      node = node.parentNode;
+    }
+    drop(block, "consent-wall");
+    break;
+  }
+
+  // An orphan recommendation heading left without subsequent links or content.
+  for (const block of leafBlocks(root)) {
+    if (!block.parentNode) continue;
+    const text = flat(block.textContent);
+    if (!SIDEBAR_HEADINGS.some(pattern => pattern.test(text))) continue;
+    const parent = block.parentElement;
+    if (parent && !parent.querySelector("a[href], img, picture, video, iframe") && flat(parent.textContent) === text) {
+      drop(parent, "empty-section-label");
+    } else if (!block.querySelector("a[href], img, picture, video, iframe") && block.nextElementSibling === null) {
+      drop(block, "empty-section-label");
+    }
   }
 
   // Empty nested slots are structural evidence: the next story paragraph is outside this ad container.
@@ -504,6 +539,7 @@ const AD_LABEL = /^(Anzeige|Werbung|Advertisement|Advertising|Advertorial|Ads?|S
 const AD_SLOT_LABEL = /^(Anzeige|Werbung|Advertisement|Advertising|Ads?|広告|広告掲載|宣伝)\s*[:：]?$/i;
 const PRODUCT_LABEL = /^(Produkthinweis|Produktempfehlung|Product (notice|recommendation)|商品紹介|商品案内|製品紹介)\s*[:：]?$/i;
 const COMMENT_RULES_HEADING = /^(Regeln für Kommentare|Kommentarregeln|Kommentar-Richtlinien|Community[- ]Richtlinien|(Comment(ing)?|Community|Discussion|House) (rules|guidelines|policy|policies)|Rules for comments|Commenting rules)\s*:?$/i;
+const CONSENT_WALL_HEADING = /^(?:Weiter mit Werbung|Mit Werbung weitersurfen|Weiterlesen mit Werbung|Zustimmen und weiter(?:lesen)?|Zustimmung erforderlich|Willkommen bei [^.!?]{2,40}!?|Einwilligung zu (?:Cookies|Tracking|Datenverarbeitung)|Cookie[- ]Einstellungen|Datenschutzoptionen|Continue with (?:ads|advertising|personalized advertising)|(?:Accept|Agree) and continue|Welcome to [^.!?]{2,40}!?|Cookie (?:and|&) (?:privacy|tracking) settings|Privacy (?:and|&) cookie policy|広告(?:付き|に同意して)で?続ける|同意して(?:続ける|進む)|.+へようこそ!?|Cookie(?:と|および)プライバシーの?設定)\s*:?$/i;
 const TAG_LABEL = /^(Schlagw(ö|oe)rter|Schlagworte|Tags?|Keywords|Themen|Topics)\s*:?$/i;
 const VIDEO_CARD = /^\d{1,2}:\d{2}(:\d{2})?(?=\D)\s*\S/;
 const SECTION_LABEL = /^(Auch interessant|Das könnte (dich|Sie|euch) (auch )?interessieren|Mehr zum Thema|Lesen Sie auch|Lies auch|Lest auch|Aktuelle News|Weitere (Artikel|Meldungen|News)|Popular Stories|Related (Stories|Articles|Posts|Reading)|More (Stories|from)|Top Stories|Meistgelesen|Topaktuell|Regeln für Kommentare|Kommentare|Comments?)\b\s*:?/i;

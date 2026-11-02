@@ -516,6 +516,38 @@ test("an embed held back by a consent plugin becomes a link to its video, the no
   assert.equal(stats["consent-embed"], 3);
 });
 
+test("the Japanese forms of play labels and consent notices are handled like German and English", () => {
+  const body = `<p>${"これは長い本文の段落です。十分に文章が含まれています。".repeat(8)}</p>`;
+
+  // Play label & video
+  const playOverlay = '<a href="https://example.test/video"><img src="https://example.test/thumb.jpg" alt="動画を再生"></a>';
+  const cleanedPlay = cleanReaderHtml(body + playOverlay, "タイトル");
+  assert.match(cleanedPlay, /data-media="video"/);
+
+  // Consent placeholder
+  const consentHtml = body + "<div><p>おすすめの外部コンテンツ</p><p>外部コンテンツの読み込みに同意する</p></div>";
+  const cleanedConsent = cleanReaderHtml(consentHtml, "タイトル");
+  assert.doesNotMatch(cleanedConsent, /おすすめの外部コンテンツ|外部コンテンツの読み込みに同意する/);
+});
+
+test("a consent wall and tracking choice at the end of the article are removed", () => {
+  const body = `<p>${"Dies ist ein längerer Absatz der eigentlichen redaktionellen Geschichte. ".repeat(6)}</p>` +
+    "<p><strong>Kanntet ihr diese Fakten schon?</strong></p>";
+  const tail = '<p><img src="https://pixel.test/track.gif" width="1" height="1" alt=""></p>' +
+    '<ul><li><a href="https://example.test/a">Artikel</a></li><li><a href="https://example.test/b">News</a></li><li><a href="https://example.test/c">Anime</a></li></ul>' +
+    '<div><p><i></i> wird geladen ...</p></div>' +
+    '<div><h2>Willkommen bei GamePro!</h2><p><img src="https://example.test/logo.svg" alt="Logo"></p></div>' +
+    '<hr><div><h3>Weiter mit Werbung</h3><p>Wie gewohnt mit personalisierter Werbung, Werbespots und Tracking. In den <a href="#">Datenschutzoptionen</a> kannst du deine Einstellungen anpassen.</p></div>' +
+    '<div><p>Für die Weiterentwicklung unseres Angebotes erheben wir personenbezogene Daten gemäß DSGVO und TDDDG.</p></div>';
+
+  const cleaned = cleanReaderHtml(body + tail, "Kikis Abenteuer");
+  assert.match(cleaned, /Kanntet ihr diese Fakten schon\?/);
+  for (const removed of ["Weiter mit Werbung", "Willkommen bei GamePro", "Datenschutzoptionen", "wird geladen", "track.gif"]) {
+    assert.ok(!cleaned.includes(removed), `reader should remove: ${removed}`);
+  }
+  assert.doesNotMatch(cleaned, /<ul|<ol/);
+});
+
 test("the marks of a media link survive a second pass over already cleaned HTML", () => {
   const once = cleanReaderHtml(BODY + '<blockquote class="twitter-tweet"><p>Hallo Welt</p><a href="https://x.com/a/status/123">x</a></blockquote>', "Title");
   assert.match(once, /data-media="social" data-source="X"/);
