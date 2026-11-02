@@ -62,7 +62,7 @@ feedsRouter.get("/:feedId/icon", iconLimiter, async (req, res) => {
 
 feedsRouter.get("/opml", (req, res) => {
   const opml = generateOpml(req.user!.id);
-  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Content-Type", "text/x-opml; charset=utf-8");
   res.setHeader("Content-Disposition", 'attachment; filename="feedkeeper-subscriptions.opml"');
   res.send(opml);
 });

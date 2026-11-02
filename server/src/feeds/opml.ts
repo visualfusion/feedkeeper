@@ -5,20 +5,23 @@ import {
   listSubscriptionsForUser,
   findFeedByUrl,
   createFeed,
+  seedFeedMetadata,
   isUserSubscribed,
   subscribe,
   createFolder,
   type Feed,
   type SubscribedFeed,
 } from "./repository.js";
-import { SsrfBlockedError } from "./ssrfGuard.js";
+import { SsrfBlockedError, normalizeUrlCandidate } from "./ssrfGuard.js";
 import { assertPublicFeedUrl } from "./blockedHosts.js";
 import { requestFeedPoll } from "./poller.js";
-import { decodeEntities } from "./text.js";
+import { decodeEntities, plainTitle } from "./text.js";
 
 export interface OpmlFeedItem {
   url: string;
   label?: string;
+  title?: string;
+  siteUrl?: string;
   folder?: string;
 }
 
@@ -28,6 +31,9 @@ export interface OpmlImportResult {
   failed: number;
   errors: Array<{ url: string; reason: string }>;
 }
+
+const MAX_FOLDER_NAME_LENGTH = 100;
+const MAX_FEED_LABEL_LENGTH = 200;
 
 function escapeXml(unsafe: string): string {
   return unsafe.replace(/[<>&'"]/g, (char) => {
@@ -50,9 +56,10 @@ function escapeXml(unsafe: string): string {
 
 function feedToOutlineXml(s: SubscribedFeed, indent = "    "): string {
   const text = escapeXml(s.label || s.title || s.url);
+  const title = escapeXml(s.title || s.label || s.url);
   const xmlUrl = escapeXml(s.url);
   const htmlUrl = s.site_url ? ` htmlUrl="${escapeXml(s.site_url)}"` : "";
-  return `${indent}<outline text="${text}" title="${text}" type="rss" xmlUrl="${xmlUrl}"${htmlUrl} />`;
+  return `${indent}<outline text="${text}" title="${title}" type="rss" xmlUrl="${xmlUrl}"${htmlUrl} />`;
 }
 
 /**
@@ -106,7 +113,25 @@ ${outlines}
 }
 
 /**
- * Recursively extracts outline elements containing an xmlUrl attribute from parsed OPML.
+ * Reads an attribute from a parsed XML node case-insensitively in priority order.
+ */
+function getAttr(record: Record<string, unknown>, ...names: string[]): string | undefined {
+  const entries = Object.entries(record);
+  for (const name of names) {
+    const target = `@_${name.toLowerCase()}`;
+    for (const [key, value] of entries) {
+      if (key.toLowerCase() === target) {
+        if (typeof value === "string") return value;
+        if (typeof value === "number" || typeof value === "boolean") return String(value);
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Recursively extracts outline elements containing a feed URL from parsed OPML.
+ * Nested subfolders are flattened to the top level so each subfolder becomes its own folder.
  */
 function extractOutlines(node: unknown, items: OpmlFeedItem[] = [], currentFolder?: string): OpmlFeedItem[] {
   if (!node || typeof node !== "object") return items;
@@ -119,24 +144,32 @@ function extractOutlines(node: unknown, items: OpmlFeedItem[] = [], currentFolde
   }
 
   const record = node as Record<string, unknown>;
+  const hasChildren = Boolean(record.outline);
 
-  const xmlUrl =
-    (typeof record["@_xmlUrl"] === "string" ? record["@_xmlUrl"] : undefined) ??
-    (typeof record["@_xmlurl"] === "string" ? record["@_xmlurl"] : undefined);
+  // Leaf outlines without xmlUrl may use url="..." in older OPML 1.0 exports.
+  const rawXmlUrl = getAttr(record, "xmlUrl") ?? (!hasChildren ? getAttr(record, "url") : undefined);
+  const rawText = getAttr(record, "text");
+  const rawTitle = getAttr(record, "title");
+  const rawHtmlUrl = getAttr(record, "htmlUrl");
 
-  const rawLabel =
-    (typeof record["@_text"] === "string" ? record["@_text"] : undefined) ??
-    (typeof record["@_title"] === "string" ? record["@_title"] : undefined);
+  const label = plainTitle(rawText ?? rawTitle)?.slice(0, MAX_FEED_LABEL_LENGTH);
+  const title = plainTitle(rawTitle ?? rawText)?.slice(0, MAX_FEED_LABEL_LENGTH);
+  const siteUrl = rawHtmlUrl?.trim() ? decodeEntities(rawHtmlUrl.trim()) : undefined;
 
-  if (xmlUrl) {
-    const label = rawLabel?.trim() ? decodeEntities(rawLabel.trim()) : undefined;
-    items.push({ url: xmlUrl.trim(), label, folder: currentFolder });
-  } else if (rawLabel && record.outline) {
-    currentFolder = decodeEntities(rawLabel.trim());
+  let childFolder = currentFolder;
+
+  if (rawXmlUrl && rawXmlUrl.trim()) {
+    const url = decodeEntities(rawXmlUrl.trim());
+    const item: OpmlFeedItem = { url, label, folder: currentFolder };
+    if (title && title !== label) item.title = title;
+    if (siteUrl) item.siteUrl = siteUrl;
+    items.push(item);
+  } else if (label && hasChildren) {
+    childFolder = label.slice(0, MAX_FOLDER_NAME_LENGTH);
   }
 
-  if (record.outline) {
-    extractOutlines(record.outline, items, currentFolder);
+  if (hasChildren) {
+    extractOutlines(record.outline, items, childFolder);
   }
 
   return items;
@@ -148,18 +181,25 @@ export const MAX_OPML_FEEDS = 2000;
  * Parses an OPML document string and returns a list of feed URLs and their labels.
  */
 export function parseOpml(xmlContent: string): OpmlFeedItem[] {
+  const cleanedXml = xmlContent.replace(/^\uFEFF/, "").trim();
+  if (!cleanedXml) {
+    throw new Error("invalid_opml_format");
+  }
+
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: "@_",
     trimValues: true,
   });
 
-  const parsed = parser.parse(xmlContent);
-  if (!parsed || !parsed.opml || !parsed.opml.body) {
+  const parsed = parser.parse(cleanedXml);
+  if (!parsed || typeof parsed.opml !== "object" || parsed.opml === null || !("body" in parsed.opml)) {
     throw new Error("invalid_opml_format");
   }
 
-  const feeds = extractOutlines(parsed.opml.body.outline);
+  const body = parsed.opml.body;
+  const outlineRoot = body && typeof body === "object" ? (body as Record<string, unknown>).outline : undefined;
+  const feeds = extractOutlines(outlineRoot);
   if (feeds.length > MAX_OPML_FEEDS) {
     throw new Error("too_many_opml_feeds");
   }
@@ -167,6 +207,48 @@ export function parseOpml(xmlContent: string): OpmlFeedItem[] {
 }
 
 const urlSchema = z.string().url();
+
+function normalizeOpmlUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  if (/^feeds?:https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^feeds?:/i, "");
+  }
+  if (/^feeds?:\/\//i.test(trimmed)) {
+    const rest = trimmed.replace(/^feeds?:\/\//i, "");
+    return /^https?:\/\//i.test(rest) ? rest : `https://${rest}`;
+  }
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  return trimmed;
+}
+
+function sanitizeHttpUrl(raw?: string): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed.startsWith("//") ? `https:${trimmed}` : trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function isUrlFallbackLabel(label: string | undefined, rawUrl: string, normalizedUrl: string): boolean {
+  if (!label) return true;
+  const trimmed = label.trim();
+  if (!trimmed) return true;
+  if (trimmed === rawUrl || trimmed === normalizedUrl) return true;
+  try {
+    return new URL(normalizeOpmlUrl(trimmed)).toString() === normalizedUrl;
+  } catch {
+    try {
+      return new URL(normalizeUrlCandidate(trimmed)).toString() === normalizedUrl;
+    } catch {
+      return false;
+    }
+  }
+}
 
 /**
  * Imports feeds from an OPML document string for the given user.
@@ -187,7 +269,8 @@ export async function importOpmlFeeds(userId: number, xmlContent: string): Promi
   for (const item of feedItems) {
     if (!item.url) continue;
 
-    const urlCheck = urlSchema.safeParse(item.url);
+    const candidateUrl = normalizeOpmlUrl(item.url);
+    const urlCheck = urlSchema.safeParse(candidateUrl);
     if (!urlCheck.success) {
       result.failed++;
       result.errors.push({ url: item.url, reason: "invalid_url_format" });
@@ -196,7 +279,7 @@ export async function importOpmlFeeds(userId: number, xmlContent: string): Promi
 
     let normalizedUrl: string;
     try {
-      const validated = await assertPublicFeedUrl(item.url);
+      const validated = await assertPublicFeedUrl(candidateUrl);
       normalizedUrl = validated.toString();
     } catch (error) {
       result.failed++;
@@ -211,23 +294,30 @@ export async function importOpmlFeeds(userId: number, xmlContent: string): Promi
         feed = createFeed(normalizedUrl, Math.max(config.minPollIntervalMinutes, 15));
       }
 
+      const rawTitle = item.title ?? item.label;
+      const seedTitle = isUrlFallbackLabel(rawTitle, item.url, normalizedUrl) ? null : (rawTitle ?? null);
+      const seedSiteUrl = sanitizeHttpUrl(item.siteUrl);
+      seedFeedMetadata(feed.id, { title: seedTitle, siteUrl: seedSiteUrl });
+
       if (isUserSubscribed(userId, feed.id)) {
         result.skipped++;
         continue;
       }
 
       let folderId: number | null = null;
-      if (item.folder) {
-        if (folderCache.has(item.folder)) {
-          folderId = folderCache.get(item.folder)!;
+      const folderName = item.folder?.trim().slice(0, MAX_FOLDER_NAME_LENGTH);
+      if (folderName) {
+        if (folderCache.has(folderName)) {
+          folderId = folderCache.get(folderName)!;
         } else {
-          const folder = createFolder(userId, item.folder);
+          const folder = createFolder(userId, folderName);
           folderId = folder.id;
-          folderCache.set(item.folder, folder.id);
+          folderCache.set(folderName, folder.id);
         }
       }
 
-      subscribe(userId, feed.id, item.label ?? null, folderId);
+      const customLabel = isUrlFallbackLabel(item.label, item.url, normalizedUrl) ? null : (item.label ?? null);
+      subscribe(userId, feed.id, customLabel, folderId);
       result.imported++;
       feedsToPoll.push(feed);
     } catch (error) {

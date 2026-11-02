@@ -66,7 +66,7 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "1mb" }));
-app.use(express.text({ type: ["application/xml", "text/xml", "text/plain"], limit: "5mb" }));
+app.use(express.text({ type: ["application/xml", "text/xml", "text/x-opml", "application/opml+xml", "text/plain"], limit: "5mb" }));
 app.use(
   cookieSession({
     name: "feedkeeper.sid",

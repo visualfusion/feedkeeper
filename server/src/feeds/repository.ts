@@ -112,6 +112,19 @@ export function createFeed(url: string, pollIntervalMinutes: number): Feed {
   return findFeedById(Number(result.lastInsertRowid))!;
 }
 
+export function seedFeedMetadata(
+  feedId: number,
+  data: { title?: string | null; siteUrl?: string | null },
+): void {
+  if (!data.title && !data.siteUrl) return;
+  db.prepare(
+    `UPDATE feeds SET
+       title = COALESCE(NULLIF(TRIM(title), ''), ?),
+       site_url = COALESCE(NULLIF(TRIM(site_url), ''), ?)
+     WHERE id = ?`,
+  ).run(data.title?.trim() || null, data.siteUrl?.trim() || null, feedId);
+}
+
 export function subscribe(
   userId: number,
   feedId: number,

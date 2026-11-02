@@ -4,6 +4,9 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Fixed
+- OPML imports accept more export variants, preserve source metadata and nested folder membership, and avoid storing URL fallbacks as custom labels. Exports keep custom labels distinct from source titles, and the server accepts common OPML content types.
+
 ## [0.35.4] - 2026-11-02
 
 ### Added
