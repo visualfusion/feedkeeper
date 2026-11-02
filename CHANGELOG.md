@@ -4,6 +4,16 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.35.3] - 2026-11-02
+
+### Added
+- Content rules support Japanese patterns across boilerplate footers and call-to-actions, consent notices, script loading placeholders, play-button labels and recommendation sidebars.
+- Reader cleaning strips consent walls, cookie banners, tracking choices and tail topic lists at the end of an article.
+- Script loading placeholders and tracking pixels are cleaned in reader HTML as well as during full text extraction.
+
+### Upgrade notes
+- No action is needed. No database migration.
+
 ## [0.35.2] - 2026-11-01
 
 ### Fixed
