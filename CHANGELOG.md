@@ -11,6 +11,7 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 - Repeated folder creation returns accurate counts and applies explicitly supplied icons; conflicting renames return a conflict response in both APIs.
 - Annotated articles remain in article lists after unsubscribing, curated editions retain access to their feed icons, and inbox deletion avoids creating an inbox or emitting intermediate note/state changes.
 - Responsive and lazy images, including relative addresses and picture fallbacks, survive extraction and use local image URLs in archive and proxy responses.
+- The web reader ignores late extraction results for other articles and preserves newer saved/read state. Unread and saved pagination no longer skips articles after local state changes.
 
 ### Upgrade notes
 - Database migration `0041_sync_feed_metadata.sql` runs automatically on startup.

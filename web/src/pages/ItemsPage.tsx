@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api, ApiError, type Feed, type Folder, type Item } from "../api/client.ts";
 import { CustomSelect, type SelectOption } from "../components/CustomSelect.tsx";
 import { TodayDate } from "../components/TodayDate.tsx";
-import { ArticleReaderModal } from "../components/ArticleReaderModal.tsx";
+import { ArticleReaderModal, type ArticleContentUpdate } from "../components/ArticleReaderModal.tsx";
 import { ArticleExcerpt } from "../components/ArticleExcerpt.tsx";
 import { Favicon } from "../components/Favicon.tsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.tsx";
@@ -382,6 +382,10 @@ export function ItemsPage() {
   async function loadMore() {
     if (loadingMore || !hasMore) return;
     const version = loadVersion.current;
+    const offset =
+      effectiveUnreadOnly || bookmarkedOnly
+        ? items.filter((i) => (!effectiveUnreadOnly || !i.read) && (!bookmarkedOnly || i.bookmarked)).length
+        : nextOffset.current;
     setLoadingMore(true);
     setMoreError(false);
     try {
@@ -392,10 +396,10 @@ export function ItemsPage() {
         bookmarkedOnly,
         search: search || undefined,
         limit: PAGE_SIZE,
-        offset: nextOffset.current,
+        offset,
       });
       if (version === loadVersion.current) {
-        nextOffset.current += data.length;
+        nextOffset.current = offset + data.length;
         setItems((previous) => {
           const seen = new Set(previous.map((item) => item.id));
           return [...previous, ...data.filter((item) => !seen.has(item.id))];
@@ -611,11 +615,9 @@ export function ItemsPage() {
     ? scopeOptions.find((option) => option.value === filterScope)?.label ?? t("items.title")
     : t("items.allFeeds");
 
-  function handleItemUpdated(updated: Item) {
-    setItems((prev) => prev.map((it) => (it.id === updated.id ? updated : it)));
-    if (selectedArticle?.id === updated.id) {
-      setSelectedArticle(updated);
-    }
+  function handleItemUpdated(updated: ArticleContentUpdate) {
+    setItems((prev) => prev.map((it) => (it.id === updated.id ? { ...it, ...updated } : it)));
+    setSelectedArticle((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
   }
 
   const content = (

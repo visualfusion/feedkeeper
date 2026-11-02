@@ -5,6 +5,8 @@ import { api, ApiError, type Item } from "../api/client.js";
 import { sanitizeHtml, leadingArticleImage, estimateReadingTime, safeHttpUrl } from "../utils/sanitizeHtml.js";
 import { Favicon } from "./Favicon.js";
 
+export type ArticleContentUpdate = Pick<Item, "id" | "full_content_html">;
+
 interface ArticleReaderModalProps {
   item: Item | null;
   isOpen: boolean;
@@ -13,7 +15,7 @@ interface ArticleReaderModalProps {
   onToggleRead: (item: Item) => void;
   onNext?: () => void;
   onPrevious?: () => void;
-  onItemUpdated?: (item: Item) => void;
+  onItemUpdated?: (item: ArticleContentUpdate) => void;
   hasNext?: boolean;
   hasPrev?: boolean;
 }
@@ -43,7 +45,11 @@ export function ArticleReaderModal({
     headerObserver.current.observe(node);
   }, []);
   const [copied, setCopied] = useState(false);
-  const [extracting, setExtracting] = useState(false);
+  const pendingExtractions = useRef(new Set<number>());
+  const [extractingIds, setExtractingIds] = useState<ReadonlySet<number>>(new Set());
+  const extracting = item !== null && extractingIds.has(item.id);
+  const activeItemIdRef = useRef<number | null>(item?.id ?? null);
+  activeItemIdRef.current = isOpen ? item?.id ?? null : null;
   const [showFullText, setShowFullText] = useState(false);
   const [extractedByline, setExtractedByline] = useState<string | null>(null);
   // The author the feed names; the extractor's guess only fills in when it has none.
@@ -60,8 +66,9 @@ export function ArticleReaderModal({
     setShowFullText(Boolean(item?.full_content_html));
     setExtractionError(null);
     setConsentWall(false);
-    setExtractedByline(null);
   }, [item?.id, item?.full_content_html]);
+
+  useEffect(() => { setExtractedByline(null); }, [item?.id]);
 
   // Automatically trigger reader view extraction if configured and article not yet extracted.
   // Runs only when the modal opens or the active item changes; the derived values (articleUrl,
@@ -90,7 +97,7 @@ export function ArticleReaderModal({
 
   // Extract full article text from original website via Readability
   const handleToggleFullText = useCallback(async () => {
-    if (!item || extracting) return;
+    if (!item || pendingExtractions.current.has(item.id)) return;
 
     if (item.full_content_html) {
       setShowFullText((prev) => !prev);
@@ -99,33 +106,40 @@ export function ArticleReaderModal({
 
     if (!articleUrl) return;
 
-    setExtracting(true);
+    const targetItem = item;
+    pendingExtractions.current.add(targetItem.id);
+    setExtractingIds(new Set(pendingExtractions.current));
     setExtractionError(null);
     setConsentWall(false);
     try {
-      const res = await api.extractContent(item.id);
+      const res = await api.extractContent(targetItem.id);
       const updatedItem = {
-        ...item,
+        id: targetItem.id,
         full_content_html: res.full_content_html,
       };
-      if (res.byline) {
-        setExtractedByline(res.byline);
-      }
-      setShowFullText(true);
       onItemUpdated?.(updatedItem);
+      if (activeItemIdRef.current === targetItem.id) {
+        if (res.byline) {
+          setExtractedByline(res.byline);
+        }
+        setShowFullText(true);
+      }
     } catch (err: unknown) {
-      if (err instanceof ApiError && err.code === "consent_wall") {
-        setConsentWall(true);
-      } else if (err instanceof ApiError && err.status === 0) {
-        setExtractionError(t("common.offlineAction"));
-      } else if (!(err instanceof ApiError && err.code === "full_text_disabled")) {
-        console.error("Failed to extract full text:", err);
-        setExtractionError(t("reader.extractionFailed"));
+      if (activeItemIdRef.current === targetItem.id) {
+        if (err instanceof ApiError && err.code === "consent_wall") {
+          setConsentWall(true);
+        } else if (err instanceof ApiError && err.status === 0) {
+          setExtractionError(t("common.offlineAction"));
+        } else if (!(err instanceof ApiError && err.code === "full_text_disabled")) {
+          console.error("Failed to extract full text:", err);
+          setExtractionError(t("reader.extractionFailed"));
+        }
       }
     } finally {
-      setExtracting(false);
+      pendingExtractions.current.delete(targetItem.id);
+      setExtractingIds(new Set(pendingExtractions.current));
     }
-  }, [item, extracting, articleUrl, t, onItemUpdated]);
+  }, [item, articleUrl, t, onItemUpdated]);
 
   // Keyboard navigation & shortcuts
   useEffect(() => {
