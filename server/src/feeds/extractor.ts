@@ -1,4 +1,4 @@
-import { SCRIPT_IMAGE_SOURCE } from "./content/noise/lazyImages.js";
+import { SCRIPT_IMAGE_SOURCE } from "./imageSources.js";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import { fetch as undiciFetch } from "undici";

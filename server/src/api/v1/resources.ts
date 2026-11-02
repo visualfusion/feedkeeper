@@ -91,7 +91,7 @@ const subscribeSchema = z.object({
   folderId: z.number().int().positive().nullable().optional(),
 });
 
-resourcesRouter.post("/subscriptions", async (req, res) => {
+resourcesRouter.post("/subscriptions", requireCapability("sync"), async (req, res) => {
   const parsed = subscribeSchema.safeParse(req.body);
   if (!parsed.success) return invalid(res, parsed.error.flatten());
   try {
@@ -133,6 +133,9 @@ resourcesRouter.patch("/subscriptions/:id", async (req, res) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) return invalid(res, parsed.error.flatten());
   const { url, ...settings } = parsed.data;
+  if (url && !hasUserCapability(req.user!.id, "sync")) {
+    return void res.status(403).json(capabilityDenial(req.user!.id, "sync"));
+  }
   try {
     let targetId = id;
     if (url) targetId = (await changeFeedUrl(req.user!.id, id, url)).subscription.id;
@@ -163,13 +166,13 @@ async function refresh(userId: number, id: number) {
   return { subscription: subscriptionOf(userId, id), ...result };
 }
 
-resourcesRouter.post("/subscriptions/:id/refresh", async (req, res) => {
+resourcesRouter.post("/subscriptions/:id/refresh", requireCapability("sync"), async (req, res) => {
   const result = await refresh(req.user!.id, Number(req.params.id));
   if (!result) return void res.status(404).json({ error: "not_found" });
   res.json(result);
 });
 
-resourcesRouter.post("/refresh", async (req, res) => {
+resourcesRouter.post("/refresh", requireCapability("sync"), async (req, res) => {
   const subscriptions = listSubscriptionsForUser(req.user!.id);
   const { newItems, errors, deferred } = await pollFeeds(subscriptions);
 
@@ -201,7 +204,7 @@ resourcesRouter.get("/subscriptions/:id/icon", imageLimiter, async (req, res) =>
   res.type(icon.mime).send(icon.buffer);
 });
 
-resourcesRouter.post("/discover", async (req, res) => {
+resourcesRouter.post("/discover", requireCapability("sync"), async (req, res) => {
   const parsed = z.object({ url: urlField }).safeParse(req.body);
   if (!parsed.success) return invalid(res, parsed.error.flatten());
   try {
@@ -218,7 +221,7 @@ resourcesRouter.get("/opml", (req, res) => {
   res.send(generateOpml(req.user!.id));
 });
 
-resourcesRouter.post("/opml", async (req, res) => {
+resourcesRouter.post("/opml", requireCapability("sync"), async (req, res) => {
   const xml = typeof req.body === "string" ? req.body : typeof req.body?.opml === "string" ? req.body.opml : "";
   if (!xml.trim()) return void res.status(400).json({ error: "missing_opml_content" });
   try {
@@ -272,18 +275,9 @@ resourcesRouter.post("/folders", (req, res) => {
   if (parsed.data.iconSymbol !== undefined && !hasUserCapability(req.user!.id, "sync")) {
     return void res.status(403).json(capabilityDenial(req.user!.id, "sync"));
   }
-  try {
-    const folder = createFolder(req.user!.id, parsed.data.name, parsed.data.iconSymbol);
-    res.status(201).json({
-      id: folder.id,
-      name: folder.name,
-      iconSymbol: folder.icon_symbol ?? null,
-      subscriptionCount: 0,
-      unreadCount: 0,
-    });
-  } catch {
-    res.status(409).json({ error: "folder_name_taken" });
-  }
+  const folder = createFolder(req.user!.id, parsed.data.name, parsed.data.iconSymbol);
+  const detail = listFoldersForUser(req.user!.id).find((entry) => entry.id === folder.id)!;
+  res.status(201).json(serializeFolder(detail));
 });
 
 resourcesRouter.patch("/folders/:id", (req, res) => {
@@ -296,7 +290,8 @@ resourcesRouter.patch("/folders/:id", (req, res) => {
   if (!findFolderById(req.user!.id, id)) return void res.status(404).json({ error: "folder_not_found" });
   try {
     updateFolder(req.user!.id, id, parsed.data);
-  } catch {
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "SQLITE_CONSTRAINT_UNIQUE")) throw error;
     return void res.status(409).json({ error: "folder_name_taken" });
   }
   const folder = listFoldersForUser(req.user!.id).find((item) => item.id === id);

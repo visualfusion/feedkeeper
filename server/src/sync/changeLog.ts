@@ -37,6 +37,7 @@ export function serializeSubscription(subscription: SubscribedFeed) {
     notify: Boolean(subscription.notify),
     badge: Boolean(subscription.badge),
     isInbox: Boolean(subscription.is_system_inbox),
+    lastError: subscription.last_error,
     iconHash: subscription.icon_hash ?? null,
     iconUrl: subscription.icon_hash
       ? `/api/v1/subscriptions/${subscription.id}/icon?v=${subscription.icon_hash}`

@@ -31,11 +31,7 @@ foldersRouter.post("/", requireCapability("sync"), (req, res) => {
   }
 
   const folder = createFolder(req.user!.id, parsed.data.name);
-  res.status(201).json({
-    ...folder,
-    feed_count: 0,
-    unread_count: 0,
-  });
+  res.status(201).json(listFoldersForUser(req.user!.id).find((entry) => entry.id === folder.id));
 });
 
 foldersRouter.patch("/:folderId", (req, res) => {
@@ -52,8 +48,13 @@ foldersRouter.patch("/:folderId", (req, res) => {
     return;
   }
 
-  const updated = updateFolder(req.user!.id, folderId, parsed.data.name);
-  res.json(updated);
+  try {
+    const updated = updateFolder(req.user!.id, folderId, parsed.data.name);
+    res.json(updated);
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "SQLITE_CONSTRAINT_UNIQUE")) throw error;
+    res.status(409).json({ error: "folder_name_taken" });
+  }
 });
 
 foldersRouter.delete("/:folderId", (req, res) => {
@@ -62,7 +63,7 @@ foldersRouter.delete("/:folderId", (req, res) => {
   res.json({ success: true });
 });
 
-foldersRouter.post("/:folderId/read", (req, res) => {
+foldersRouter.post("/:folderId/read", requireCapability("sync"), (req, res) => {
   const folderId = Number(req.params.folderId);
   const updatedCount = markAllRead(req.user!.id, { folderId });
   res.json({ read: updatedCount });

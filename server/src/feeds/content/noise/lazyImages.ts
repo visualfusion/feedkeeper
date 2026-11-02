@@ -1,7 +1,5 @@
 import { type ContentRule } from "../shared.js";
-
-/** A script accidentally parsed as a URL is never an image, even after it was made absolute. */
-export const SCRIPT_IMAGE_SOURCE = /\bthis\.src\s*=/i;
+import { firstSrcsetSource, imageSource, usableImageSource } from "../../imageSources.js";
 
 export const lazyImages: ContentRule = {
   name: "lazy-images",
@@ -9,10 +7,12 @@ export const lazyImages: ContentRule = {
   apply(root, stats) {
     let changed = false;
     for (const image of root.querySelectorAll("img")) {
-      const current = image.getAttribute("src") ?? "";
-      if (current && !/^data:/i.test(current) && !SCRIPT_IMAGE_SOURCE.test(current)) continue;
-      const source = image.getAttribute("data-lazy-src") || image.getAttribute("data-src") || image.getAttribute("data-original");
-      if (!source || !/^(?:https?:\/\/|\/)/i.test(source) || SCRIPT_IMAGE_SOURCE.test(source)) continue;
+      if (usableImageSource(image.getAttribute("src"))) continue;
+      let source = imageSource((name) => image.getAttribute(name));
+      for (const candidate of image.closest("picture")?.querySelectorAll("source") ?? []) {
+        source ??= firstSrcsetSource(candidate.getAttribute("data-lazy-srcset") ?? candidate.getAttribute("data-srcset") ?? candidate.getAttribute("srcset"));
+      }
+      if (!source) continue;
       image.setAttribute("src", source);
       stats["lazy-images"] = (stats["lazy-images"] ?? 0) + 1;
       changed = true;

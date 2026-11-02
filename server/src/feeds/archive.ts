@@ -12,6 +12,7 @@ import { ImageCache, ImageCacheBusyError, type CachedImage } from "./imageCache.
 import { detectImageType, isVectorImageUrl } from "./imageTypes.js";
 export { detectImageType } from "./imageTypes.js";
 import { comparableImageKey } from "./heroImage.js";
+import { normalizeImageSources } from "./imageSources.js";
 
 const MAX_IMAGES_PER_ARTICLE = 30;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -99,7 +100,7 @@ function resolveImageUrl(raw: string, baseUrl: string | null): string | null {
 /** Image URLs an article shows, in order, without tracking pixels. */
 export function articleImageUrls(html: string, baseUrl: string | null): string[] {
   const urls = new Set<string>();
-  for (const [tag] of html.matchAll(/<img\b[^>]*>/gi)) {
+  for (const [tag] of normalizeImageSources(html).matchAll(/<img\b[^>]*>/gi)) {
     if (/\swidth\s*=\s*["']?1["'\s>]/i.test(tag) && /\sheight\s*=\s*["']?1["'\s>]/i.test(tag)) continue;
     const src = srcAttribute(tag);
     const url = src && resolveImageUrl(src.value, baseUrl);
@@ -110,7 +111,7 @@ export function articleImageUrls(html: string, baseUrl: string | null): string[]
 
 /** Replace the `src` of every image for which `replacement` knows a new address. */
 function rewriteImageSources(html: string, baseUrl: string | null, replacement: (url: string) => string | undefined): string {
-  return html.replace(/<img\b[^>]*>/gi, (tag) => {
+  return normalizeImageSources(html).replace(/<img\b[^>]*>/gi, (tag) => {
     const src = srcAttribute(tag);
     const url = src && resolveImageUrl(src.value, baseUrl);
     const next = url ? replacement(url) : undefined;

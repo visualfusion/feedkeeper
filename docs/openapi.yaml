@@ -376,7 +376,7 @@ paths:
     post:
       tags: [Folders]
       summary: Create a folder
-      description: Creating a folder that already exists returns it, so a retried request is harmless.
+      description: Creating a folder that already exists returns its current counts. An explicit iconSymbol updates its icon; omitting it preserves the existing icon.
       requestBody:
         required: true
         content:

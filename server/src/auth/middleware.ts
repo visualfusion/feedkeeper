@@ -35,7 +35,7 @@ export function requireSession(req: Request, res: Response, next: NextFunction):
 
 function bearerToken(req: Request): string | undefined {
   const header = req.headers.authorization;
-  return header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : undefined;
+  return header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : undefined;
 }
 
 // MCP auth: Bearer personal access token or OAuth access token (not a paired device), scopes the request to its owner.
@@ -45,7 +45,7 @@ export function requireBearerToken(req: Request, res: Response, next: NextFuncti
 
 // Native app API: a paired device token or a hand-made token; the web UI may call it with its session.
 export function requireSessionOrDevice(req: Request, res: Response, next: NextFunction): void {
-  if (bearerToken(req)) authenticateBearer(["api", "device"])(req, res, next);
+  if (req.headers.authorization !== undefined) authenticateBearer(["api", "device"])(req, res, next);
   else requireSession(req, res, next);
 }
 

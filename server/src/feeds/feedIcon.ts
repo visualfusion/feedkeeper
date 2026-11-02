@@ -33,15 +33,17 @@ export function detectIconType(buffer: Uint8Array): string | null {
   return /^(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)?<svg[\s>]/i.test(head) ? "image/svg+xml" : null;
 }
 
-/** Whether the user subscribes to the feed or has saved or annotated one of its articles. */
+/** Whether the user subscribes to the feed or has saved, annotated, or curated one of its articles. */
 export function canAccessFeed(userId: number, feedId: number): boolean {
   return Boolean(
     db.prepare(
       `SELECT 1 FROM feeds f WHERE f.id = ?
          AND (EXISTS (SELECT 1 FROM subscriptions s WHERE s.feed_id = f.id AND s.user_id = ?)
            OR EXISTS (SELECT 1 FROM items i JOIN item_bookmarks b ON b.item_id = i.id WHERE i.feed_id = f.id AND b.user_id = ?)
-           OR EXISTS (SELECT 1 FROM items i JOIN item_notes n ON n.item_id = i.id WHERE i.feed_id = f.id AND n.user_id = ?))`,
-    ).get(feedId, userId, userId, userId),
+           OR EXISTS (SELECT 1 FROM items i JOIN item_notes n ON n.item_id = i.id WHERE i.feed_id = f.id AND n.user_id = ?)
+           OR EXISTS (SELECT 1 FROM items i, editions e, json_each(e.item_ids) selected WHERE i.feed_id = f.id AND e.user_id = ?
+             AND selected.value = i.id AND e.source = 'curated' AND e.status <> 'dismissed'))`,
+    ).get(feedId, userId, userId, userId, userId),
   );
 }
 

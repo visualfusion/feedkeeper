@@ -6,6 +6,14 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ### Fixed
 - OPML imports accept more export variants, preserve source metadata and nested folder membership, and avoid storing URL fallbacks as custom labels. Exports keep custom labels distinct from source titles, and the server accepts common OPML content types.
+- Unchanged feed polls no longer rewrite every existing article. Feed title, website and error changes reach native clients through delta sync, including clearing a recovered error.
+- Native and MCP imports, feed discovery, subscription creation, URL changes and explicit refresh enforce sync capabilities. Invalid Authorization headers cannot fall back to a browser session, and signup/onboarding sessions include the account security version.
+- Repeated folder creation returns accurate counts and applies explicitly supplied icons; conflicting renames return a conflict response in both APIs.
+- Annotated articles remain in article lists after unsubscribing, curated editions retain access to their feed icons, and inbox deletion avoids creating an inbox or emitting intermediate note/state changes.
+- Responsive and lazy images, including relative addresses and picture fallbacks, survive extraction and use local image URLs in archive and proxy responses.
+
+### Upgrade notes
+- Database migration `0041_sync_feed_metadata.sql` runs automatically on startup.
 
 ## [0.35.4] - 2026-11-02
 

@@ -112,6 +112,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
       },
     },
     async ({ url, label, folderId }) => {
+      if (!hasUserCapability(userId, "sync")) return { ...textResult(capabilityDenial(userId, "sync")), isError: true as const };
       try {
         const subscription = await subscribeToFeed(userId, url, label ?? null, folderId ?? null);
         return textResult(subscription);
@@ -140,6 +141,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
       },
     },
     async ({ url }) => {
+      if (!hasUserCapability(userId, "sync")) return { ...textResult(capabilityDenial(userId, "sync")), isError: true as const };
       try {
         const feeds = await discoverFeeds(url);
         return textResult({ feeds });
@@ -257,6 +259,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
       },
     },
     async ({ feedId, url, label, pollIntervalMinutes, fullText, notify, badge }) => {
+      if (url && !hasUserCapability(userId, "sync")) return { ...textResult(capabilityDenial(userId, "sync")), isError: true as const };
       try {
         let targetFeedId = feedId;
         let previousItemsKept: boolean | undefined;
@@ -548,6 +551,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
       },
     },
     async ({ opml }) => {
+      if (!hasUserCapability(userId, "sync")) return { ...textResult(capabilityDenial(userId, "sync")), isError: true as const };
       try {
         const result = await importOpmlFeeds(userId, opml);
         return textResult(result);
@@ -567,6 +571,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
       },
     },
     async ({ feedId }) => {
+      if (!hasUserCapability(userId, "sync")) return { ...textResult(capabilityDenial(userId, "sync")), isError: true as const };
       const feed = findFeedById(feedId);
       if (!feed || !isUserSubscribed(userId, feedId)) {
         return errorResult("Feed not found or not subscribed");

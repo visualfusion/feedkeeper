@@ -333,8 +333,8 @@ export function upsertItems(
         inserted++;
         refreshLead(Number(result.lastInsertRowid));
       } else {
-        const previous = db.prepare<[number, string], { id: number; title: string | null; link: string | null; image_url: string | null; content_snippet: string | null; content_html: string | null; full_content_html: string | null; lead_version: number | null }>(
-          "SELECT id, title, link, image_url, content_snippet, content_html, full_content_html, lead_version FROM items WHERE feed_id = ? AND guid = ?").get(feedId, row.guid);
+        const previous = db.prepare<[number, string], { id: number; title: string | null; link: string | null; image_url: string | null; content_snippet: string | null; content_html: string | null; full_content_html: string | null; published_at: string | null; author: string | null; lead_version: number | null }>(
+          "SELECT id, title, link, image_url, content_snippet, content_html, full_content_html, published_at, author, lead_version FROM items WHERE feed_id = ? AND guid = ?").get(feedId, row.guid);
         const next = row.contentHtml;
         // Some publishers replace complete feed bodies with short teasers on a later poll.
         const retained = previous?.content_html && next && next.length < previous.content_html.length * 0.9 &&
@@ -350,9 +350,9 @@ export function upsertItems(
             (row.link !== undefined && row.link !== previous.link) ||
             (!keptPrevious && row.contentSnippet !== undefined && row.contentSnippet !== previous.content_snippet) ||
             (retained !== null && retained !== previous.content_html) ||
-            (row.publishedAt !== undefined && row.publishedAt !== null) ||
+            (row.publishedAt !== undefined && row.publishedAt !== null && row.publishedAt !== previous.published_at) ||
             (nextImage !== previous.image_url) ||
-            (row.author !== undefined);
+            (row.author !== undefined && row.author !== null && row.author !== previous.author);
           if (changed) {
             update.run(row.title ?? null, row.link ?? null, nextSnippet, retained, row.publishedAt ?? null, nextImage, row.author ?? null, feedId, row.guid);
             const leadChanged = (retained !== null && retained !== previous.content_html) ||
@@ -400,14 +400,16 @@ export function listItemsForUser(
   feed_icon_url: string | null;
   bookmarked_at: string | null;
 })[] {
-  // Saved articles stay visible without a subscription (e.g. after unsubscribing).
+  // Saved and annotated articles stay visible after unsubscribing.
   const conditions: string[] = [];
+  const params: unknown[] = [];
   if (opts.bookmarkedOnly) {
     conditions.push("b.item_id IS NOT NULL");
   } else {
-    conditions.push("(s.id IS NOT NULL OR b.item_id IS NOT NULL)");
+    conditions.push(`(s.id IS NOT NULL OR b.item_id IS NOT NULL OR
+      EXISTS (SELECT 1 FROM item_notes access_note WHERE access_note.item_id = i.id AND access_note.user_id = ?))`);
+    params.push(userId);
   }
-  const params: unknown[] = [];
 
   // Keep the stored item available to direct reads and sync; deliberate saves/notes override stream filtering.
   conditions.push(`(i.is_empty_gallery = 0 OR b.item_id IS NOT NULL OR
@@ -638,10 +640,13 @@ export function findFolderById(userId: number, id: number): Folder | undefined {
 
 export function createFolder(userId: number, name: string, iconSymbol?: string | null): Folder {
   const trimmed = name.trim();
-  db.prepare("INSERT INTO folders (user_id, name, icon_symbol) VALUES (?, ?, ?) ON CONFLICT (user_id, name) DO NOTHING").run(
+  db.prepare(`INSERT INTO folders (user_id, name, icon_symbol) VALUES (?, ?, ?)
+    ON CONFLICT (user_id, name) DO UPDATE SET icon_symbol = excluded.icon_symbol
+    WHERE ? AND folders.icon_symbol IS NOT excluded.icon_symbol`).run(
     userId,
     trimmed,
     iconSymbol ?? null,
+    Number(iconSymbol !== undefined),
   );
   return findFolderByName(userId, trimmed)!;
 }

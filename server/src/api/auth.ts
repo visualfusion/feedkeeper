@@ -199,6 +199,6 @@ authRouter.post("/signup", (req, res) => {
     return;
   }
   const user = createUser({ ...parsed.data, role: "user" });
-  req.session!.userId = user.id;
+  req.session = { userId: user.id, securityVersion: securityVersion(user.id) };
   res.status(201).json(toPublicUser(user));
 });

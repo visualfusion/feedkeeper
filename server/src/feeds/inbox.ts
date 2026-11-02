@@ -162,19 +162,14 @@ export async function saveToInbox(
 }
 
 export function deleteInboxItem(userId: number, itemId: number): boolean {
-  const inbox = ensureUserInbox(userId);
+  const inbox = findFeedByUrl(`feedkeeper://inbox/${userId}`);
   const item = findItemById(itemId);
-  if (!item || item.feed_id !== inbox.id) {
+  if (!inbox || !item || item.feed_id !== inbox.id) {
     return false;
   }
 
-  db.transaction(() => {
-    db.prepare("DELETE FROM item_bookmarks WHERE item_id = ?").run(itemId);
-    db.prepare("DELETE FROM item_reads WHERE item_id = ?").run(itemId);
-    db.prepare("DELETE FROM item_progress WHERE item_id = ?").run(itemId);
-    db.prepare("DELETE FROM item_notes WHERE item_id = ?").run(itemId);
-    db.prepare("DELETE FROM items WHERE id = ?").run(itemId);
-  })();
+  // Cascades run after the parent disappears, so state/note triggers do not announce stale updates.
+  db.prepare("DELETE FROM items WHERE id = ?").run(itemId);
 
   pruneArchive();
   return true;

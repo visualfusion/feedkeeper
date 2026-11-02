@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { hasAnyUser } from "../db/index.js";
 import { createUser } from "../auth/users.js";
+import { securityVersion } from "../auth/security.js";
 
 export const onboardingRouter = Router();
 
@@ -30,6 +31,6 @@ onboardingRouter.post("/", (req, res) => {
   }
 
   const user = createUser({ ...parsed.data, role: "admin" });
-  req.session!.userId = user.id;
+  req.session = { userId: user.id, securityVersion: securityVersion(user.id) };
   res.status(201).json({ id: user.id, email: user.email, displayName: user.display_name, role: user.role });
 });

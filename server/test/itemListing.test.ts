@@ -56,7 +56,6 @@ test("article pages preserve access, filters, content and ordering", async (t) =
   db.prepare("INSERT INTO item_reads (user_id, item_id) VALUES (?, ?)").run(other, 5);
   setItemNote(owner, 5, "My needle");
   setItemNote(other, 1, "Private needle");
-  setItemNote(owner, 7, "Note without a subscription");
   addMutedKeyword(owner, "NOISE");
   const ids = (opts: Parameters<typeof listItemsForUser>[1] = {}, user = owner) => listItemsForUser(user, opts).map((row) => row.id);
 
@@ -141,6 +140,15 @@ test("article pages preserve access, filters, content and ordering", async (t) =
     assert.deepEqual(seen, expected);
     assert.deepEqual(ids({ sortByAdded: true, includeMuted: true, after: { createdAt: day(4), id: 2 } }), [8, 6, 10]);
     assert.deepEqual(ids({ sortByAdded: true, includeMuted: true, before: { createdAt: day(5), id: 6 }, after: { createdAt: day(4), id: 1 } }), [10, 2]);
+  });
+
+  await t.test("annotations retain list access without leaking other users notes or entering the saved filter", () => {
+    setItemNote(owner, 7, "Note without a subscription");
+    assert.deepEqual(ids({ feedId: foreign }), [7]);
+    assert.deepEqual(ids({ search: "Note without a subscription" }), [7]);
+    assert.deepEqual(ids({ feedId: foreign, bookmarkedOnly: true }), []);
+    assert.deepEqual(ids({ feedId: foreign }, outsider), []);
+    assert.deepEqual(ids({ limit: 1 }), [7]);
   });
 
   await t.test("default and maximum page sizes still bound large article bodies", () => {
