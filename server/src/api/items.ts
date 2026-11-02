@@ -63,8 +63,8 @@ itemsRouter.get("/", (req, res) => {
     items.map(({ content_lead: _lead, lead_version: _leadVersion, ...item }) => ({
       ...item,
       content_snippet: cleanSnippet(item.content_snippet, item.title),
-      content_html: readerHtml(item.content_html, item.title, item.author),
-      full_content_html: readerHtml(item.full_content_html, item.title, item.author),
+      content_html: readerHtml(item.content_html, item.title, item.author, item.link),
+      full_content_html: readerHtml(item.full_content_html, item.title, item.author, item.link),
       read: Boolean(item.read),
       bookmarked: Boolean(item.bookmarked),
     })),
@@ -148,7 +148,7 @@ itemsRouter.post("/:itemId/extract-content", async (req, res) => {
   const [served] = withArchivedImages([{ id: result.id, link: currentItem?.link ?? null, full_content_html: result.fullContentHtml }], requestOrigin(req));
   res.json({
     id: result.id,
-    full_content_html: readerHtml(served.full_content_html, result.title ?? currentItem?.title, currentItem?.author),
+    full_content_html: readerHtml(served.full_content_html, result.title ?? currentItem?.title, currentItem?.author, currentItem?.link),
     ...(result.cached ? {} : { title: result.title, byline: result.byline }),
     cached: result.cached,
   });

@@ -1,4 +1,7 @@
+import { cleanVideoPage } from "./content/noise/videoPages.js";
+import { lazyImages } from "./content/noise/lazyImages.js";
 import { JSDOM } from "jsdom";
+import { SNIPPET_BYLINES, SNIPPET_IMAGE_METADATA } from "./content/patterns/snippet-metadata/index.js";
 import { CONSENT_ANCHORS, CONSENT_COMPANIONS } from "./content/patterns/consent/index.js";
 import { SIDEBAR_HEADINGS } from "./content/patterns/sidebars/index.js";
 import { resolveEmbeds } from "./content/embeds/index.js";
@@ -170,7 +173,7 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
   let pastStart = false;
   for (const block of leafBlocks(root)) {
     const text = flat(block.textContent);
-    if (!text) continue;
+    if (!text || block.querySelector("a[data-media]")) continue;
     const position = leading++;
     const heading = /^H[1-3]$/.test(block.tagName);
     // Before the first real paragraph: a standalone date and a section chip repeat what the page head says.
@@ -202,7 +205,7 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
     if (/^(Audiobeitrag|Videobeitrag|Autoplay)$/i.test(text) || (position < 8 && /^Bild$/.test(text))) { drop(block, "player"); continue; }
     if (!pastStart && text.length <= 70 && block.querySelector("time") && charsBefore(root, block) <= 600) {
       const rest = flat(text.replace(flat(block.querySelector("time")?.textContent), ""));
-      if (/^(stand|zuletzt aktualisiert|aktualisiert|ver(ö|oe)ffentlicht|updated|published|posted)?\s*[:·|•-]*\s*$/i.test(rest)) { drop(block, "dateline"); continue; }
+      if (/^(news|ニュース|nachrichten|stand|zuletzt aktualisiert|aktualisiert|ver(ö|oe)ffentlicht|updated|published|posted)?\s*[:·|•-]*\s*$/i.test(rest)) { drop(block, "dateline"); continue; }
     }
     const anchors = block.querySelectorAll("a");
     if (text.length <= 60 && anchors.length === 1 && anchors[0].getAttribute("href")?.startsWith("#") && flat(anchors[0].textContent) === text) {
@@ -368,16 +371,18 @@ function serialize(root: DocumentFragment): string {
 }
 
 /** The article HTML as a reader should show it. Unchanged input is returned as is. */
-export function cleanReaderHtml(html: string, title?: string | null, stats: NoiseStats = {}, author?: string | null): string {
+export function cleanReaderHtml(html: string, title?: string | null, stats: NoiseStats = {}, author?: string | null, url?: string | null): string {
   if (!html) return html;
   const root = JSDOM.fragment(html);
+  const videoPage = cleanVideoPage(root, url, title, stats);
+  const lazy = lazyImages.apply(root, stats);
   const images = resolveCustomImages(root, stats);
   const duplicates = collapseAdjacentImages(root, stats);
   const variants = collapseImageVariants(root, stats);
   const embeds = resolveEmbeds(root, stats);
   const noise = removeReaderNoise(root, title, stats, author);
   const typography = removeTypography(root, stats);
-  return images || duplicates || variants || embeds || noise || typography ? serialize(root) : html;
+  return videoPage || lazy || images || duplicates || variants || embeds || noise || typography ? serialize(root) : html;
 }
 
 /**
@@ -674,6 +679,15 @@ export function cleanSnippet(snippet: string | null | undefined, title?: string 
   let text = snippet.replace(/\r\n?/g, "\n").replace(/[ \t\u00a0]+/g, " ");
   for (const pattern of SNIPPET_INLINE_PATTERNS) text = text.replace(pattern, "");
   const headline = normalized(title ?? "");
+  let inMetadata = true;
+  text = text.split("\n").filter(line => {
+    const value = line.trim();
+    if (!value) return false;
+    if (inMetadata && (matchesAny(value, SNIPPET_BYLINES) || matchesAny(value, SNIPPET_IMAGE_METADATA) ||
+        (headline && normalized(value) === headline))) return false;
+    inMetadata = false;
+    return true;
+  }).join("\n");
   const lines = text.split("\n").map(line => line.trim()).filter((line, index) =>
     line && !SNIPPET_LINE_PATTERNS.some(pattern => pattern.test(line)) && !isSocialList(line) &&
     !(index === 0 && headline && normalized(line) === headline));
@@ -681,7 +695,7 @@ export function cleanSnippet(snippet: string | null | undefined, title?: string 
 }
 
 /** Raised whenever the rules above change what they remove, so stored leads are derived again. */
-export const LEAD_VERSION = 2;
+export const LEAD_VERSION = 3;
 const LEAD_LENGTH = 600;
 
 function shorten(text: string, max: number): string {

@@ -24,12 +24,12 @@ const readerCache = new Map<string, string>();
  * Article HTML as a reader shows it, without breadcrumbs, repeated headline and similar page chrome. Computed when
  * served and never stored, so the publisher's original stays intact and rule changes apply to old articles too.
  */
-export function readerHtml(html: string | null | undefined, title?: string | null, author?: string | null): string | null {
+export function readerHtml(html: string | null | undefined, title?: string | null, author?: string | null, url?: string | null): string | null {
   if (!html) return html ?? null;
-  const key = createHash("sha1").update(title ?? "").update("\0").update(author ?? "").update("\0").update(html).digest("base64");
+  const key = createHash("sha1").update(title ?? "").update("\0").update(author ?? "").update("\0").update(url ?? "").update("\0").update(html).digest("base64");
   const cached = readerCache.get(key);
   if (cached !== undefined) return cached;
-  const cleaned = cleanReaderHtml(html, title, {}, author);
+  const cleaned = cleanReaderHtml(html, title, {}, author, url);
   if (readerCache.size >= READER_CACHE_LIMIT) readerCache.delete(readerCache.keys().next().value as string);
   readerCache.set(key, cleaned);
   return cleaned;

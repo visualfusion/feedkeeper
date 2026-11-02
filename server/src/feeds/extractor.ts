@@ -1,3 +1,4 @@
+import { SCRIPT_IMAGE_SOURCE } from "./content/noise/lazyImages.js";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import { fetch as undiciFetch } from "undici";
@@ -59,7 +60,7 @@ function resolveLazyImages(doc: Document): void {
       img.getAttribute("data-original") ||
       img.getAttribute("data-actualsrc");
     const src = img.getAttribute("src");
-    if (lazySrc && (!src || src.startsWith("data:") || src.length < 10)) {
+    if (lazySrc && (!src || src.startsWith("data:") || src.length < 10 || SCRIPT_IMAGE_SOURCE.test(src))) {
       img.setAttribute("src", lazySrc);
     }
     const lazySrcset = img.getAttribute("data-lazy-srcset") || img.getAttribute("data-srcset");

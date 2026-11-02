@@ -43,7 +43,7 @@ export function serializeItem(row: ItemRow, progress: Map<number, number>, withC
     imageUrl: row.image_url,
     hasFullText: Boolean(row.full_content_html),
     content: contentMetadata(row),
-    ...(withContent ? { contentHtml: readerHtml(row.content_html, row.title, row.author), fullTextHtml: readerHtml(row.full_content_html, row.title, row.author) } : {}),
+    ...(withContent ? { contentHtml: readerHtml(row.content_html, row.title, row.author, row.link), fullTextHtml: readerHtml(row.full_content_html, row.title, row.author, row.link) } : {}),
     state: {
       read: Boolean(row.read),
       saved: Boolean(row.bookmarked),

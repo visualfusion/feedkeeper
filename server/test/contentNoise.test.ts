@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cleanReaderHtml, cleanSnippet, derivedText, type NoiseStats } from "../src/feeds/contentNoise.js";
+import { cleanReaderHtml, cleanSnippet, derivedText, leadText, type NoiseStats } from "../src/feeds/contentNoise.js";
 
 const BODY = [
   "The ministry confirmed on Tuesday that the new rules apply from the first of November, after months of consultation with the affected associations and several regional authorities.",
@@ -564,4 +564,46 @@ test("consent notices of other sites go, and an embed kept as base64 in an attri
   const cleaned = cleanReaderHtml(html, "Title");
   assert.match(cleaned, /href="https:\/\/www\.instagram\.com\/reel\/DezVcSbOXq6\/" data-media="social" data-source="Instagram"/);
   assert.doesNotMatch(cleaned, /Redakteuren|Datenschutz|Externen? Inhalt|einverstanden|Datawrapper/);
+});
+
+test("metadata-only video landing pages become cards while editorial video articles stay intact", () => {
+  const url = "https://publisher.test/video/video-123.html";
+  for (const label of ["Video", "Video report", "動画ニュース"]) {
+    const html = '<header><nav>Navigation</nav></header><main><p>' + label + '</p><p>Stand: 28.10.2026 • 12:19 Uhr</p><img src="https://cdn.test/poster.jpg"><p>Newsroom, Channel One, 28.10.2026 • 12:00 Uhr</p><ul><li><a href="/topic">Topic</a></li></ul><nav>Facebook WhatsApp Mail Drucken</nav></main>';
+    const cleaned = cleanReaderHtml(html, "A video title", {}, null, url);
+    assert.match(cleaned, /data-media="video"/);
+    assert.match(cleaned, /Newsroom, Channel One/);
+    assert.doesNotMatch(cleaned, /Navigation|Facebook|WhatsApp|Drucken|Topic|Stand:/);
+    assert.equal(cleanReaderHtml(cleaned, "A video title", {}, null, url), cleaned);
+    const article = html.replace("</main>", BODY + "</main>");
+    assert.doesNotMatch(cleanReaderHtml(article, "A video title", {}, null, url), /data-media="video"/);
+    assert.match(cleanReaderHtml(article, "A video title", {}, null, url), /ministry confirmed/);
+    assert.doesNotMatch(cleanReaderHtml(html, "Text page", {}, null, "https://publisher.test/news/story"), /data-media="video"/);
+  }
+});
+
+test("a section label followed by an explicit time element is a repeated dateline", () => {
+  for (const label of ["News", "Nachrichten", "ニュース"]) {
+    const cleaned = cleanReaderHtml('<p>' + label + ' <time datetime="2026-10-28T10:30:00+01:00">28.10.2026 um 10:30 Uhr</time></p>' + BODY);
+    assert.doesNotMatch(cleaned, /<time/);
+    assert.match(cleaned, /ministry confirmed/);
+  }
+});
+
+
+test("plain feed summaries lose leading bylines, filenames and credits before leads are chosen", () => {
+  const body = "Der Schauspieler, Regisseur und Drehbuchautor Walter Koenig ist am vergangenen Sonntag verstorben.";
+  const bylines = [
+    "von Michael Bartl I 28.10.2026 - 10:50",
+    "By Michael Bartl | October 28, 2026 - 10:50",
+    "執筆：山田 太郎 | 2026年10月28日 - 10:50",
+  ];
+  for (const byline of bylines) {
+    const snippet = byline + "\n\n pavel_chekov_walter_koenig.jpg\n\n©Paramount\n\n" + body;
+    assert.equal(cleanSnippet(snippet), body);
+    assert.equal(leadText({ html: "<p>" + body + "</p>", snippet }), body);
+  }
+  assert.equal(cleanSnippet("A report about image metadata.\nphoto.jpg\n©Photo agency"), "A report about image metadata.\nphoto.jpg\n©Photo agency");
+  assert.equal(cleanSnippet("By Michael Bartl, the discussion had changed."), "By Michael Bartl, the discussion had changed.");
+  assert.equal(cleanSnippet("© copyright is discussed in this article."), "© copyright is discussed in this article.");
 });
