@@ -4,6 +4,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.35.5] - 2026-11-02
+
 ### Fixed
 - OPML imports accept more export variants, preserve source metadata and nested folder membership, and avoid storing URL fallbacks as custom labels. Exports keep custom labels distinct from source titles, and the server accepts common OPML content types.
 - Unchanged feed polls no longer rewrite every existing article. Feed title, website and error changes reach native clients through delta sync, including clearing a recovered error.
