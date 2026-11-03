@@ -18,9 +18,15 @@ function decodeOnce(text: string): string {
   });
 }
 
-/** A title as one line of text: entities decoded, line breaks and runs of spaces collapsed to one space, trimmed. */
+/**
+ * Inline formatting that some feeds put into a title, such as the `<b>` Google Alerts wraps around the search term. Only these tags are
+ * removed, so a title that really contains an angle bracket stays as it is.
+ */
+const TITLE_MARKUP = /<\/?(?:b|i|u|em|strong|mark|span|small|sub|sup|font|a|br)\b[^>]*>/gi;
+
+/** A title as one line of text: entities decoded, inline markup removed, line breaks and runs of spaces collapsed to one space, trimmed. */
 export function plainTitle(text: string | null | undefined): string | undefined {
-  const cleaned = decodeEntities(text)?.replace(/\s+/g, " ").trim();
+  const cleaned = decodeEntities(text)?.replace(TITLE_MARKUP, tag => (/^<br/i.test(tag) ? " " : "")).replace(/\s+/g, " ").trim();
   return cleaned || undefined;
 }
 

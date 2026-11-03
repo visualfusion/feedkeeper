@@ -4,6 +4,7 @@ import { fetchFeed } from "./fetcher.js";
 import { discoverIconUrls, iconCheckDue } from "./icon.js";
 import { refreshFeedIcon } from "./feedIcon.js";
 import { decodeEntities, plainTitle } from "./text.js";
+import { unwrapRedirectLink } from "./redirectLinks.js";
 import { enqueueNewItemNotifications, startPushOutbox, stopPushOutbox } from "../pushOutbox.js";
 import { hasUserCapability } from "../auth/capabilities.js";
 import { findFeedById, listSubscriberIds, updateFeedAfterPoll, updateFeedIcon, upsertItems, type Feed } from "./repository.js";
@@ -137,8 +138,8 @@ export function itemGuid(item: { guid?: unknown; link?: string; title?: string }
 
 /** The article address: its link, or its guid when the feed gives only that and the guid is a web address. */
 export function itemLink(item: { link?: string; guid?: string }): string | undefined {
-  if (item.link) return item.link;
-  return item.guid && /^https?:\/\//i.test(item.guid) ? item.guid : undefined;
+  if (item.link) return unwrapRedirectLink(item.link);
+  return item.guid && /^https?:\/\//i.test(item.guid) ? unwrapRedirectLink(item.guid) : undefined;
 }
 
 /** One attempt; the queue owns retries, admission, single-flight and the total deadline. */

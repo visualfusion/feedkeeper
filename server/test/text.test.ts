@@ -36,3 +36,13 @@ test("a title from a feed is one trimmed line", () => {
   assert.equal(plainTitle("  \n "), undefined);
   assert.equal(plainTitle(null), undefined);
 });
+
+test("a title loses the inline markup a feed puts around the search term", () => {
+  // Google Alerts sends `&lt;b&gt;FeedKeeper&lt;/b&gt;` in its titles.
+  assert.equal(plainTitle("&lt;b&gt;FeedKeeper&lt;/b&gt; vs. Feedly – Die kuratierte RSS-Alternative"), "FeedKeeper vs. Feedly – Die kuratierte RSS-Alternative");
+  assert.equal(plainTitle("<b>FeedKeeper</b> and <em>more</em>"), "FeedKeeper and more");
+  assert.equal(plainTitle("Line one<br/>line two"), "Line one line two");
+  // Not markup: an angle bracket in a real title stays.
+  assert.equal(plainTitle("Why a < b matters"), "Why a < b matters");
+  assert.equal(plainTitle("Use the <script> tag with care"), "Use the <script> tag with care");
+});

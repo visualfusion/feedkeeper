@@ -3,7 +3,8 @@ import { articleText } from "./articleContent.js";
 import { LEAD_VERSION } from "./contentNoise.js";
 import { largerHeroImage } from "./heroImage.js";
 import { refreshGalleryClassification, refreshLead } from "./lead.js";
-import { decodeEntities } from "./text.js";
+import { decodeEntities, plainTitle } from "./text.js";
+import { unwrapRedirectLink } from "./redirectLinks.js";
 
 export interface Feed {
   id: number;
@@ -834,21 +835,26 @@ export function updateFeedIcon(feedId: number, iconUrl: string | null): void {
   db.prepare("UPDATE feeds SET icon_url = ?, icon_checked_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(iconUrl, feedId);
 }
 
-/** Fix item titles, snippets, feed titles and labels stored before entity decoding existed; cheap once nothing matches. */
+/**
+ * Fix item titles, snippets, links, feed titles and labels stored before entity decoding, title markup removal and redirect unwrapping
+ * existed; cheap once nothing matches.
+ */
 export function repairEncodedText(): number {
   const rows = db
-    .prepare<[], { id: number; title: string | null; content_snippet: string | null }>(
-      "SELECT id, title, content_snippet FROM items WHERE title LIKE '%&%;%' OR content_snippet LIKE '%&%;%'",
+    .prepare<[], { id: number; title: string | null; content_snippet: string | null; link: string | null }>(
+      `SELECT id, title, content_snippet, link FROM items
+       WHERE title LIKE '%&%;%' OR title LIKE '%<%>%' OR content_snippet LIKE '%&%;%' OR link LIKE 'https://www.google.%/url?%'`,
     )
     .all();
-  const update = db.prepare("UPDATE items SET title = ?, content_snippet = ? WHERE id = ?");
+  const update = db.prepare("UPDATE items SET title = ?, content_snippet = ?, link = ? WHERE id = ?");
   let fixed = 0;
   db.transaction(() => {
     for (const row of rows) {
-      const title = decodeEntities(row.title);
+      const title = row.title === null ? null : (plainTitle(row.title) ?? row.title);
       const snippet = decodeEntities(row.content_snippet);
-      if (title !== row.title || snippet !== row.content_snippet) {
-        update.run(title ?? null, snippet ?? null, row.id);
+      const link = unwrapRedirectLink(row.link);
+      if (title !== row.title || snippet !== row.content_snippet || link !== row.link) {
+        update.run(title, snippet ?? null, link ?? null, row.id);
         refreshLead(row.id);
         fixed++;
       }
