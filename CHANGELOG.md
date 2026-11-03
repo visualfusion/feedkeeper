@@ -4,9 +4,14 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.35.6] - 2026-11-03
+
 ### Fixed
 - Item titles lose the inline markup some feeds put into them, such as the `<b>` that Google Alerts wraps around the search term. Only formatting tags are removed; angle brackets in a real title stay.
 - Links that run through Google's redirect (`google.com/url?...&url=<article>`), as Google Alerts sends them, point to the article itself, so the full-text fetch and the link in the apps use the real page. Items stored earlier are repaired once at startup.
+
+### Upgrade notes
+- Existing items with such title markup or redirect links are repaired once automatically on startup.
 
 ## [0.35.5] - 2026-11-02
 
