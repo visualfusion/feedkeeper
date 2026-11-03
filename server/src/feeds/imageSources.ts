@@ -39,6 +39,9 @@ export function imageSource(attribute: (name: string) => string | null): string 
   return null;
 }
 
+/** The body of a tag up to its closing `>`: a `>` inside a quoted value, as in `media="(resolution >= 3x)"`, does not end it. */
+const TAG_BODY = `(?:[^>"']|"[^"]*"|'[^']*')*`;
+
 function attribute(tag: string, name: string): string | null {
   const match = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i").exec(tag);
   return match ? match[1] ?? match[2] ?? match[3] : null;
@@ -53,13 +56,13 @@ export function normalizeImageSources(html: string): string {
     const withoutSources = tag.replace(/\s+(?:(?:data-(?:lazy-)?)?src(?:set)?|sizes|data-sizes|data-original|data-actualsrc)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)/gi, "");
     return withoutSources.replace(/\s*\/?>$/, (end) => ` src="${escaped}"${end}`);
   };
-  const pictures = html.replace(/<picture\b[^>]*>[\s\S]*?<\/picture\s*>/gi, (picture) => {
+  const pictures = html.replace(new RegExp(`<picture\\b${TAG_BODY}>[\\s\\S]*?<\\/picture\\s*>`, "gi"), (picture) => {
     let fallback: string | null = null;
-    const withoutSources = picture.replace(/<source\b[^>]*>/gi, (tag) => {
+    const withoutSources = picture.replace(new RegExp(`<source\\b${TAG_BODY}>`, "gi"), (tag) => {
       fallback ??= firstSrcsetSource(attribute(tag, "data-lazy-srcset") ?? attribute(tag, "data-srcset") ?? attribute(tag, "srcset"));
       return "";
     });
-    return withoutSources.replace(/<img\b[^>]*>/gi, (tag) => normalize(tag, fallback));
+    return withoutSources.replace(new RegExp(`<img\\b${TAG_BODY}>`, "gi"), (tag) => normalize(tag, fallback));
   });
-  return pictures.replace(/<img\b[^>]*>/gi, (tag) => normalize(tag));
+  return pictures.replace(new RegExp(`<img\\b${TAG_BODY}>`, "gi"), (tag) => normalize(tag));
 }

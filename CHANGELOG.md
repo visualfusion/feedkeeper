@@ -4,6 +4,10 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Fixed
+- Picture sources with a `>` inside a quoted attribute, such as `media="(resolution >= 3x)"`, no longer leave a piece of the tag (`= 3x)" type="image/avif">`) as visible text in the article. Image tags are now found with a pattern that respects quoted values.
+- A block at the end of a story that holds only a one-symbol permanent link (for example the `★` some blogs add) is removed from the reader text. The new rule `permalink-glyphs` is language independent and leaves symbols inside sentences, links with text and blocks with more content alone.
+
 ## [0.35.6] - 2026-11-03
 
 ### Fixed

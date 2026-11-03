@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { extractArticleFromUrl } from "../src/feeds/extractor.js";
 import { cleanReaderHtml } from "../src/feeds/contentNoise.js";
+import { normalizeImageSources } from "../src/feeds/imageSources.js";
 
 const images = [
   '<img src="/fallback.jpg" srcset="/small.jpg 1x, /large.jpg 2x" sizes="100vw" alt="Fallback">',
@@ -46,4 +47,19 @@ test("raw responsive HTML uses only local archive or proxy image URLs", async ()
   assert.equal(proxyDoc.querySelector("[srcset], [data-srcset], [sizes], picture source"), null);
   const unsafe = '<img src="javascript:alert(1)" data-srcset="data:image/png;base64,AAAA 1x, javascript:alert(2) 2x">';
   assert.deepEqual(articleImageUrls(unsafe, base), []);
+});
+
+test("a greater-than sign inside a media query does not end the source tag and leak into the text", () => {
+  const html = '<figure><picture>'
+    + '<source media="(resolution >= 3x)" srcset="_media/framed.1600w.avif" type="image/avif">'
+    + '<source srcset="_media/framed.1088w.avif" type="image/avif">'
+    + '<img src="_media/framed.png" alt="Framed" width="800" height="1000">'
+    + '</picture></figure>';
+  const normalized = normalizeImageSources(html);
+  assert.equal(normalized.includes("3x)"), false, "no piece of the media query is left over");
+  assert.equal(normalized.includes("<source"), false);
+  assert.equal(JSDOM.fragment(normalized).textContent?.trim(), "");
+  assert.equal(JSDOM.fragment(normalized).querySelector("img")?.getAttribute("src"), "_media/framed.png");
+  const cleaned = JSDOM.fragment(cleanReaderHtml(normalized));
+  assert.equal(cleaned.textContent?.trim(), "");
 });
