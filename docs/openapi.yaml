@@ -288,6 +288,28 @@ paths:
                   invalid: { type: integer }
         "400": { $ref: "#/components/responses/Invalid" }
         "403": { description: The account may not change subscriptions }
+  /subscriptions/status:
+    get:
+      tags: [Subscriptions]
+      summary: How far the first fetch of some subscriptions has come
+      description: >
+        Counts only, cheap enough to ask every few seconds while a big import runs (feature `subscriptions.batch`). `ids` lists up to
+        1,000 subscription ids, comma separated; ids that are not the account's are left out of `total`.
+      parameters:
+        - { name: ids, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  loaded: { type: integer, description: Read at least once }
+                  failed: { type: integer, description: Not read yet and the last attempt failed; the usual schedule retries them }
+                  waiting: { type: integer, description: Not read yet and no attempt has failed so far }
+        "400": { $ref: "#/components/responses/Invalid" }
   /subscriptions/order:
     put:
       tags: [Subscriptions]

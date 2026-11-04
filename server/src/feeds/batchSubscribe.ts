@@ -91,3 +91,31 @@ export async function subscribeBatch(userId: number, items: BatchSubscriptionIte
   for (const feed of created) requestFeedPoll(feed);
   return results;
 }
+
+export interface FetchStatus {
+  /** How many of the asked-for subscriptions belong to the account. */
+  total: number;
+  /** Read at least once. */
+  loaded: number;
+  /** Not read yet and the last attempt failed; the usual schedule retries them. */
+  failed: number;
+  /** Not read yet and no attempt has failed so far. */
+  waiting: number;
+}
+
+/** How far the first fetch of the given subscriptions (feed ids) has come, as counts, so a client can show progress cheaply. */
+export function fetchStatusFor(userId: number, ids: number[]): FetchStatus {
+  const status: FetchStatus = { total: 0, loaded: 0, failed: 0, waiting: 0 };
+  if (ids.length === 0) return status;
+  const rows = db.prepare<unknown[], { last_success_at: string | null; last_error: string | null }>(
+    `SELECT f.last_success_at, f.last_error FROM subscriptions s JOIN feeds f ON f.id = s.feed_id
+     WHERE s.user_id = ? AND s.feed_id IN (${ids.map(() => "?").join(",")})`,
+  ).all(userId, ...ids);
+  for (const row of rows) {
+    status.total++;
+    if (row.last_success_at) status.loaded++;
+    else if (row.last_error) status.failed++;
+    else status.waiting++;
+  }
+  return status;
+}

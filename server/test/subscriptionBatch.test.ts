@@ -92,6 +92,13 @@ test("subscribing in a batch answers at once, keeps working on the feeds and can
       await sleep(25);
     }
 
+    // The status counts show the progress of the first fetch.
+    const ids = sent.body.results.slice(0, 3).map((result: { subscriptionId: number }) => result.subscriptionId).join(",");
+    assert.deepEqual((await call(`/subscriptions/status?ids=${ids}`, device)).body, { total: 3, loaded: 3, failed: 0, waiting: 0 });
+    assert.equal((await call(`/subscriptions/status?ids=${ids}`, otherDevice)).body.total, 0, "another account sees none of them");
+    assert.equal((await call("/subscriptions/status?ids=abc", device)).status, 400);
+    assert.equal((await call("/subscriptions/status", device)).status, 400);
+
     // The same list again changes nothing; another account joins the shared feeds.
     const again = await call("/subscriptions/batch", device, { method: "POST", body: { items: items.slice(0, 3) } });
     assert.deepEqual([again.body.added, again.body.exists, again.body.invalid], [0, 3, 0]);

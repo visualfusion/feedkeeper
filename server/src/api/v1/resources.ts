@@ -43,7 +43,7 @@ import { saveToInbox, deleteInboxItem } from "../../feeds/inbox.js";
 import { changeFeedUrl, FeedError, MultipleFeedsFoundError, subscribeToFeed, unsubscribeFromFeed, updateFeedSettings } from "../../feeds/service.js";
 import { SsrfBlockedError, normalizeUrlCandidate } from "../../feeds/ssrfGuard.js";
 import { blockedUrlBody } from "../../feeds/blockedHosts.js";
-import { MAX_SUBSCRIPTION_BATCH, subscribeBatch } from "../../feeds/batchSubscribe.js";
+import { MAX_SUBSCRIPTION_BATCH, fetchStatusFor, subscribeBatch } from "../../feeds/batchSubscribe.js";
 import { buildOverview } from "../../mcp/digest.js";
 import { decodeCursor, encodeCursor } from "../../mcp/items.js";
 import { readingPositions, serializeItem, serializeSubscriptionDetail } from "./serialize.js";
@@ -121,6 +121,16 @@ resourcesRouter.post("/subscriptions/batch", requireCapability("sync"), async (r
   const results = await subscribeBatch(req.user!.id, parsed.data.items);
   const count = (status: string) => results.filter((result) => result.status === status).length;
   res.json({ results, added: count("added"), exists: count("exists"), invalid: count("invalid") });
+});
+
+// How far the first fetch of freshly added feeds has come: counts only, cheap enough to ask every few seconds during a big import.
+resourcesRouter.get("/subscriptions/status", (req, res) => {
+  const raw = typeof req.query.ids === "string" ? req.query.ids.split(",") : [];
+  const ids = [...new Set(raw.map(Number))];
+  if (raw.length === 0 || ids.length > MAX_SUBSCRIPTION_BATCH * 5 || ids.some((id) => !Number.isInteger(id) || id <= 0)) {
+    return invalid(res, `ids must list 1 to ${MAX_SUBSCRIPTION_BATCH * 5} subscription ids`);
+  }
+  res.json(fetchStatusFor(req.user!.id, ids));
 });
 
 const reorderSchema = z.object({ ids: z.array(z.number().int().positive()) });
