@@ -154,3 +154,24 @@ test("background polling must not inherit stale request capability caches", asyn
   assert.equal(calls,0,"worker resolves current permissions outside the originating request's cache");
   await q.stop();
 });
+
+test("poll queue: a feed somebody waits for is polled before older scheduled work and is marked interactive", async () => {
+  reset();
+  const seen: Array<{ id: number; interactive: boolean }> = [];
+  const q = new PollQueue(async (f, signal, interactive) => {
+    seen.push({ id: f.id, interactive });
+    await sleep(15, undefined, { signal });
+    return { newItems: 0, error: null };
+  }, () => true, { ...settings, concurrency: 1, hostConcurrency: 1, attemptTimeoutMs: 1000 });
+  const background = [feed("one.example.test", 1), feed("two.example.test", 1), feed("three.example.test", 1)];
+  for (const f of background) q.enqueue(f);
+  const wanted = feed("wanted.example.test", 1);
+  const result = q.submit(wanted);
+  await until(() => seen.length === 4);
+  await result;
+  assert.deepEqual(seen[0], { id: wanted.id, interactive: true });
+  assert.deepEqual(seen.slice(1).map(entry => entry.interactive), [false, false, false]);
+  assert.deepEqual(seen.slice(1).map(entry => entry.id), background.map(f => f.id), "background work keeps its order of arrival");
+  await q.stop();
+});
+

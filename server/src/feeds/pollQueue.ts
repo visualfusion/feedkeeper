@@ -14,7 +14,8 @@ const pollingContext = new AsyncResource("FeedKeeperPolling");
 
 export interface PollResult { newItems: number; error: string | null; deferred?: boolean; retryAt?: number }
 interface Job { feed_id: number; host: string; enqueued_at: number; available_at: number; attempts: number }
-type Attempt = (feed: Feed, signal: AbortSignal) => Promise<PollResult>;
+/** `interactive` is true while a request handler waits for this feed (subscribing, manual refresh). */
+type Attempt = (feed: Feed, signal: AbortSignal, interactive: boolean) => Promise<PollResult>;
 type Waiter = { promise: Promise<PollResult>; resolve: (result: PollResult) => void; timer: NodeJS.Timeout };
 
 export function retryDelay(attempt: number, settings: PollSettings, random = Math.random()): number {
@@ -152,12 +153,14 @@ export class PollQueue {
     while (!this.stopped && this.active.size < this.settings.concurrency) {
       const blockedHosts = [...new Set([...this.active.values()].map(entry => entry.host))]
         .filter(host => [...this.active.values()].filter(entry => entry.host === host).length >= this.settings.hostConcurrency);
-      const job = db.prepare<[number, string, string, number], Job>(`SELECT j.* FROM feed_poll_jobs j
+      // Feeds somebody is waiting for come first; everything else keeps its order of arrival.
+      const job = db.prepare<[number, string, string, number, string], Job>(`SELECT j.* FROM feed_poll_jobs j
         WHERE j.available_at <= ?
         AND j.feed_id NOT IN (SELECT value FROM json_each(?))
         AND j.host NOT IN (SELECT value FROM json_each(?))
         AND NOT EXISTS (SELECT 1 FROM feed_poll_hosts h WHERE h.host = j.host AND h.retry_at > ?)
-        ORDER BY j.enqueued_at, j.feed_id LIMIT 1`).get(Date.now(), JSON.stringify([...this.active.keys()]), JSON.stringify(blockedHosts), Date.now());
+        ORDER BY CASE WHEN j.feed_id IN (SELECT value FROM json_each(?)) THEN 0 ELSE 1 END, j.enqueued_at, j.feed_id LIMIT 1`)
+        .get(Date.now(), JSON.stringify([...this.active.keys()]), JSON.stringify(blockedHosts), Date.now(), JSON.stringify([...this.waiters.keys()]));
       if (!job) break;
       const feed = findFeedById(job.feed_id);
       if (!feed || feed.is_system_inbox || !this.eligible(feed.id)) {
@@ -180,6 +183,7 @@ export class PollQueue {
       }
       const waiter = this.waiters.get(feed.id);
       if (waiter) clearTimeout(waiter.timer);
+      const interactive = waiter !== undefined;
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(new DOMException("Poll deadline exceeded", "TimeoutError")), this.settings.attemptTimeoutMs);
       const started = Date.now();
@@ -187,7 +191,7 @@ export class PollQueue {
       const lag = Math.max(0, started - dueAt);
       this.counters.startLagMs += lag;
       this.counters.maxStartLagMs = Math.max(this.counters.maxStartLagMs, lag);
-      const promise = this.run(job, feed, controller.signal).catch(() => {
+      const promise = this.run(job, feed, controller.signal, interactive).catch(() => {
         console.error(JSON.stringify({ event: "feed_poll_queue_error", code: "attempt_storage_failure" }));
         // A storage failure leaves the durable job intact. Stop admission until process restart.
         this.stopped = true;
@@ -205,9 +209,9 @@ export class PollQueue {
       void promise.then(result => this.resolve(feed.id, result));
     }
   }
-  private async run(job: Job, feed: Feed, signal: AbortSignal): Promise<PollResult> {
+  private async run(job: Job, feed: Feed, signal: AbortSignal, interactive: boolean): Promise<PollResult> {
     try {
-      const result = await this.attempt(feed, signal);
+      const result = await this.attempt(feed, signal, interactive);
       db.prepare("DELETE FROM feed_poll_jobs WHERE feed_id = ?").run(feed.id);
       if (!result.error) { this.counters.succeeded++; this.counters.newItems += result.newItems; }
       return result;

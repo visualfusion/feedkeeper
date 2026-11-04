@@ -40,7 +40,7 @@ function sameUrl(a: string, b: string): boolean {
 
 async function parseFeedAt(url: string): Promise<{ feed: DiscoveredFeed | null; html: string | null; finalUrl: string }> {
   try {
-    const fetched = await fetchFeed(url);
+    const fetched = await fetchFeed(url, { priority: "interactive" });
     const finalUrl = fetched.finalUrl || url;
     try {
       const parsed = await rssParser.parseString(fetched.body);
@@ -86,7 +86,7 @@ async function platformFeed(url: URL): Promise<DiscoveredFeed | null> {
   const podcastId = applePodcastId(url);
   if (podcastId) {
     try {
-      const lookup = await fetchFeed(`https://itunes.apple.com/lookup?id=${podcastId}&entity=podcast`);
+      const lookup = await fetchFeed(`https://itunes.apple.com/lookup?id=${podcastId}&entity=podcast`, { priority: "interactive" });
       const feedUrl = feedUrlFromAppleLookup(lookup.body);
       if (feedUrl) candidates.push((await assertPublicFeedUrl(feedUrl)).toString());
     } catch {

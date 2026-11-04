@@ -56,6 +56,38 @@ test("shared HTTP gate: hosts ignore ports, later hosts pass a blocked host, bou
   await assert.rejects(gate.acquire("one", new AbortController().signal), /poll_shutdown/);
 });
 
+test("shared HTTP gate: interactive requests go ahead of background work and take a place in a full queue", async () => {
+  const gate = new RequestGate({ ...readPollSettings(), concurrency: 1, hostConcurrency: 1, maxWaiters: 2 });
+  const signal = new AbortController().signal;
+  const order: string[] = [];
+  const held = await gate.acquire("held", signal);
+  const first = gate.acquire("a", signal, "background").then(release => { order.push("first background"); release(); });
+  const second = gate.acquire("b", signal, "background").then(release => { order.push("second background"); release(); });
+  const evicted = gate.acquire("c", signal, "background");
+  await assert.rejects(evicted, /request_queue_full/, "a background request is turned away at once when the queue is full");
+  const interactive = gate.acquire("d", signal, "interactive").then(release => { order.push("interactive"); release(); });
+  await assert.rejects(second, /request_queue_full/, "the newest background request makes room for the interactive one");
+  assert.deepEqual(gate.stats, { running: 1, waiting: 2 });
+  held();
+  await Promise.all([first, interactive]);
+  assert.deepEqual(order, ["interactive", "first background"]);
+  gate.stop();
+});
+
+test("HTTP deadline starts with the gate slot, so waiting behind other requests does not use it up", async () => {
+  const source = createServer((_req, res) => res.end("<rss><channel><title>Feed</title></channel></rss>"));
+  const url = await listen(source);
+  try {
+    const slot = await feedRequests.acquire(sourceHost(url), new AbortController().signal);
+    const pending = fetchFeed(`${url}/feed`);
+    await sleep(300);
+    assert.equal(feedRequests.stats.waiting >= 1, true, "the download is waiting for the host slot");
+    slot();
+    const result = await pending;
+    assert.match(result.body, /<title>Feed<\/title>/, "the 150 ms request deadline only counts once the download has its slot");
+  } finally { await close(source); }
+});
+
 test("shared HTTP limits are initialized after host startup configuration", async () => {
   const previous = process.env.POLL_CONCURRENCY;
   const gate = new RequestGate();

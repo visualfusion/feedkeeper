@@ -13,7 +13,7 @@ Defaults suit a small installation. Set these variables in `.env`; the supplied 
 | `POLL_CONCURRENCY` | 4 | Maximum active feed attempts and simultaneous downloads, each counted separately |
 | `POLL_HOST_CONCURRENCY` | 2 | Maximum concurrent attempts or downloads per hostname |
 | `POLL_MAX_WAITERS` | 64 | Limit for waiting API calls, downloads and icon tasks, each counted separately |
-| `POLL_REQUEST_TIMEOUT_MS` | 15000 | Total time for a download, including waiting, DNS, redirects and body |
+| `POLL_REQUEST_TIMEOUT_MS` | 15000 | Total time for a download from its first slot, including DNS, redirects and body; waiting for a slot is limited by the attempt timeout |
 | `POLL_ATTEMPT_TIMEOUT_MS` | 30000 | Time for a feed attempt, including icons; also the maximum API queue wait |
 | `POLL_MAX_RETRIES` | 2 | Extra attempts after a temporary failure |
 | `POLL_RETRY_BASE_MS` | 5000 | Initial retry delay, increased with each failure and randomized |
@@ -22,11 +22,11 @@ Defaults suit a small installation. Set these variables in `.env`; the supplied 
 
 On a host with little memory, start with concurrency 2, host concurrency 1 and 32 waiters. On larger hosts, start with the defaults. Try 8 concurrent feeds only after checking memory, queue delay and API response times. Parsing, SQLite writes, full-text extraction and image archiving still need headroom.
 
-Keep the request timeout within the attempt timeout. `MIN_POLL_INTERVAL_MINUTES` still controls the shortest feed interval. Raising the global limit need not raise the host limit.
+Keep the request timeout within the attempt timeout. The request timeout starts when a download gets its place in the shared limit, so a busy server does not use it up while the download waits. `MIN_POLL_INTERVAL_MINUTES` still controls the shortest feed interval. Raising the global limit need not raise the host limit.
 
 ## Refreshes and retries
 
-The oldest eligible jobs run first, skipping busy or paused hosts. Discovery, redirects and icons share the download limits. Each hostname has its own limit, regardless of scheme or port; subdomains count separately.
+Feeds someone is waiting for, such as a new subscription or a manual refresh, run first; after that the oldest eligible jobs run, skipping busy or paused hosts. Downloads follow the same rule: discovery and the first fetch of a feed that is being subscribed go ahead of scheduled polls and icons, and when the waiting list is full they take the place of the newest background download. Discovery, redirects and icons share the download limits. Each hostname has its own limit, regardless of scheme or port; subdomains count separately.
 
 Temporary failures get limited retries with increasing, randomized delays. Other failures wait for the regular interval. HTTP 429/503 pause requests to that host; a valid `Retry-After` can extend the pause beyond the retry maximum. Pauses survive restarts, release workers and cannot be bypassed by manual refresh.
 

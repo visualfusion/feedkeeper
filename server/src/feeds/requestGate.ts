@@ -15,7 +15,10 @@ export function sourceHost(url: string): string {
   return new URL(url).hostname.toLowerCase().replace(/\.$/, "");
 }
 
-type Waiter = { host: string; signal: AbortSignal; resolve: (release: () => void) => void; reject: (error: Error) => void; abort: () => void };
+/** Someone waiting for an answer (subscribing, discovering, refreshing) goes before scheduled background work. */
+export type RequestPriority = "interactive" | "background";
+
+type Waiter = { host: string; signal: AbortSignal; priority: RequestPriority; resolve: (release: () => void) => void; reject: (error: Error) => void; abort: () => void };
 
 /** Shared by feed downloads, discovery, probes and icons. Never holds a permit over a redirect or delay. */
 export class RequestGate {
@@ -31,21 +34,35 @@ export class RequestGate {
   private get limits() { return this.settings ??= readPollSettings(); }
 
   get stats() { return { running: this.running, waiting: this.waiting.length }; }
-  acquire(host: string, signal: AbortSignal): Promise<() => void> {
+  acquire(host: string, signal: AbortSignal, priority: RequestPriority = "background"): Promise<() => void> {
     if (this.stopped) return Promise.reject(new PollShutdownError());
     if (signal.aborted) return Promise.reject(signal.reason);
     const until = this.cooldown(host);
     if (until > Date.now()) return Promise.reject(new PollDeferredError(until, host));
-    if (this.waiting.length >= this.limits.maxWaiters) return Promise.reject(new RequestQueueFullError());
+    if (this.waiting.length >= this.limits.maxWaiters && !this.makeRoomFor(priority)) return Promise.reject(new RequestQueueFullError());
     return new Promise((resolve, reject) => {
-      const waiter: Waiter = { host, signal, resolve, reject, abort: () => {
+      const waiter: Waiter = { host, signal, priority, resolve, reject, abort: () => {
         this.waiting = this.waiting.filter(entry => entry !== waiter);
         reject(signal.reason);
       } };
       signal.addEventListener("abort", waiter.abort, { once: true });
-      this.waiting.push(waiter);
+      // Interactive requests queue behind earlier interactive ones but ahead of all background work.
+      const index = priority === "interactive" ? this.waiting.findIndex(entry => entry.priority === "background") : -1;
+      if (index === -1) this.waiting.push(waiter); else this.waiting.splice(index, 0, waiter);
       this.pump();
     });
+  }
+  /** A full queue still admits an interactive request by turning away the most recent background one. */
+  private makeRoomFor(priority: RequestPriority): boolean {
+    if (priority !== "interactive") return false;
+    for (let i = this.waiting.length - 1; i >= 0; i--) {
+      if (this.waiting[i].priority !== "background") continue;
+      const [evicted] = this.waiting.splice(i, 1);
+      evicted.signal.removeEventListener("abort", evicted.abort);
+      evicted.reject(new RequestQueueFullError());
+      return true;
+    }
+    return false;
   }
   private pump() {
     for (let i = 0; i < this.waiting.length;) {

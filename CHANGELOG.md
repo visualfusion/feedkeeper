@@ -4,6 +4,12 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Changed
+- Feeds that someone is waiting for, such as a new subscription or a manual refresh, are polled before scheduled work, and their downloads go ahead of scheduled polls and icon downloads in the shared request limit. A full waiting list admits such a download by turning away the newest background one. On a busy server, subscribing to many feeds at once no longer queues behind the regular update round.
+
+### Fixed
+- The time limit for a download (`POLL_REQUEST_TIMEOUT_MS`) now starts when the download gets its place in the shared request limit. Before, time spent waiting behind other requests counted against it, so a feed could fail with a timeout on a busy server although its source was quick. Waiting for a place is still limited, by the attempt timeout (`POLL_ATTEMPT_TIMEOUT_MS`).
+
 ## [0.35.8] - 2026-11-04
 
 ### Fixed

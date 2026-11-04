@@ -143,8 +143,13 @@ export function itemLink(item: { link?: string; guid?: string }): string | undef
 }
 
 /** One attempt; the queue owns retries, admission, single-flight and the total deadline. */
-async function pollAttempt(feed: Feed, signal: AbortSignal): Promise<PollResult> {
-  const fetched = await fetchFeed(feed.url, { etag: feed.etag ?? undefined, lastModified: feed.last_modified ?? undefined, signal });
+async function pollAttempt(feed: Feed, signal: AbortSignal, interactive: boolean): Promise<PollResult> {
+  const fetched = await fetchFeed(feed.url, {
+    etag: feed.etag ?? undefined,
+    lastModified: feed.last_modified ?? undefined,
+    signal,
+    priority: interactive ? "interactive" : "background",
+  });
   const parsed = fetched.notModified ? null : await parser.parseString(fetched.body);
   signal.throwIfAborted();
   const current = findFeedById(feed.id);
@@ -226,7 +231,7 @@ export function pollingMetrics() { return pollingQueue().metrics(); }
 
 /** Fetch and parse a feed without storing anything, to validate a URL before switching to it. */
 export async function probeFeed(url: string): Promise<{ title: string | null; itemCount: number }> {
-  const fetched = await fetchFeed(url);
+  const fetched = await fetchFeed(url, { priority: "interactive" });
   const parsed = await parser.parseString(fetched.body);
   return { title: parsed.title ?? null, itemCount: parsed.items.length };
 }

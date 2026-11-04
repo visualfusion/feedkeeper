@@ -2,7 +2,7 @@ import { fetch as undiciFetch } from "undici";
 import { createPublicDispatcher, normalizeUrlCandidate } from "./ssrfGuard.js";
 import { assertPublicFeedUrl } from "./blockedHosts.js";
 import { APP_VERSION } from "../version.js";
-import { feedRequests, sourceHost } from "./requestGate.js";
+import { feedRequests, sourceHost, type RequestPriority } from "./requestGate.js";
 import { readPollSettings } from "./pollSettings.js";
 
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -86,21 +86,28 @@ async function validateUrl(url: string, signal: AbortSignal): Promise<URL> {
   });
 }
 
-// Re-validate every redirect hop and bound headers, body, DNS and permit waiting together.
+// Re-validate every redirect hop and bound headers, body and DNS together with one deadline. The deadline starts when the download gets
+// its first slot in the shared gate, so a busy gate cannot use it up; waiting for a slot has its own limit (the poll attempt deadline).
 async function downloadPublic(
   url: string,
-  opts: { accept: string; maxBytes: number; etag?: string; lastModified?: string; signal?: AbortSignal },
+  opts: { accept: string; maxBytes: number; etag?: string; lastModified?: string; signal?: AbortSignal; priority?: RequestPriority },
 ): Promise<Download> {
   let currentUrl = url;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(new DOMException("Download deadline exceeded", "TimeoutError")), readPollSettings().requestTimeoutMs);
+  const settings = readPollSettings();
+  let timeout: NodeJS.Timeout | undefined;
+  let slotWait: NodeJS.Timeout | undefined;
   const signal = opts.signal ? AbortSignal.any([controller.signal, opts.signal]) : controller.signal;
   const dispatcher = createPublicDispatcher();
   try {
     for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
       const candidate = new URL(normalizeUrlCandidate(currentUrl));
       const host = sourceHost(candidate.href);
-      const release = await feedRequests.acquire(host, signal);
+      slotWait = setTimeout(() => controller.abort(new DOMException("Download deadline exceeded", "TimeoutError")), settings.attemptTimeoutMs);
+      let release: () => void;
+      try { release = await feedRequests.acquire(host, signal, opts.priority); }
+      finally { clearTimeout(slotWait); }
+      timeout ??= setTimeout(() => controller.abort(new DOMException("Download deadline exceeded", "TimeoutError")), settings.requestTimeoutMs);
       try {
         const validated = await validateUrl(candidate.href, signal);
         signal.throwIfAborted();
@@ -157,13 +164,13 @@ async function downloadPublic(
       } finally { release(); }
     }
     throw new Error("Too many redirects while fetching feed");
-  } finally { clearTimeout(timeout); await dispatcher.destroy(); }
+  } finally { clearTimeout(slotWait); clearTimeout(timeout); await dispatcher.destroy(); }
 }
 
 // Fetches a feed URL with conditional GET headers and decodes it to text.
 export async function fetchFeed(
   url: string,
-  opts: { etag?: string; lastModified?: string; signal?: AbortSignal } = {},
+  opts: { etag?: string; lastModified?: string; signal?: AbortSignal; priority?: RequestPriority } = {},
 ): Promise<FetchedFeed> {
   const download = await downloadPublic(url, {
     accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html, application/xhtml+xml;q=0.9, */*;q=0.5",
@@ -171,6 +178,7 @@ export async function fetchFeed(
     etag: opts.etag,
     lastModified: opts.lastModified,
     signal: opts.signal,
+    priority: opts.priority,
   });
   if (download.notModified) {
     return { notModified: true, body: "", finalUrl: download.finalUrl, contentType: download.contentType };
