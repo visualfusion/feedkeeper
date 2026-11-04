@@ -246,7 +246,8 @@ paths:
         first: it is stored and its first fetch joins the durable poll queue, so the answer comes in seconds and the work goes on
         if the client goes away. A feed that cannot be read shows its error on the subscription (`lastError`) and is retried on the usual
         schedule. Sending the same list again changes nothing (`exists`). A folder is named, not referenced: an existing folder is used,
-        otherwise it is created. At most `limits.maxSubscriptionBatch` feeds per request (feature `subscriptions.batch`).
+        otherwise it is created. At most `limits.maxSubscriptionBatch` feeds per request (feature `subscriptions.batch`); a longer list is rejected
+        as a whole with `400`, so split it into several requests.
       requestBody:
         required: true
         content:
