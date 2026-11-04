@@ -4,15 +4,21 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-11-04
+
 ### Added
-- `POST /api/v1/subscriptions/batch` subscribes to many feeds in one request (up to `limits.maxSubscriptionBatch`, 200), announced as `subscriptions.batch` in `/meta.features`. Addresses are checked like a single subscription, but a feed is not read first: it is stored and its first fetch joins the durable poll queue, so the answer comes in seconds, whatever the sources do, and the work goes on if the client goes away or is closed. Each address gets a result (`added`, `exists` or `invalid` with a reason); a feed that cannot be read shows its error on the subscription and is retried on the usual schedule. Folders are given by name, and sending a list again changes nothing. Apps use it for OPML imports and lists of recommended feeds. `GET /api/v1/subscriptions/status?ids=…` tells how far the first fetch of those subscriptions has come (`loaded`, `failed`, `waiting`, as counts), cheap enough to ask every few seconds while a big import runs.
+- `POST /api/v1/subscriptions/batch` subscribes to many feeds in one request (up to `limits.maxSubscriptionBatch`, 200), announced as `subscriptions.batch` in `/meta.features`. Addresses are checked like a single subscription, but a feed is not read first: it is stored and its first fetch joins the durable poll queue, so the answer comes in seconds, whatever the sources do, and the work goes on if the client goes away or is closed. Each address gets a result (`added`, `exists` or `invalid` with a reason); a feed that cannot be read shows its error on the subscription and is retried on the usual schedule. Folders are given by name, and sending a list again changes nothing. It is meant for any client that adds a whole OPML file or list of feeds, such as a native app or a script. `GET /api/v1/subscriptions/status?ids=…` tells how far the first fetch of those subscriptions has come (`loaded`, `failed`, `waiting`, as counts), cheap enough to ask every few seconds while a big import runs.
 
 ### Changed
-- A feed's icon check (the publisher's home page and the icon downloads) runs after the poll has returned instead of inside it. Subscribing to a feed is answered as soon as the feed is stored, and the poll slot is free for the next feed sooner, which makes adding many feeds at once, such as an OPML import or a list of recommended feeds, noticeably quicker.
+- A feed's icon check (the publisher's home page and the icon downloads) runs after the poll has returned instead of inside it. Subscribing to a feed is answered as soon as the feed is stored, and the poll slot is free for the next feed sooner, which makes adding many feeds at once, including an OPML import in the web interface, noticeably quicker.
 - Feeds that someone is waiting for, such as a new subscription or a manual refresh, are polled before scheduled work, and their downloads go ahead of scheduled polls and icon downloads in the shared request limit. A full waiting list admits such a download by turning away the newest background one. On a busy server, subscribing to many feeds at once no longer queues behind the regular update round.
 
 ### Fixed
 - The time limit for a download (`POLL_REQUEST_TIMEOUT_MS`) now starts when the download gets its place in the shared request limit. Before, time spent waiting behind other requests counted against it, so a feed could fail with a timeout on a busy server although its source was quick. Waiting for a place is still limited, by the attempt timeout (`POLL_ATTEMPT_TIMEOUT_MS`).
+
+### Upgrade notes
+- No migration is needed. Clients that do not know `subscriptions.batch` keep subscribing one feed at a time; the apps use the new endpoints when `/meta.features` lists the feature.
+- `POLL_REQUEST_TIMEOUT_MS` now counts from the download's first place in the shared request limit, and `POLL_ATTEMPT_TIMEOUT_MS` also limits how long a download waits for that place. Keep the request timeout within the attempt timeout, as before.
 
 ## [0.35.8] - 2026-11-04
 
