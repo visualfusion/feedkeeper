@@ -14,7 +14,7 @@ Defaults suit a small installation. Set these variables in `.env`; the supplied 
 | `POLL_HOST_CONCURRENCY` | 2 | Maximum concurrent attempts or downloads per hostname |
 | `POLL_MAX_WAITERS` | 64 | Limit for waiting API calls, downloads and icon tasks, each counted separately |
 | `POLL_REQUEST_TIMEOUT_MS` | 15000 | Total time for a download from its first slot, including DNS, redirects and body; waiting for a slot is limited by the attempt timeout |
-| `POLL_ATTEMPT_TIMEOUT_MS` | 30000 | Time for a feed attempt, including icons; also the maximum API queue wait |
+| `POLL_ATTEMPT_TIMEOUT_MS` | 30000 | Time for a feed attempt; also the maximum API queue wait and the time limit of an icon check |
 | `POLL_MAX_RETRIES` | 2 | Extra attempts after a temporary failure |
 | `POLL_RETRY_BASE_MS` | 5000 | Initial retry delay, increased with each failure and randomized |
 | `POLL_RETRY_MAX_MS` | 300000 | Maximum retry delay, except when a source asks for longer |
@@ -27,6 +27,8 @@ Keep the request timeout within the attempt timeout. The request timeout starts 
 ## Refreshes and retries
 
 Feeds someone is waiting for, such as a new subscription or a manual refresh, run first; after that the oldest eligible jobs run, skipping busy or paused hosts. Downloads follow the same rule: discovery and the first fetch of a feed that is being subscribed go ahead of scheduled polls and icons, and when the waiting list is full they take the place of the newest background download. Discovery, redirects and icons share the download limits. Each hostname has its own limit, regardless of scheme or port; subdomains count separately.
+
+A feed's icon check runs after its poll has returned: it no longer holds the poll slot or delays the answer to a new subscription, has its own time limit and cannot fail or retry the poll. Its downloads count as background work in the shared limits.
 
 Temporary failures get limited retries with increasing, randomized delays. Other failures wait for the regular interval. HTTP 429/503 pause requests to that host; a valid `Retry-After` can extend the pause beyond the retry maximum. Pauses survive restarts, release workers and cannot be bypassed by manual refresh.
 

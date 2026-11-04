@@ -64,7 +64,7 @@ test("feed icons are served through this server to people who may see the feed",
   const { canAccessFeed, getFeedIconHash, loadFeedIcon, refreshFeedIcon } = await import("../src/feeds/feedIcon.js");
   const { discoverIconUrls } = await import("../src/feeds/icon.js");
   const { findFeedById } = await import("../src/feeds/repository.js");
-  const { pollFeed } = await import("../src/feeds/poller.js");
+  const { pollFeed, settleIconChecks } = await import("../src/feeds/poller.js");
   runMigrations();
 
   const addUser = db.prepare("INSERT INTO users (email, password_hash, display_name) VALUES (?, 'hash', ?)");
@@ -88,6 +88,7 @@ test("feed icons are served through this server to people who may see the feed",
     svgColor = "blue";
     db.prepare("UPDATE feeds SET etag = 'old-etag', icon_checked_at = '2020-01-01T00:00:00Z' WHERE id = ?").run(feed.id);
     assert.equal((await pollFeed(findFeedById(feed.id)!)).error, null);
+    await settleIconChecks();
     assert.notEqual(getFeedIconHash(feed.id), previousHash);
 
     // A missing SVG falls back to the manifest's large PNG before old and small icons.
@@ -97,6 +98,7 @@ test("feed icons are served through this server to people who may see the feed",
     assert.deepEqual(await discoverIconUrls(`${base}/feed.xml`), [`${base}/missing.svg`, `${base}/large.png`, `${base}/favicon.ico`]);
     db.prepare("UPDATE feeds SET icon_checked_at = NULL WHERE id = ?").run(feed.id);
     assert.equal((await pollFeed(findFeedById(feed.id)!)).error, null);
+    await settleIconChecks();
     assert.deepEqual((await loadFeedIcon(feed.id))?.buffer, LARGE_PNG);
     assert.equal(findFeedById(feed.id)?.icon_url, `${base}/large.png`);
 
@@ -127,6 +129,7 @@ test("feed icons are served through this server to people who may see the feed",
     (await import("../src/feeds/feedIcon.js")).clearIconCache();
     db.prepare("UPDATE feeds SET url = ?, icon_url = NULL, etag = NULL, icon_checked_at = NULL WHERE id = ?").run(`${base}/feed.xml`, feed.id);
     assert.equal((await pollFeed(findFeedById(feed.id)!)).error, null);
+    await settleIconChecks();
     assert.deepEqual((await loadFeedIcon(feed.id))?.buffer, LARGE_PNG);
     assert.equal(findFeedById(feed.id)?.icon_url, `${base}/large.png`);
 

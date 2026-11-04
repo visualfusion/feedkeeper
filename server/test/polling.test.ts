@@ -186,6 +186,32 @@ test("new subscriptions join a known shared feed poll; OPML admits durable work 
   } finally { await close(source); }
 });
 
+test("a poll returns once the feed is stored; the icon check runs afterwards", async () => {
+  let origin = ""; let siteDone = 0;
+  const source = createServer((req, res) => {
+    if (req.url === "/feed") {
+      res.end(`<rss version="2.0"><channel><title>Icons later</title><link>${origin}/site</link><item><guid>one</guid><title>One</title></item></channel></rss>`);
+      return;
+    }
+    setTimeout(() => { siteDone = Date.now(); res.writeHead(200, { "content-type": "text/html" }).end("<html><head></head></html>"); }, 100);
+  });
+  origin = await listen(source);
+  const user = Number(db.prepare("INSERT INTO users(email,password_hash,display_name) VALUES ('icons-later@example.test','x','Icons')").run().lastInsertRowid);
+  const f = repo.createFeed(`${origin}/feed`, 15); repo.subscribe(user, f.id);
+  try {
+    const result = await poller.pollFeed(f);
+    const answered = Date.now();
+    assert.equal(result.error, null);
+    assert.equal(result.newItems, 1);
+    assert.equal(siteDone, 0, "the publisher's page has not been answered when the poll returns");
+    const end = Date.now() + 2000;
+    while (!siteDone) { assert.ok(Date.now() < end, "the icon check still runs"); await sleep(10); }
+    assert.ok(siteDone > answered);
+    assert.ok(db.prepare("SELECT icon_checked_at FROM feeds WHERE id = ?").get(f.id)!.icon_checked_at, "the check is recorded");
+    await sleep(50);
+  } finally { await close(source); }
+});
+
 test("icon capacity pressure does not create a day-long negative cache entry", async () => {
   const previous = process.env.POLL_MAX_WAITERS;
   process.env.POLL_MAX_WAITERS = "2";

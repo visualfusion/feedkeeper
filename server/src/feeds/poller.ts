@@ -13,6 +13,7 @@ import { configurePollHostCooldowns, PollQueue, type PollResult } from "./pollQu
 import { feedRequests, PollDeferredError, sourceHost } from "./requestGate.js";
 import { normalizePublishedAt } from "./dates.js";
 import { authorLine } from "./author.js";
+import { readPollSettings } from "./pollSettings.js";
 
 configurePollHostCooldowns();
 
@@ -142,6 +143,34 @@ export function itemLink(item: { link?: string; guid?: string }): string | undef
   return item.guid && /^https?:\/\//i.test(item.guid) ? unwrapRedirectLink(item.guid) : undefined;
 }
 
+/**
+ * Checks the feed's icon when it is due. The check starts right away but is not awaited, has its own deadline, and cannot retry or
+ * fail a committed feed; downloads join the shared request limit as background work.
+ */
+function scheduleIconMaintenance(feed: Feed, parsed: Awaited<ReturnType<typeof parser.parseString>> | null): void {
+  if (!iconCheckDue(feed.icon_checked_at)) return;
+  updateFeedIcon(feed.id, feed.icon_url);
+  const signal = AbortSignal.timeout(readPollSettings().attemptTimeoutMs);
+  const task = (async () => {
+    try {
+      const siteUrl = parsed?.link || feed.site_url;
+      const htmlUrls = siteUrl ? await discoverIconUrls(siteUrl, signal) : [];
+      const feedUrls = extractFeedIconUrls(parsed, siteUrl || feed.url);
+      signal.throwIfAborted();
+      await refreshFeedIcon(feed.id, siteUrl, [...htmlUrls, ...feedUrls.icons], signal, feedUrls.logos);
+    } catch { /* Keep the successful poll; icon failures are best effort. */ }
+  })();
+  iconChecks.add(task);
+  void task.finally(() => iconChecks.delete(task));
+}
+
+const iconChecks = new Set<Promise<void>>();
+
+/** Resolves once the icon checks started so far are done; used by shutdown and by tests that look at the stored icon. */
+export async function settleIconChecks(): Promise<void> {
+  while (iconChecks.size) await Promise.allSettled([...iconChecks]);
+}
+
 /** One attempt; the queue owns retries, admission, single-flight and the total deadline. */
 async function pollAttempt(feed: Feed, signal: AbortSignal, interactive: boolean): Promise<PollResult> {
   const fetched = await fetchFeed(feed.url, {
@@ -177,18 +206,9 @@ async function pollAttempt(feed: Feed, signal: AbortSignal, interactive: boolean
   })();
   // Push is committed above and dispatched independently of the feed deadline.
   startPushOutbox();
-  // Bounded icon maintenance cannot retry a committed feed.
-  try {
-    signal.throwIfAborted();
-    if (iconCheckDue(feed.icon_checked_at)) {
-      updateFeedIcon(feed.id, feed.icon_url);
-      const siteUrl = parsed?.link || feed.site_url;
-      const htmlUrls = siteUrl ? await discoverIconUrls(siteUrl, signal) : [];
-      const feedUrls = extractFeedIconUrls(parsed, siteUrl || feed.url);
-      signal.throwIfAborted();
-      await refreshFeedIcon(feed.id, siteUrl, [...htmlUrls, ...feedUrls.icons], signal, feedUrls.logos);
-    }
-  } catch { /* Keep the successful poll; icon failures are best effort. */ }
+  // Icon upkeep is best effort. It runs after this result is returned: the poll slot is free again, and a new subscription that is
+  // waiting for the first fetch is answered as soon as the feed is stored, not after the publisher's home page and icons.
+  scheduleIconMaintenance(feed, parsed);
   return { newItems, error: null };
 }
 
@@ -265,6 +285,8 @@ export async function stopPollingScheduler(): Promise<void> {
   await stopImageCache();
   await Promise.all([queue?.stop(), stopPushOutbox()]);
   feedRequests.stop();
+  // Waiting icon downloads were just turned away; the ones in flight end with their own deadline.
+  await settleIconChecks();
 }
 
 /** Graceful shutdown for server integrations; process-manager grace should be >= 45 seconds. */
