@@ -4,6 +4,9 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Fixed
+- A site's own page header and navigation no longer stand in front of an article in the reader. Some publishers put their whole header into the article text: a menu of magazines with empty entries, service links, the logo and lists of the publisher's other pages. The new rule `page-chrome` removes a `<header>` that contains navigation (`<nav>`, `role="navigation"`, `<menu>` or a `<main>` area) and any navigation element of its own. An article's own header with a headline and a byline stays, and so does any element that holds a paragraph of 200 characters or more, so a broken page that wraps the story in a header is left alone. Like the other rules it runs when a page is fetched and when an article is served, so articles already stored are cleaned too.
+
 ## [0.35.7] - 2026-11-03
 
 ### Fixed

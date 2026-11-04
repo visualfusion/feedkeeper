@@ -7,6 +7,7 @@ import { SIDEBAR_HEADINGS } from "./content/patterns/sidebars/index.js";
 import { resolveEmbeds } from "./content/embeds/index.js";
 import { loadingPlaceholders } from "./content/noise/loading.js";
 import { trackingPixels } from "./content/noise/pixels.js";
+import { pageChrome } from "./content/noise/pageChrome.js";
 import { permalinkGlyphs } from "./content/noise/permalinkGlyphs.js";
 import { teaserLinks } from "./content/noise/teaserLinks.js";
 import { markVideoTeasers } from "./content/noise/videoTeasers.js";
@@ -103,6 +104,7 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
   if (permalinkGlyphs.apply(root, stats)) changed = true;
   if (loadingPlaceholders.apply(root, stats)) changed = true;
   if (trackingPixels.apply(root, stats)) changed = true;
+  if (pageChrome.apply(root, stats)) changed = true;
 
   for (const selector of BREADCRUMB_MARKERS) {
     try { root.querySelectorAll(selector).forEach(element => drop(element, "breadcrumb")); } catch { /* selector unsupported by the DOM */ }
