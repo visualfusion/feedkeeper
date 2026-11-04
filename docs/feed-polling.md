@@ -1,6 +1,6 @@
 # Feed polling
 
-FeedKeeper checks several feeds at once, so a slow source does not hold up the rest. Scheduled updates, manual refreshes, new subscriptions and OPML imports use the same queue. Requests for the same feed share one fetch.
+FeedKeeper checks several feeds at once, so a slow source does not hold up the rest. Scheduled updates, manual refreshes, new subscriptions and OPML imports use the same queue. Requests for the same feed share one fetch. Adding many feeds at once (`POST /api/v1/subscriptions/batch`, OPML import) only stores them and queues their first fetch, so it returns at once and the queue works through them in the background.
 
 Waiting work stays in SQLite and resumes after a restart. Run **one application process per database**: the concurrency limits and duplicate protection are local to that process. Multiple workers or replicas sharing a database are not supported.
 

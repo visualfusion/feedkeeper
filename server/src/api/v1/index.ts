@@ -15,6 +15,7 @@ import { ResyncRequired, currentSeq, listChanges } from "../../sync/changeLog.js
 import { applyMutations } from "../../sync/mutations.js";
 import { getUserCapabilities, requireCapability } from "../../auth/capabilities.js";
 import { resourcesRouter } from "./resources.js";
+import { MAX_SUBSCRIPTION_BATCH } from "../../feeds/batchSubscribe.js";
 
 /** The API for native apps. See docs/design/native-api.md for the contract and what is still to come. */
 export const v1Router = Router();
@@ -53,6 +54,7 @@ const FEATURES = [
   "mcp",
   "inbox",
   "feed-lists",
+  "subscriptions.batch",
 ];
 
 v1Router.get("/meta", (_req, res) => {
@@ -63,6 +65,8 @@ v1Router.get("/meta", (_req, res) => {
     features: FEATURES,
     limits: {
       maxMutationsPerRequest: 200,
+      // Feeds one `POST /subscriptions/batch` takes; longer lists go in several requests.
+      maxSubscriptionBatch: MAX_SUBSCRIPTION_BATCH,
       // Kept for clients that only know the maximum age.
       retentionDays: retention.retentionMaxDays,
       // Deletions caused by retention are not announced through /sync, so clients apply the same rules

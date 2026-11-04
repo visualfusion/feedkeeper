@@ -43,6 +43,7 @@ import { saveToInbox, deleteInboxItem } from "../../feeds/inbox.js";
 import { changeFeedUrl, FeedError, MultipleFeedsFoundError, subscribeToFeed, unsubscribeFromFeed, updateFeedSettings } from "../../feeds/service.js";
 import { SsrfBlockedError, normalizeUrlCandidate } from "../../feeds/ssrfGuard.js";
 import { blockedUrlBody } from "../../feeds/blockedHosts.js";
+import { MAX_SUBSCRIPTION_BATCH, subscribeBatch } from "../../feeds/batchSubscribe.js";
 import { buildOverview } from "../../mcp/digest.js";
 import { decodeCursor, encodeCursor } from "../../mcp/items.js";
 import { readingPositions, serializeItem, serializeSubscriptionDetail } from "./serialize.js";
@@ -103,6 +104,23 @@ resourcesRouter.post("/subscriptions", requireCapability("sync"), async (req, re
     if (error instanceof FeedError) return void res.status(error.message === "already_subscribed" ? 409 : 400).json({ error: error.message });
     res.status(400).json({ error: "invalid_feed", message: error instanceof Error ? error.message : String(error) });
   }
+});
+
+const batchSchema = z.object({
+  items: z.array(z.object({
+    url: z.string().min(1).max(2048),
+    label: z.string().max(200).nullable().optional(),
+    folder: z.string().max(100).nullable().optional(),
+  })).min(1).max(MAX_SUBSCRIPTION_BATCH),
+});
+
+// Many feeds at once, e.g. an OPML file or a list of recommended feeds. The feeds are stored and queued, not read first; see subscribeBatch.
+resourcesRouter.post("/subscriptions/batch", requireCapability("sync"), async (req, res) => {
+  const parsed = batchSchema.safeParse(req.body);
+  if (!parsed.success) return invalid(res, parsed.error.flatten());
+  const results = await subscribeBatch(req.user!.id, parsed.data.items);
+  const count = (status: string) => results.filter((result) => result.status === status).length;
+  res.json({ results, added: count("added"), exists: count("exists"), invalid: count("invalid") });
 });
 
 const reorderSchema = z.object({ ids: z.array(z.number().int().positive()) });

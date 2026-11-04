@@ -4,6 +4,9 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Added
+- `POST /api/v1/subscriptions/batch` subscribes to many feeds in one request (up to `limits.maxSubscriptionBatch`, 200), announced as `subscriptions.batch` in `/meta.features`. Addresses are checked like a single subscription, but a feed is not read first: it is stored and its first fetch joins the durable poll queue, so the answer comes in seconds, whatever the sources do, and the work goes on if the client goes away or is closed. Each address gets a result (`added`, `exists` or `invalid` with a reason); a feed that cannot be read shows its error on the subscription and is retried on the usual schedule. Folders are given by name, and sending a list again changes nothing. Apps use it for OPML imports and lists of recommended feeds.
+
 ### Changed
 - A feed's icon check (the publisher's home page and the icon downloads) runs after the poll has returned instead of inside it. Subscribing to a feed is answered as soon as the feed is stored, and the poll slot is free for the next feed sooner, which makes adding many feeds at once, such as an OPML import or a list of recommended feeds, noticeably quicker.
 - Feeds that someone is waiting for, such as a new subscription or a manual refresh, are polled before scheduled work, and their downloads go ahead of scheduled polls and icon downloads in the shared request limit. A full waiting list admits such a download by turning away the newest background one. On a busy server, subscribing to many feeds at once no longer queues behind the regular update round.
