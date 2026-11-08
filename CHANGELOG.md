@@ -2,7 +2,7 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
-## [Unreleased]
+## [0.36.1] - 2026-11-08
 
 ### Changed
 - Renamed the MCP tool `remove_muted_keyword` to `unmute_keyword` to align with the reversible action pattern across all FeedKeeper tools (`mark_read`/`mark_unread`, `bookmark_item`/`unbookmark_item`).
