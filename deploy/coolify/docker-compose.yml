@@ -1,0 +1,27 @@
+# documentation: https://github.com/visualfusion/feedkeeper
+# slogan: Lightweight RSS reader and remote MCP server with SQLite and full-text search.
+# category: rss
+# tags: rss, feed-reader, mcp, claude, sqlite, fulltext
+# logo: svgs/feedkeeper.svg
+# port: 3000
+
+services:
+  feedkeeper:
+    image: ghcr.io/visualfusion/feedkeeper:latest
+    container_name: feedkeeper
+    restart: unless-stopped
+    stop_grace_period: 45s
+    environment:
+      - SERVICE_FQDN_FEEDKEEPER_3000
+      - PORT=3000
+      - PUBLIC_URL=${SERVICE_FQDN_FEEDKEEPER_3000:-http://localhost:3000}
+      - TRUST_PROXY=true
+      - SESSION_SECRET=${SERVICE_PASSWORD_64_FEEDKEEPER:-}
+      - ALLOW_SIGNUP=${ALLOW_SIGNUP:-true}
+      - DATABASE_PATH=/app/data/feedkeeper.sqlite
+      - AUTO_CLEANUP_ENABLED=true
+    volumes:
+      - feedkeeper_data:/app/data
+
+volumes:
+  feedkeeper_data:

@@ -70,7 +70,7 @@ Started without a `SESSION_SECRET` (for example from one of the templates below)
 |---|---|
 | **Raspberry Pi** | [Step by step with Docker](docs/deployment-raspberry-pi.md), including HTTPS and backups. |
 | **HTTPS reverse proxy** | [Caddy, nginx and Traefik setup](docs/reverse-proxy.md), including forwarded client IPs and MCP client setup. |
-| **Unraid, CasaOS, Portainer** | [Ready-made templates](docs/deployment-homelab.md) for the home-lab interfaces. |
+| **Coolify, Unraid, CasaOS, Portainer** | [Ready-made templates](docs/deployment-homelab.md) for self-hosting and home-lab platforms. |
 | **Node.js, no Docker** | `npx feedkeeper` runs it with no clone and no build, see [Running FeedKeeper with Node.js](docs/deployment-npm.md). |
 | **Uberspace or any SSH host** | [Deploying to Uberspace](docs/deployment-uberspace.md). |
 

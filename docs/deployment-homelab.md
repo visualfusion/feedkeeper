@@ -1,10 +1,17 @@
-# FeedKeeper on Unraid, CasaOS and Portainer
+# FeedKeeper on Coolify, Unraid, CasaOS and Portainer
 
-Ready-made templates for common home-lab interfaces live in [`deploy/`](../deploy). They use the same image as the [Docker Compose quick start](../README.md#quick-start), `ghcr.io/visualfusion/feedkeeper`, for `amd64` and `arm64`.
+Ready-made templates for common self-hosting and home-lab platforms live in [`deploy/`](../deploy). They use the same image as the [Docker Compose quick start](../README.md#quick-start), `ghcr.io/visualfusion/feedkeeper`, for `amd64` and `arm64`.
 
 They need **FeedKeeper 0.23.0 or newer**. From that version on, the image creates its own session secret on the first start when none is given, so a template does not have to ask you for one. The secret lives in the data volume as `session-secret`; keep it with your backups, because it also protects the two-factor keys (see [Account security](account-security.md)).
 
-These are templates you add yourself; FeedKeeper is not listed in the official app stores of these platforms.
+## Coolify
+
+1. In your Coolify project, click **+ New** > **Resource** > **Docker Compose**.
+2. Paste the contents of [`deploy/coolify/docker-compose.yml`](../deploy/coolify/docker-compose.yml).
+3. Assign a custom domain (or use the generated `sslip.io` domain).
+4. Click **Deploy**.
+
+Coolify provisions the Traefik reverse proxy, generates a 64-character session secret (`SERVICE_PASSWORD_64_FEEDKEEPER`), and binds persistent data to a named volume. Complete the setup by registering your administrator account in the web interface.
 
 ## Unraid
 
