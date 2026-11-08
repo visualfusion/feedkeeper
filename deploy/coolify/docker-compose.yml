@@ -8,7 +8,6 @@
 services:
   feedkeeper:
     image: ghcr.io/visualfusion/feedkeeper:latest
-    container_name: feedkeeper
     restart: unless-stopped
     stop_grace_period: 45s
     environment:
