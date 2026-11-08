@@ -11,9 +11,9 @@ services:
     restart: unless-stopped
     stop_grace_period: 45s
     environment:
-      - SERVICE_FQDN_FEEDKEEPER_3000
+      - SERVICE_URL_FEEDKEEPER_3000
       - PORT=3000
-      - PUBLIC_URL=${SERVICE_FQDN_FEEDKEEPER_3000:-http://localhost:3000}
+      - PUBLIC_URL=${SERVICE_URL_FEEDKEEPER:-http://localhost:3000}
       - TRUST_PROXY=true
       - SESSION_SECRET=${SERVICE_PASSWORD_64_FEEDKEEPER:-}
       - ALLOW_SIGNUP=${ALLOW_SIGNUP:-true}
