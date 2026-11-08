@@ -64,6 +64,12 @@ Changing `SESSION_SECRET` signs out active browser sessions and makes stored two
 
 Started without a `SESSION_SECRET` (for example from one of the templates below), the image creates one on the first start and keeps it in the data volume.
 
+### Set up with an AI agent (Claude Code, Cursor, Codex)
+
+If you use an AI coding assistant on your server or local machine, you can paste this prompt:
+
+> "Set up and start FeedKeeper on this machine using Docker Compose. Download or reference the template from https://raw.githubusercontent.com/visualfusion/feedkeeper/main/compose.yaml, generate a secure 64-character SESSION_SECRET, set PUBLIC_URL to the address this machine is reachable at, ensure the feedkeeper_data volume is persistent, start the container, and verify that the web onboarding responds on port 3000."
+
 ### Other ways to run it
 
 | Where | How |
@@ -219,6 +225,12 @@ If you would rather not operate a server, [FeedKeeper Cloud](https://feedkeeper.
 3. Add an MCP server entry pointing at `https://<your-domain>/mcp`, sending `Authorization: Bearer <token>` as a header. Settings → MCP also offers a ready-made Claude Desktop configuration.
 
 Every tool call is scoped to the signed-in user — a client can only see and manage that user's own feeds and items. OAuth tokens work only on `/mcp`.
+
+### Connect via AI assistant prompt
+
+To have an AI assistant configure the MCP connection for you, create a Personal Access Token in **Settings → Personal access tokens** and run:
+
+> "Add FeedKeeper as a remote HTTP MCP server pointing to https://<your-domain>/mcp with Authorization: Bearer <your-token> to my MCP configuration (e.g. claude_desktop_config.json or Cursor MCP settings). Verify the connection by listing my feeds."
 
 ### Available MCP tools
 
