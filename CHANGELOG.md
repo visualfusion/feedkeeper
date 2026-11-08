@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.36.2] - 2026-11-08
+
+### Added
+- Ready-to-use Coolify service template and deployment documentation in `deploy/coolify/` with full support for Coolify's reverse proxy, automated SSL/TLS certificates, dynamic session secret generation and persistent SQLite storage.
+
+### Changed
+- Added Coolify alongside Unraid, CasaOS and Portainer in self-hosting documentation.
+
 ## [0.36.1] - 2026-11-08
 
 ### Changed
@@ -777,7 +785,20 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 First public release: an RSS and Atom reader with a remote MCP server, multi-user accounts, a trilingual interface (English, German, Japanese), SSRF-guarded feed fetching and a single-file SQLite database.
 
-[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.33.0...HEAD
+[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.36.2...HEAD
+[0.36.2]: https://github.com/visualfusion/feedkeeper/compare/v0.36.1...v0.36.2
+[0.36.1]: https://github.com/visualfusion/feedkeeper/compare/v0.36.0...v0.36.1
+[0.36.0]: https://github.com/visualfusion/feedkeeper/compare/v0.35.8...v0.36.0
+[0.35.8]: https://github.com/visualfusion/feedkeeper/compare/v0.35.7...v0.35.8
+[0.35.7]: https://github.com/visualfusion/feedkeeper/compare/v0.35.6...v0.35.7
+[0.35.6]: https://github.com/visualfusion/feedkeeper/compare/v0.35.5...v0.35.6
+[0.35.5]: https://github.com/visualfusion/feedkeeper/compare/v0.35.4...v0.35.5
+[0.35.4]: https://github.com/visualfusion/feedkeeper/compare/v0.35.3...v0.35.4
+[0.35.3]: https://github.com/visualfusion/feedkeeper/compare/v0.35.2...v0.35.3
+[0.35.2]: https://github.com/visualfusion/feedkeeper/compare/v0.35.1...v0.35.2
+[0.35.1]: https://github.com/visualfusion/feedkeeper/compare/v0.35.0...v0.35.1
+[0.35.0]: https://github.com/visualfusion/feedkeeper/compare/v0.34.0...v0.35.0
+[0.34.0]: https://github.com/visualfusion/feedkeeper/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/visualfusion/feedkeeper/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/visualfusion/feedkeeper/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/visualfusion/feedkeeper/compare/v0.30.1...v0.31.0
