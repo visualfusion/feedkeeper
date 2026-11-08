@@ -250,7 +250,7 @@ Every tool call is scoped to the signed-in user — a client can only see and ma
 | `unbookmark_item` | Remove bookmarks from one or more items |
 | `list_muted_keywords` | List user's active muted keywords |
 | `add_muted_keyword` | Add a keyword to automatically filter out matching articles |
-| `remove_muted_keyword` | Remove a muted keyword rule |
+| `unmute_keyword` | Remove a muted keyword rule |
 | `export_opml` | Export all subscribed feeds as an OPML 2.0 XML string |
 | `import_opml` | Import feeds from an OPML 2.0 XML string |
 | `get_edition` | Read the current issue, source and revision, including expired or dismissed state |
@@ -260,7 +260,6 @@ Every tool call is scoped to the signed-in user — a client can only see and ma
 | `dismiss_edition` | Dismiss the shared issue with revision and replay protection |
 | `get_native_preferences` | Read app-only section order, newspaper visibility and edition preferences |
 | `update_native_preferences` | Patch shared app preferences without changing the web reader |
-| `cleanup_database` | *(Admin only)* Purge old items and reclaim disk space after deletions |
 
 Besides tools, the server offers prompts (`daily_briefing`, `catch_up_on_topic`, `saved_reading_list`, `triage_unread`) and resources (`feedkeeper://feeds`, `opml`, `saved`, `digest` and `feedkeeper://items/{id}`) that clients can show as ready-made actions.
 

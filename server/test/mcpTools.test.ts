@@ -117,6 +117,13 @@ test("MCP batch actions, date filters and feed management stay scoped to the use
   const flags = (await owner.call("update_feed", { feedId, notify: true, badge: true })).json();
   assert.deepEqual([flags.notify, flags.badge], [1, 1]);
 
+  // Muted keywords: add, list, unmute
+  const muted = (await owner.call("add_muted_keyword", { keyword: "crypto" })).json();
+  assert.equal(muted.keyword, "crypto");
+  assert.equal((await owner.call("list_muted_keywords")).json().some((k: { keyword: string }) => k.keyword === "crypto"), true);
+  assert.deepEqual((await owner.call("unmute_keyword", { keywordId: muted.id })).json(), { ok: true });
+  assert.equal((await owner.call("list_muted_keywords")).json().some((k: { keyword: string }) => k.keyword === "crypto"), false);
+
   // Prompts and resources, scoped to the user.
   const prompts = (await owner.client.listPrompts()).prompts.map((prompt) => prompt.name);
   assert.deepEqual(prompts.sort(), ["catch_up_on_topic", "daily_briefing", "saved_reading_list", "triage_unread"]);
@@ -132,7 +139,7 @@ test("MCP batch actions, date filters and feed management stay scoped to the use
 
   const reader = await connect(ownerId, "read");
   const readTools = (await reader.client.listTools()).tools.map((tool) => tool.name);
-  for (const name of ["fetch_full_text", "update_feed", "rename_folder", "delete_folder", "mark_read", "bookmark_item"]) {
+  for (const name of ["fetch_full_text", "update_feed", "rename_folder", "delete_folder", "mark_read", "bookmark_item", "unmute_keyword"]) {
     assert.equal(readTools.includes(name), false, name);
   }
   assert.ok(readTools.includes("list_feeds"));

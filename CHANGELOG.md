@@ -4,6 +4,13 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Changed
+- Renamed the MCP tool `remove_muted_keyword` to `unmute_keyword` to align with the reversible action pattern across all FeedKeeper tools (`mark_read`/`mark_unread`, `bookmark_item`/`unbookmark_item`).
+- Clarified tool descriptions for `delete_folder` and `unsubscribe_feed` to make explicit that deleting a folder keeps subscribed feeds intact and unsubscribing only affects the current user's subscription.
+
+### Removed
+- Removed the administrative `cleanup_database` tool from the MCP surface. Low-level database retention and VACUUM are fully automated by scheduled background tasks, eliminating unnecessary administrative blast radius from conversational AI contexts while adhering to the principle of least privilege.
+
 ## [0.36.0] - 2026-11-04
 
 ### Added

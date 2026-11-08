@@ -33,8 +33,6 @@ import { SsrfBlockedError, normalizeUrlCandidate } from "../feeds/ssrfGuard.js";
 import { generateOpml, importOpmlFeeds } from "../feeds/opml.js";
 import { pollFeed } from "../feeds/poller.js";
 import { discoverFeeds } from "../feeds/discovery.js";
-import { findUserById } from "../auth/users.js";
-import { getDatabaseStats, runCleanup } from "../feeds/cleanup.js";
 import { APP_VERSION } from "../version.js";
 import { dismissEdition, editionCandidates, ensureEditionSchema, getEdition, getEditionState, publishCuratedEdition, publishEditionFields } from "../native/editions.js";
 import { getNativePreferences, patchNativePreferences, preferencePatchSchema } from "../native/preferences.js";
@@ -156,7 +154,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     "unsubscribe_feed",
     {
       title: "Unsubscribe from a feed",
-      description: "Removes a feed subscription for the current user.",
+      description: "Unsubscribes the current user from a feed. Feeds and other users' subscriptions are unaffected.",
       inputSchema: { feedId: z.number().int().positive() },
     },
     async ({ feedId }) => {
@@ -305,7 +303,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     "delete_folder",
     {
       title: "Delete folder",
-      description: "Deletes a folder. Its feeds stay subscribed and move out of any folder.",
+      description: "Deletes a folder category. Its subscribed feeds remain intact and are moved to the root level (unfiled).",
       inputSchema: { folderId: z.number().int().positive() },
     },
     async ({ folderId }) => {
@@ -519,10 +517,10 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
   );
 
   if (scope === "write") server.registerTool(
-    "remove_muted_keyword",
+    "unmute_keyword",
     {
-      title: "Remove muted keyword",
-      description: "Unmutes a keyword by its ID.",
+      title: "Unmute keyword",
+      description: "Unmutes a previously muted keyword by its ID (removes the keyword filter rule).",
       inputSchema: { keywordId: z.number().int().positive() },
     },
     async ({ keywordId }) => {
@@ -655,31 +653,6 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     description: "Explicitly dismisses the current edition, including curated issues, using a revision and stable UUID requestId. Automatic scheduling waits until the next time slot; generate_edition with force=true can start a new issue immediately.",
     inputSchema: { requestId: z.uuid(), expectedRevision: z.number().int().min(0) },
   }, async (input) => editionAction(() => dismissEdition(userId, input)));
-
-  const currentUser = findUserById(userId);
-  if (scope === "write" && currentUser?.role === "admin") {
-    server.registerTool(
-      "cleanup_database",
-      {
-        title: "Clean up database and retention",
-        description: "Admin tool: runs item retention cleanup and VACUUM to purge old/read items and reclaim disk space.",
-        inputSchema: {
-          retentionReadDays: z.number().int().min(0).optional().describe("Override read items retention in days"),
-          retentionMaxDays: z.number().int().min(0).optional().describe("Override total item age retention in days"),
-          retentionMaxItemsPerFeed: z.number().int().min(0).optional().describe("Override maximum items per feed cap"),
-        },
-      },
-      async (args) => {
-        try {
-          const result = runCleanup(args);
-          const stats = getDatabaseStats();
-          return textResult({ result, stats });
-        } catch (error) {
-          return errorResult(error instanceof Error ? error.message : String(error));
-        }
-      },
-    );
-  }
 
   registerPromptsAndResources(server, userId, scope);
 
