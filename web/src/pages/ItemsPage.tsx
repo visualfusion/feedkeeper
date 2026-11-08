@@ -848,7 +848,6 @@ export function ItemsPage() {
                 style={{ opacity: item.read ? 0.6 : 1 }}
               >
                 <div className="flex flex-col sm:flex-row sm:items-stretch justify-between gap-3 sm:gap-0">
-                  {/* Article thumbnail if available */}
                   {item.image_url && (
                     <div
                       className="order-first w-[calc(100%+2rem)] -mx-4 -mt-4 sm:m-0 sm:w-52 sm:min-w-52 h-48 sm:h-auto sm:self-stretch overflow-hidden shrink-0 border-b sm:border-b-0 sm:border-r bg-[var(--c-bg)] group transition-opacity hover:opacity-90 block"
@@ -869,7 +868,6 @@ export function ItemsPage() {
 
                   <div className="min-w-0 flex-1 sm:p-5 sm:pr-3 flex flex-col justify-between">
                     <div>
-                      {/* Source row above headline with optional Favicon */}
                       <div className="mb-3 flex min-w-0 items-center gap-2 text-xs font-semibold tracking-[0.08em] uppercase text-[var(--c-text-muted)]">
                         <Favicon
                           feedId={item.feed_id}
@@ -889,12 +887,10 @@ export function ItemsPage() {
                       <ArticleExcerpt item={item} className="mt-3 text-sm leading-relaxed line-clamp-3 text-[var(--c-text-muted)]" />
                     </div>
 
-                    {/* Meta information row BELOW article text with icons and mobile action buttons */}
                     <div className="flex items-center justify-between gap-3 text-xs pt-5" style={{ color: "var(--c-text-muted)" }}>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 min-w-0">
                         {pubDate && (
                           <>
-                            {/* Calendar date */}
                             <span className="inline-flex items-center gap-1.5">
                               <svg
                                 className="w-3.5 h-3.5 shrink-0 opacity-70"
@@ -913,7 +909,6 @@ export function ItemsPage() {
                               <span>{dateFormatter.format(pubDate)}</span>
                             </span>
 
-                            {/* Clock time */}
                             <span className="inline-flex items-center gap-1.5">
                               <svg
                                 className="w-3.5 h-3.5 shrink-0 opacity-70"
@@ -933,7 +928,6 @@ export function ItemsPage() {
                         )}
                       </div>
 
-                      {/* Action buttons on mobile (inline with meta row) */}
                       <div
                         className="flex sm:hidden items-center gap-2 shrink-0"
                         onClick={(e) => e.stopPropagation()}
@@ -992,7 +986,6 @@ export function ItemsPage() {
                     </div>
                   </div>
 
-                  {/* Desktop action buttons (top right) */}
                   <div
                     className="hidden sm:flex items-center gap-2 pt-5 pr-5 shrink-0 self-start"
                     onClick={(e) => e.stopPropagation()}
@@ -1067,7 +1060,6 @@ export function ItemsPage() {
         )
       )}
 
-      {/* Modern Slide-over Reader Modal */}
       <ArticleReaderModal
         item={selectedArticle}
         isOpen={Boolean(selectedArticle)}

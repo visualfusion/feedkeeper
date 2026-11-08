@@ -127,7 +127,7 @@ export function Layout() {
           }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          {/* Dynamic Sliding Pill Indicator */}
+          {/* Sliding active indicator */}
           <div
             aria-hidden="true"
             className="absolute top-1.5 bottom-1.5 left-1.5 rounded-full bg-[var(--c-mobile-nav-active)] border border-[var(--c-mobile-nav-active-border)] shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] pointer-events-none no-drag"
@@ -137,7 +137,7 @@ export function Layout() {
             }}
           />
 
-          {/* Tab 1: Artikel */}
+          {/* Tab: Articles */}
           <NavLink
             to="/items"
             onClick={handleItemsClick}
@@ -170,7 +170,7 @@ export function Layout() {
             )}
           </NavLink>
 
-          {/* Tab 2: Feeds */}
+          {/* Tab: Feeds */}
           <NavLink
             to="/feeds"
             draggable={false}
@@ -204,7 +204,7 @@ export function Layout() {
             )}
           </NavLink>
 
-          {/* Tab 3: Einstellungen */}
+          {/* Tab: Settings */}
           <NavLink
             to="/settings"
             draggable={false}

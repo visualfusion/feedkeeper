@@ -253,14 +253,12 @@ export function ArticleReaderModal({
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop overlay */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Reader Drawer Panel */}
       <div
         className="relative z-10 w-full sm:max-w-2xl md:max-w-3xl h-full h-[100dvh] bg-[var(--c-surface)] shadow-2xl flex flex-col border-0 sm:border-l border-[var(--c-border)] animate-drawer-in"
         role="dialog"
@@ -276,7 +274,6 @@ export function ArticleReaderModal({
             backgroundColor: "color-mix(in srgb, var(--c-surface) 85%, transparent)",
           }}
         >
-          {/* Source, in the same style as the article cards */}
           <div className="flex min-w-0 items-center gap-2 pr-2 text-xs font-semibold tracking-[0.08em] uppercase text-[var(--c-text-muted)]">
             <Favicon
               feedId={item.feed_id}
@@ -289,7 +286,6 @@ export function ArticleReaderModal({
             <span className="truncate">{item.feed_title}</span>
           </div>
 
-          {/* Close button (top right, touch-friendly & larger) */}
           <button
             type="button"
             onClick={onClose}
@@ -330,13 +326,11 @@ export function ArticleReaderModal({
                 </div>
               )}
 
-              {/* Article Headline */}
               <h1 className="text-2xl sm:text-3xl font-bold font-['Manrope'] text-[var(--c-text)] leading-snug tracking-tight mb-3">
                 {item.title}
               </h1>
             </div>
 
-            {/* Meta information row */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-[var(--c-text-muted)] pb-5 border-b border-[var(--c-border)] mb-6 font-medium">
               {byline && <span>{byline}</span>}
               {formattedDate && (
@@ -393,7 +387,6 @@ export function ArticleReaderModal({
               </div>
             )}
 
-            {/* Main Content Area */}
             {sanitizedContent ? (
               <div
                 className="reader-content"
@@ -411,11 +404,8 @@ export function ArticleReaderModal({
               </p>
             )}
 
-            {/* Clean Minimalist Touch-Friendly Article Footer */}
             <div className="mt-12 pt-6 border-t border-[var(--c-border)]/60 flex items-center justify-between gap-3">
-              {/* Left group: Navigation (Prev / Next) */}
               <div className="flex items-center gap-2">
-                {/* Previous item */}
                 <button
                   type="button"
                   onClick={onPrevious}
@@ -429,7 +419,6 @@ export function ArticleReaderModal({
                   </svg>
                 </button>
 
-                {/* Next item */}
                 <button
                   type="button"
                   onClick={onNext}
@@ -444,9 +433,7 @@ export function ArticleReaderModal({
                 </button>
               </div>
 
-              {/* Right group: Actions (Reader View, Bookmark, Read/Unread, Copy Link, Open in Browser) */}
               <div className="flex items-center gap-2">
-                {/* Reader View toggle */}
                 {articleUrl && (!fullTextDisabled || item.full_content_html) && (
                   <button
                     type="button"
@@ -473,7 +460,6 @@ export function ArticleReaderModal({
                   </button>
                 )}
 
-                {/* Bookmark item */}
                 <button
                   type="button"
                   onClick={() => onToggleBookmark(item)}
@@ -490,7 +476,6 @@ export function ArticleReaderModal({
                   </svg>
                 </button>
 
-                {/* Read / Unread toggle */}
                 <button
                   type="button"
                   onClick={() => onToggleRead(item)}
@@ -507,7 +492,6 @@ export function ArticleReaderModal({
                   </svg>
                 </button>
 
-                {/* Copy link */}
                 <button
                   type="button"
                   onClick={handleCopyLink}
@@ -527,7 +511,6 @@ export function ArticleReaderModal({
                   )}
                 </button>
 
-                {/* Open in external browser */}
                 {articleUrl && (
                   <a
                     href={articleUrl}

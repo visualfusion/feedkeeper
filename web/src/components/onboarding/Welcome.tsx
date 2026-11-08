@@ -163,7 +163,7 @@ export function Welcome({ onSubscribed }: { onSubscribed: () => void | Promise<v
       {hostWelcome && <ExtensionMount name="onboarding" mount={hostWelcome.mount} />}
 
       <div className="grid grid-cols-1 gap-4">
-        {/* Path 1: Starter Packs */}
+        {/* Starter packs */}
         {packs.length > 0 && (
           <div className="rounded-2xl border border-[var(--c-border)]/80 bg-[var(--c-surface-hover)]/25 p-4 sm:p-5 flex flex-col gap-3.5">
             <div>
@@ -240,7 +240,7 @@ export function Welcome({ onSubscribed }: { onSubscribed: () => void | Promise<v
           </div>
         )}
 
-        {/* Path 2: Add single Website/Feed */}
+        {/* Add single feed or site */}
         <div className="rounded-2xl border border-[var(--c-border)]/80 bg-[var(--c-surface-hover)]/25 p-4 sm:p-5 flex flex-col gap-3.5">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-[var(--c-blue1)]/10 text-[var(--c-blue1)] flex items-center justify-center shrink-0">
@@ -255,7 +255,7 @@ export function Welcome({ onSubscribed }: { onSubscribed: () => void | Promise<v
           <AddFeedPanel compact folderOptions={[]} defaultFolderId={null} onClose={() => {}} onAdded={onAdded} />
         </div>
 
-        {/* Path 3: Import OPML */}
+        {/* OPML import */}
         <div className="rounded-2xl border border-[var(--c-border)]/80 bg-[var(--c-surface-hover)]/25 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
