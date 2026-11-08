@@ -267,8 +267,16 @@ Read-only tokens expose only the tools that leave FeedKeeper data unchanged. `ge
 
 ## Native apps
 
-A native app for **iOS, iPadOS and macOS** is in development. It uses the API under `/api/v1`, which is open and described in [docs/openapi.yaml](docs/openapi.yaml): pair a device with a QR code from **Settings → Devices**, sync your subscriptions and reading state incrementally, keep articles offline, and queue changes made without a connection. The API also provides background article preparation (`/items/prepare`), full-text search with FTS5, synchronized article notes, SF Symbols for sections/categories, a personal inbox (`/inbox`), and shared MCP-curated editions with linked overviews that stay readable between publications. App-only section order and newspaper visibility sync without changing the web reader. See [the edition contract](docs/design/editions.md) for publication, preferences and offline handling. Native push through an external relay remains planned (see [docs/design/native-api.md](docs/design/native-api.md)).
-Third-party clients are welcome to build on the same API — see [docs/building-clients.md](docs/building-clients.md) for a getting-started guide.
+For reading on the go and offline, the official **FeedKeeper app** is available on the [App Store](https://analytics.visualfusion.de/q/feedkeeper-app) for **iOS, iPadOS, and macOS**. It pairs directly with your self-hosted instance in seconds — just scan the pairing QR code under **Settings → Devices** in your web reader.
+
+The app builds on FeedKeeper's open native API (`/api/v1`) to provide:
+- Incremental delta-sync and offline article caching
+- Offline action queuing (reading state, stars, and folders sync back automatically)
+- Fast full-text search powered by SQLite FTS5
+- Synchronized personal Markdown notes per article
+- Reading layout preferences and daily newspaper editions
+
+The built-in web reader remains 100% free and fully supported. The native sync API is open and documented in [docs/openapi.yaml](docs/openapi.yaml) — third-party and community clients are warmly encouraged to build on the same endpoints (see [docs/building-clients.md](docs/building-clients.md) for a getting-started guide).
 
 ## Security
 
