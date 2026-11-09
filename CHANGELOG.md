@@ -2,6 +2,15 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.36.5] - 2026-11-09
+
+### Added
+- Declared explicit MCP tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) across all 34 tools for client permission safety and directory compliance.
+- Automated regression testing verifying that all registered MCP tools expose title, description, and safety hints.
+
+### Changed
+- Enhanced descriptions for web-fetching and subscription tools with explicit references to the target API documentation.
+
 ## [0.36.4] - 2026-11-09
 
 ### Added
@@ -806,7 +815,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 First public release: an RSS and Atom reader with a remote MCP server, multi-user accounts, a trilingual interface (English, German, Japanese), SSRF-guarded feed fetching and a single-file SQLite database.
 
-[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.36.4...HEAD
+[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.36.5...HEAD
+[0.36.5]: https://github.com/visualfusion/feedkeeper/compare/v0.36.4...v0.36.5
 [0.36.4]: https://github.com/visualfusion/feedkeeper/compare/v0.36.3...v0.36.4
 [0.36.3]: https://github.com/visualfusion/feedkeeper/compare/v0.36.2...v0.36.3
 [0.36.2]: https://github.com/visualfusion/feedkeeper/compare/v0.36.1...v0.36.2
