@@ -82,11 +82,54 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     z.string().url(),
   );
 
+  const readOnlyAnnotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  };
+
+  const readOnlyOpenWorldAnnotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+  };
+
+  const writeAdditiveAnnotations = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false,
+  };
+
+  const writeAdditiveIdempotentAnnotations = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  };
+
+  const writeOpenWorldAnnotations = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: true,
+  };
+
+  const writeDestructiveAnnotations = {
+    readOnlyHint: false,
+    destructiveHint: true,
+    idempotentHint: true,
+    openWorldHint: false,
+  };
+
   server.registerTool(
     "list_feeds",
     {
       title: "List subscribed feeds",
       description: "Lists all RSS/Atom feeds the current user is subscribed to, including subscription settings, unread counts, and polling health status. Safe read-only operation. To inspect a single feed in detail, use get_feed. To discover new feeds, use discover_feeds.",
+      annotations: readOnlyAnnotations,
       inputSchema: {
         onlyWithErrors: z.boolean().optional().describe("When true, only returns feeds whose last poll failed or that have consecutive errors"),
       },
@@ -102,6 +145,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Get subscribed feed details",
       description: "Returns metadata, subscription settings, polling health status, and unread count for a single subscribed feed by its numeric feed ID. Safe read-only operation. Use list_feeds to view all subscribed feeds.",
+      annotations: readOnlyAnnotations,
       inputSchema: {
         feedId: z.number().int().positive().describe("The numeric ID of the subscribed feed to inspect"),
       },
@@ -117,7 +161,13 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     "subscribe_feed",
     {
       title: "Subscribe to a feed",
-      description: "Subscribes the current user to an RSS/Atom feed URL or website URL (auto-discovering the feed link if a website URL is provided). Requires write scope. Idempotent: subscribing to an already subscribed feed returns the existing subscription. Returns the subscription record.",
+      description: "Subscribes the current user to an RSS/Atom feed URL or website URL (auto-discovering the feed link if a website URL is provided). Requires write scope. Idempotent: subscribing to an already subscribed feed returns the existing subscription. Returns the subscription record. For API documentation, see https://github.com/visualfusion/feedkeeper.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
       inputSchema: {
         url: mcpUrlSchema.describe("The RSS/Atom feed URL or website URL to subscribe to"),
         label: z.string().max(200).optional().describe("Optional custom display name for this feed subscription"),
@@ -148,7 +198,8 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     "discover_feeds",
     {
       title: "Discover feeds on a website",
-      description: "Inspects a website URL and discovers available RSS, Atom, and JSON feed links from HTML link tags. Safe read-only operation: does NOT subscribe to any feed. Returns a list of discovered candidate feed URLs and titles. Use subscribe_feed to subscribe to one of the discovered URLs.",
+      description: "Inspects a website URL and discovers available RSS, Atom, and JSON feed links from HTML link tags. Safe read-only operation: does NOT subscribe to any feed. Returns a list of discovered candidate feed URLs and titles. Use subscribe_feed to subscribe to one of the discovered URLs. For API documentation, see https://github.com/visualfusion/feedkeeper.",
+      annotations: readOnlyOpenWorldAnnotations,
       inputSchema: {
         url: mcpUrlSchema.describe("The website URL to scan for available RSS/Atom feed links"),
       },
@@ -170,6 +221,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Unsubscribe from a feed",
       description: "Unsubscribes the current user from a feed by its feed ID. Destructive action. Feeds and other users' subscriptions are unaffected. Returns { ok: true } on success.",
+      annotations: writeDestructiveAnnotations,
       inputSchema: {
         feedId: z.number().int().positive().describe("The numeric ID of the feed to unsubscribe from"),
       },
@@ -188,7 +240,8 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     "save_to_inbox",
     {
       title: "Save article or clipping to Universal Inbox",
-      description: "Saves a web article URL, raw HTML, plain text/markdown clipping, or personal note directly into the user's Universal Inbox. At least one of url, contentHtml, or textContent must be provided. Returns { success: true, itemId: number, title: string, url: string, hasNote: boolean }.",
+      description: "Saves a web article URL, raw HTML, plain text/markdown clipping, or personal note directly into the user's Universal Inbox. At least one of url, contentHtml, or textContent must be provided. Returns { success: true, itemId: number, title: string, url: string, hasNote: boolean }. For API documentation, see https://github.com/visualfusion/feedkeeper.",
+      annotations: writeOpenWorldAnnotations,
       inputSchema: {
         url: mcpUrlSchema.optional().describe("Web page URL to fetch, extract via Readability, and save"),
         title: z.string().max(500).optional().describe("Optional custom title for the saved inbox item"),
@@ -225,6 +278,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "List folders / categories",
       description: "Lists all feed categories/folders created by the current user, including feed counts and unread article counts per folder. Safe read-only operation.",
+      annotations: readOnlyAnnotations,
       inputSchema: {},
     },
     async () => textResult(listFoldersForUser(userId)),
@@ -235,6 +289,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Create a feed folder",
       description: "Creates a new category folder to organize feed subscriptions. Requires write scope. Returns the created folder object with its assigned id, name, and position. Folders can be assigned to feeds using move_feed_to_folder.",
+      annotations: writeAdditiveAnnotations,
       inputSchema: {
         name: z.string().trim().min(1).max(100).describe("The unique display name for the new folder (1 to 100 characters)"),
       },
@@ -247,6 +302,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Move feed to folder",
       description: "Assigns a subscribed feed to a folder, or removes it from all folders (unfiled) if folderId is null. Requires write scope. Returns { ok: true } on success.",
+      annotations: writeAdditiveIdempotentAnnotations,
       inputSchema: {
         feedId: z.number().int().positive().describe("The numeric ID of the subscribed feed to move"),
         folderId: z.number().int().positive().nullable().describe("The target folder ID, or null to move the feed to unfiled (root level)"),
@@ -264,7 +320,13 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     "update_feed",
     {
       title: "Update feed settings",
-      description: "Updates subscription settings for a feed: custom display name, poll interval, full-text extraction policy, push notification preference, badge counter inclusion, or updates the feed URL if the publisher relocated. Returns the updated subscription record.",
+      description: "Updates subscription settings for a feed: custom display name, poll interval, full-text extraction policy, push notification preference, badge counter inclusion, or updates the feed URL if the publisher relocated. Returns the updated subscription record. For API documentation, see https://github.com/visualfusion/feedkeeper.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
       inputSchema: {
         feedId: z.number().int().positive().describe("The numeric ID of the subscribed feed to update"),
         url: mcpUrlSchema.optional().describe("New feed URL or website URL if the feed moved (auto-discovered and validated)"),
@@ -306,6 +368,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Rename a feed folder",
       description: "Renames an existing feed category folder for the current user. Requires write scope. Returns the updated folder record { id, name, position }. Returns error if folderId is not found or name is already taken.",
+      annotations: writeAdditiveIdempotentAnnotations,
       inputSchema: {
         folderId: z.number().int().positive().describe("The numeric ID of the folder to rename"),
         name: z.string().trim().min(1).max(100).describe("The new unique display name for the folder (1 to 100 characters)"),
@@ -326,6 +389,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Delete a feed folder",
       description: "Deletes a feed category folder. Subscribed feeds inside the folder remain intact and are moved to the root level (unfiled). Destructive action for the folder organization. Returns { ok: true } on success.",
+      annotations: writeDestructiveAnnotations,
       inputSchema: {
         folderId: z.number().int().positive().describe("The numeric ID of the folder to delete"),
       },
@@ -342,6 +406,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Digest of recent articles grouped by feed",
       description: "Returns recent articles grouped by subscribed feed with short summaries (newest first). This is the fastest and most token-efficient way to scan what is new. Defaults to unread articles. Do NOT use this tool for pagination, full text, or deep filtering—use list_items for cursor pagination or get_new_items for unread filtering, and follow up with get_item for full article bodies.",
+      annotations: readOnlyAnnotations,
       inputSchema: {
         feedId: z.number().int().positive().optional().describe("Optional feed ID to limit the digest to a single feed"),
         folderId: z.number().int().positive().optional().describe("Optional folder ID to limit the digest to feeds in that folder"),
@@ -360,6 +425,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Account overview and reading statistics",
       description: "Returns account-wide statistics: total subscribed feeds, total unread articles, saved/bookmarked count, top feeds with the most unread items, folder unread counts, and feeds currently experiencing poll failures. Safe read-only overview.",
+      annotations: readOnlyAnnotations,
       inputSchema: {},
     },
     async () => textResult(buildOverview(userId)),
@@ -370,6 +436,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "List unread articles with optional filters",
       description: "Returns a flat list of unread articles matching specified filters (feed, folder, search query, bookmarked status, date range). Use this tool when you specifically need unread articles as a flat list or need article HTML content. Unlike get_digest, articles are flat rather than grouped. Unlike list_items, this tool returns only unread articles and does not use cursors. Follow up with get_item for individual full articles.",
+      annotations: readOnlyAnnotations,
       inputSchema: {
         feedId: z.number().int().positive().optional().describe("Optional feed ID filter"),
         folderId: z.number().int().positive().optional().describe("Optional folder ID filter"),
@@ -396,6 +463,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Paginate items chronologically with cursors",
       description: "Lists articles chronologically with bidirectional cursor-based pagination. Use this tool for comprehensive browsing or historical paging through both read and unread articles. Pass nextCursor as 'before' to page backwards into older history, or newestCursor as 'after' to stream newly added items. Do NOT use for quick digests (use get_digest) or unread-only triage (use get_new_items).",
+      annotations: readOnlyAnnotations,
       inputSchema: {
         feedId: z.number().int().positive().optional().describe("Optional feed ID filter"),
         folderId: z.number().int().positive().optional().describe("Optional folder ID filter"),
@@ -421,6 +489,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Get single article content and metadata",
       description: "Returns full metadata and stored content (HTML or plain text) for a single subscribed article by its numeric itemId. Content is chunked at 40,000 characters; use offset and content.revision to paginate large articles. If an article only has an RSS teaser/summary and full web text is desired, call fetch_full_text.",
+      annotations: readOnlyAnnotations,
       inputSchema: {
         itemId: z.number().int().positive().describe("The numeric ID of the article to retrieve"),
         maxChars: z.number().int().positive().max(40_000).optional().describe("Maximum character length of content to return (up to 40,000)"),
@@ -442,6 +511,12 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Extract full web article text",
       description: "Downloads and extracts the clean, full-length article text from the original publisher website via Readability, permanently caching it on the server and returning it. Use this tool ONLY when get_item indicates that the feed provided only an excerpt or teaser. If full text is already cached, it returns cached content unless force=true is passed.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
       inputSchema: {
         itemId: z.number().int().positive().describe("The numeric ID of the article whose full web content should be extracted"),
         force: z.boolean().optional().describe("When true, forces re-downloading and re-extracting from the web even if already cached"),
@@ -466,6 +541,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Search articles by keyword or phrase",
       description: "Searches article titles and summaries using SQLite FTS5 full-text search across all accessible items. Returns matching articles matching the query phrase, with optional feed, folder, bookmark, and date filters. Safe read-only search.",
+      annotations: readOnlyAnnotations,
       inputSchema: {
         query: z.string().min(1).max(200).describe("The search term or phrase to find in article titles and content summaries"),
         feedId: z.number().int().positive().optional().describe("Optional feed ID filter"),
@@ -482,21 +558,21 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
   );
 
   const itemActions = [
-    ["mark_read", "Mark articles as read", "Marks one or more subscribed articles as read. Accepts a single itemId or an array of itemIds for batch processing. Idempotent: already-read articles remain read. Returns { ok: true, updated: number } where updated is the count of items that actually transitioned from unread to read.", markItemRead],
-    ["mark_unread", "Mark articles as unread", "Marks one or more subscribed articles as unread. Accepts a single itemId or an array of itemIds for batch processing. Idempotent. Returns { ok: true, updated: number } where updated is the count of items that actually transitioned to unread.", markItemUnread],
-    ["bookmark_item", "Bookmark articles for later", "Bookmarks (stars) one or more articles for permanent retention. Bookmarked articles retain full text and images and survive automatic retention cleanup and feed unsubscription. Idempotent. Returns { ok: true, updated: number }.", (userId: number, itemId: number) => {
+    ["mark_read", "Mark articles as read", "Marks one or more subscribed articles as read. Accepts a single itemId or an array of itemIds for batch processing. Idempotent: already-read articles remain read. Returns { ok: true, updated: number } where updated is the count of items that actually transitioned from unread to read.", writeAdditiveIdempotentAnnotations, markItemRead],
+    ["mark_unread", "Mark articles as unread", "Marks one or more subscribed articles as unread. Accepts a single itemId or an array of itemIds for batch processing. Idempotent. Returns { ok: true, updated: number } where updated is the count of items that actually transitioned to unread.", writeAdditiveIdempotentAnnotations, markItemUnread],
+    ["bookmark_item", "Bookmark articles for later", "Bookmarks (stars) one or more articles for permanent retention. Bookmarked articles retain full text and images and survive automatic retention cleanup and feed unsubscription. Idempotent. Returns { ok: true, updated: number }.", writeAdditiveIdempotentAnnotations, (userId: number, itemId: number) => {
       const changed = bookmarkItem(userId, itemId);
       if (changed) scheduleArchive(itemId);
       return changed;
     }],
-    ["unbookmark_item", "Remove article bookmarks", "Removes bookmark status from one or more articles. Safely triggers archive pruning for unreferenced cached assets. Idempotent. Returns { ok: true, updated: number }.", (userId: number, itemId: number) => {
+    ["unbookmark_item", "Remove article bookmarks", "Removes bookmark status from one or more articles. Safely triggers archive pruning for unreferenced cached assets. Idempotent. Returns { ok: true, updated: number }.", writeDestructiveAnnotations, (userId: number, itemId: number) => {
       const changed = unbookmarkItem(userId, itemId);
       if (changed) pruneArchive();
       return changed;
     }],
   ] as const;
-  if (scope === "write") for (const [name, title, description, change] of itemActions) {
-    server.registerTool(name, { title, description, inputSchema: itemSelection }, async (args) => {
+  if (scope === "write") for (const [name, title, description, annotations, change] of itemActions) {
+    server.registerTool(name, { title, description, annotations, inputSchema: itemSelection }, async (args) => {
       if (!hasUserCapability(userId, "sync")) return { ...textResult(capabilityDenial(userId, "sync")), isError: true as const };
       const itemIds = selectedItemIds(args);
       if (itemIds.length === 0) return errorResult("Provide itemId or itemIds");
@@ -509,6 +585,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Mark all articles as read",
       description: "Marks all unread articles as read in a single operation. Can be scoped to a single feed or an entire folder. Idempotent. Returns { marked: number } with the count of newly read items.",
+      annotations: writeDestructiveAnnotations,
       inputSchema: {
         feedId: z.number().int().positive().optional().describe("Optional feed ID to limit the mark-all-read operation to one feed"),
         folderId: z.number().int().positive().optional().describe("Optional folder ID to limit the mark-all-read operation to one folder"),
@@ -524,6 +601,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "List muted keywords",
       description: "Lists all keyword filters configured for the current user. Articles matching any active muted keyword are automatically filtered out from new item views and newspaper editions. Safe read-only.",
+      annotations: readOnlyAnnotations,
       inputSchema: {},
     },
     async () => textResult(listMutedKeywords(userId)),
@@ -534,6 +612,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Add a muted keyword filter",
       description: "Adds a new keyword filter rule. Articles whose title or summary contains this keyword (case-insensitive) will be suppressed from feeds and editions. Requires write scope. Returns the created keyword rule { id, keyword, created_at }.",
+      annotations: writeAdditiveAnnotations,
       inputSchema: {
         keyword: z.string().trim().min(1).max(100).describe("The keyword phrase to filter out from feeds and editions (1 to 100 characters)"),
       },
@@ -546,6 +625,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Remove a muted keyword filter",
       description: "Removes an existing muted keyword filter by its numeric keywordId. Future and existing articles matching this keyword will once again be visible. Returns { ok: true } on success.",
+      annotations: writeDestructiveAnnotations,
       inputSchema: {
         keywordId: z.number().int().positive().describe("The numeric ID of the muted keyword rule to remove"),
       },
@@ -561,6 +641,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Export feeds as OPML XML",
       description: "Exports all subscribed feeds and folder structures of the current user as an OPML 2.0 XML document. Safe read-only operation.",
+      annotations: readOnlyAnnotations,
       inputSchema: {},
     },
     async () => ({ content: [{ type: "text" as const, text: generateOpml(userId) }] }),
@@ -571,6 +652,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Import feeds from OPML XML",
       description: "Imports feed subscriptions and folders from an OPML 2.0 XML string for the current user. Existing subscriptions are preserved. Requires write scope. Returns { imported: number, failed: number, foldersCreated: number }.",
+      annotations: writeAdditiveAnnotations,
       inputSchema: {
         opml: z.string().min(1).describe("The OPML 2.0 XML document string to parse and import"),
       },
@@ -591,6 +673,12 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     {
       title: "Refresh feed poll",
       description: "Requests an immediate poll of a subscribed feed from its origin URL and returns its updated health status, number of new items found, and error state. Respects origin HTTP cache headers and backoff pauses. Returns { success: boolean, newItems: number, error: string | null, deferred: boolean, retryAt: string | null, feed: object }.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
       inputSchema: {
         feedId: z.number().int().positive().describe("The numeric ID of the subscribed feed to refresh"),
       },
@@ -634,12 +722,14 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
   server.registerTool("get_edition", {
     title: "Get current curated newspaper edition",
     description: "Returns the authoritative edition state, publication metadata, article list, and revision number for the user's curated newspaper edition ('Deine Zeitung'). Returns the current revision (even if empty, expired, or dismissed), which must be passed as expectedRevision when calling publish_edition. Safe read-only.",
+    annotations: readOnlyAnnotations,
     inputSchema: {},
   }, async () => textResult(getEditionState(userId)));
 
   server.registerTool("get_edition_candidates", {
     title: "Get candidate articles for newspaper curation",
     description: "Use this tool ONLY when preparing to curate a newspaper edition with publish_edition. Returns a bounded shortlist of unread articles from the last 7 days scored for editorial curation, user reading preferences, and current revision. Do NOT use for general reading or browsing (use get_digest or get_new_items instead).",
+    annotations: readOnlyAnnotations,
     inputSchema: {
       limit: z.number().int().min(1).max(200).default(100).describe("Maximum number of candidate articles to evaluate (1 to 200, default: 100)"),
     },
@@ -648,12 +738,14 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
   if (scope === "write") server.registerTool("publish_edition", {
     title: "Publish curated newspaper edition",
     description: "Publishes an ordered selection of 1 to 24 article IDs as the user's official curated edition ('Deine Zeitung'). The published edition remains available until the next edition is published or expires. Pass the revision from get_edition as expectedRevision for optimistic concurrency, and a UUID requestId for idempotent retries. Does NOT alter underlying articles. Requires write scope.",
+    annotations: writeAdditiveIdempotentAnnotations,
     inputSchema: publishEditionFields,
   }, async (input) => capabilityAction("editions", () => publishCuratedEdition(userId, input)));
 
   if (scope === "write") server.registerTool("dismiss_edition", {
     title: "Dismiss the current newspaper edition",
     description: "Explicitly dismisses the current curated edition so it is no longer shown as active. Requires a UUID requestId and the current revision as expectedRevision for conflict detection. Requires write scope. Returns { ok: true } on success.",
+    annotations: writeDestructiveAnnotations,
     inputSchema: {
       requestId: z.uuid().describe("Unique idempotency UUID for this dismiss operation"),
       expectedRevision: z.number().int().min(0).describe("The current edition revision number obtained from get_edition"),

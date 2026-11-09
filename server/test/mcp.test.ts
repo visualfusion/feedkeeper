@@ -48,7 +48,15 @@ test("MCP cursors isolate users and read-only tokens expose no write tools", asy
     const client = new Client({ name: "feedkeeper-test", version: "1.0" });
     await server.connect(serverTransport);
     await client.connect(clientTransport);
-    const names = (await client.listTools()).tools.map((tool) => tool.name);
+    const tools = (await client.listTools()).tools;
+    for (const tool of tools) {
+      assert.ok(typeof tool.name === "string" && tool.name.length > 0, `tool.name missing on ${tool.name}`);
+      assert.ok(typeof tool.title === "string" && tool.title.length > 0, `tool.title missing on ${tool.name}`);
+      assert.ok(typeof tool.description === "string" && tool.description.length > 0, `tool.description missing on ${tool.name}`);
+      assert.ok(tool.annotations && typeof tool.annotations.readOnlyHint === "boolean", `tool.annotations.readOnlyHint missing on ${tool.name}`);
+      assert.ok(tool.annotations && typeof tool.annotations.destructiveHint === "boolean", `tool.annotations.destructiveHint missing on ${tool.name}`);
+    }
+    const names = tools.map((tool) => tool.name);
     assert.ok(names.includes("list_items"));
     assert.ok(names.includes("get_item"));
     assert.equal(names.includes("mark_read"), scope === "write");
