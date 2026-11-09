@@ -214,7 +214,9 @@ npm run start
 
 If you would rather not operate a server, [FeedKeeper Cloud](https://feedkeeper.cloud) is a hosted edition run by the same maintainers. This repository stays MIT-licensed and fully self-hostable.
 
-## Connecting an MCP client
+## Connecting an MCP client [![Glama Score](https://glama.ai/mcp/servers/visualfusion/feedkeeper/badges/score.svg)](https://glama.ai/mcp/servers/visualfusion/feedkeeper)
+
+**Local stdio mode (Claude Desktop & local tooling).** Run `feedkeeper mcp` (or `node server/dist/mcp-stdio.js`) to start a local stdio MCP server backed by your SQLite database without needing an open port or network configuration.
 
 **With OAuth (ChatGPT, Claude and other connectors).** Add `https://<your-domain>/mcp` as a remote MCP server or custom connector. The client discovers the sign-in on its own: you log in to FeedKeeper, choose **read only** or **read and write** on the consent page, and the client gets a short-lived token (1 hour, refreshed for 30 days). Connected AI assistants are listed under **Settings → MCP** and can be disconnected at any time. `OAUTH_ALLOWED_REDIRECT_HOSTS` can limit which hosts may register. Set `PUBLIC_URL` to the address the client reaches the server at; see [docs/design/mcp-oauth.md](docs/design/mcp-oauth.md).
 
