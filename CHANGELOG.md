@@ -2,6 +2,13 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.36.7] - 2026-11-09
+
+### Fixed
+- Hardened lazy-image attribute URL sanitization with URI encoding in article extraction.
+- Added parameter type guards against tampering on avatar upload endpoints.
+- Switched challenge token digests to keyed HMAC SHA-256 to isolate ephemeral high-entropy tokens.
+
 ## [0.36.6] - 2026-11-09
 
 ### Fixed
