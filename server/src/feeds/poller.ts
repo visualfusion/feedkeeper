@@ -73,15 +73,24 @@ function extractFeedIconUrls(parsed: CustomFeed | null, baseUrl: string): { icon
 }
 
 function cleanImageUrl(url: string): string {
-  return url.trim().replace(/&#038;/g, "&").replace(/&amp;/g, "&");
+  return url.trim().replace(/&(?:#038|amp);/g, "&");
 }
 
 function isValidImageUrl(url: unknown): url is string {
   if (typeof url !== "string") return false;
   const trimmed = url.trim();
-  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) return false;
-  if (trimmed.includes("/1x1") || trimmed.includes("pixel.wp.com") || trimmed.includes("tracking") || trimmed.includes("beacon")) {
-    if (trimmed.includes("pixel") || trimmed.includes("1x1")) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+  const host = parsed.hostname.toLowerCase();
+  if (host === "pixel.wp.com" || host.endsWith(".pixel.wp.com")) return false;
+  const pathAndQuery = (parsed.pathname + parsed.search).toLowerCase();
+  if (pathAndQuery.includes("/1x1") || pathAndQuery.includes("pixel") || pathAndQuery.includes("tracking") || pathAndQuery.includes("beacon")) {
+    return false;
   }
   return true;
 }

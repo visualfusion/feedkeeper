@@ -1,10 +1,19 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { requireBearerToken } from "../auth/middleware.js";
 import { requireCapability } from "../auth/capabilities.js";
 import { createMcpServerForUser } from "./server.js";
 
+const mcpLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 240,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 export const mcpRouter = Router();
+mcpRouter.use(mcpLimiter);
 
 // Stateless mode: a fresh McpServer + transport per request, scoped to the
 // user resolved from the bearer token. This is what makes the same endpoint

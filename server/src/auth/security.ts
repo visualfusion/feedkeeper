@@ -5,7 +5,7 @@ import { db } from "../db/index.js";
 import { config } from "../config.js";
 
 export const opaque = () => randomBytes(32).toString("base64url");
-const hash = (text: string) => createHash("sha256").update(text).digest("hex");
+const tokenDigest = (text: string) => createHash("sha256").update(text).digest("hex");
 const encryptionKey = () => createHash("sha256").update(`feedkeeper-totp:${config.sessionSecret}`).digest();
 export function seal(text: string): string {
   const iv = randomBytes(12);
@@ -33,31 +33,31 @@ export function sessionIsSecure(req: Request, userId: number): boolean {
 export function hasTotp(userId: number): boolean { return Boolean(securityAccount(userId).totp_secret); }
 export function securityBinding(req: Request, channel: string): string {
   if (channel === "native-login") return channel;
-  if (req.headers.authorization) return hash(`${channel}:${req.headers.authorization}`);
+  if (req.headers.authorization) return tokenDigest(`${channel}:${req.headers.authorization}`);
   req.session ??= {};
   req.session.securityBinding ??= opaque();
-  return hash(`${channel}:${req.session.securityBinding}`);
+  return tokenDigest(`${channel}:${req.session.securityBinding}`);
 }
 export interface Challenge { purpose: string; user_id: number | null; binding: string; version: number; payload: string; expires_at: number; attempts: number }
 export function issueSecurityChallenge(purpose: string, userId: number | null, binding: string, payload: unknown, ttl = 5 * 60_000) {
   db.prepare("DELETE FROM security_challenges WHERE expires_at <= ?").run(Date.now());
   const id = opaque();
   db.prepare("INSERT INTO security_challenges (id_hash, purpose, user_id, binding, version, payload, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .run(hash(id), purpose, userId, binding, userId ? securityVersion(userId) : 0, JSON.stringify(payload), Date.now() + ttl);
+    .run(tokenDigest(id), purpose, userId, binding, userId ? securityVersion(userId) : 0, JSON.stringify(payload), Date.now() + ttl);
   return id;
 }
 /** Count attempts before checking the factor, including requests that end in an error. */
 export function readSecurityChallenge(id: unknown, purpose: string, binding: string, consume = false): Challenge | null {
   if (typeof id !== "string" || !/^[\w-]{43}$/.test(id)) return null;
   return db.transaction(() => {
-    const row = db.prepare<[string], Challenge>("SELECT * FROM security_challenges WHERE id_hash = ?").get(hash(id));
+    const row = db.prepare<[string], Challenge>("SELECT * FROM security_challenges WHERE id_hash = ?").get(tokenDigest(id));
     if (!row || row.purpose !== purpose || row.binding !== binding || row.expires_at <= Date.now() || row.attempts >= 15 || (row.user_id && row.version !== securityVersion(row.user_id))) return null;
-    if (consume) db.prepare("DELETE FROM security_challenges WHERE id_hash = ?").run(hash(id));
-    else db.prepare("UPDATE security_challenges SET attempts = attempts + 1 WHERE id_hash = ?").run(hash(id));
+    if (consume) db.prepare("DELETE FROM security_challenges WHERE id_hash = ?").run(tokenDigest(id));
+    else db.prepare("UPDATE security_challenges SET attempts = attempts + 1 WHERE id_hash = ?").run(tokenDigest(id));
     return row;
   })();
 }
-export function discardSecurityChallenge(id: string): void { db.prepare("DELETE FROM security_challenges WHERE id_hash = ?").run(hash(id)); }
+export function discardSecurityChallenge(id: string): void { db.prepare("DELETE FROM security_challenges WHERE id_hash = ?").run(tokenDigest(id)); }
 export function totpFor(secret?: string, label = "FeedKeeper") {
   return new TOTP({ issuer: "FeedKeeper", label, algorithm: "SHA1", digits: 6, period: 30, secret: secret ? Secret.fromBase32(secret) : new Secret({ size: 20 }) });
 }
@@ -76,13 +76,13 @@ export function verifySecondFactor(userId: number, code: unknown): boolean {
     }
     const normalized = code.toUpperCase().replace(/[ -]/g, "");
     if (!/^[A-F0-9]{24}$/.test(normalized)) return false;
-    return db.prepare("DELETE FROM recovery_codes WHERE user_id = ? AND code_hash = ?").run(userId, hash(normalized)).changes === 1;
+    return db.prepare("DELETE FROM recovery_codes WHERE user_id = ? AND code_hash = ?").run(userId, tokenDigest(normalized)).changes === 1;
   })();
 }
 export function newRecoveryCodes(userId: number): string[] {
   db.prepare("DELETE FROM recovery_codes WHERE user_id = ?").run(userId);
   const codes = Array.from({ length: 10 }, () => randomBytes(12).toString("hex").toUpperCase());
-  for (const code of codes) db.prepare("INSERT INTO recovery_codes (user_id, code_hash) VALUES (?, ?)").run(userId, hash(code));
+  for (const code of codes) db.prepare("INSERT INTO recovery_codes (user_id, code_hash) VALUES (?, ?)").run(userId, tokenDigest(code));
   return codes.map(code => code.match(/.{6}/g)!.join("-"));
 }
 /**

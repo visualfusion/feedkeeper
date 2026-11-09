@@ -1,7 +1,7 @@
 import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
-import express from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
 import { securityHeaderOptions } from "./securityHeaders.js";
 import cors from "cors";
@@ -77,6 +77,32 @@ app.use(
     secure: config.publicUrl.startsWith("https://"),
   }),
 );
+
+// CSRF defense for cookie-authenticated mutating requests:
+// Bearer-token requests (native apps, MCP, API clients) are immune to browser cross-site forgery.
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return next();
+  if (req.headers.authorization) return next();
+  const site = req.headers["sec-fetch-site"];
+  if (site === "cross-site") {
+    res.status(403).json({ error: "csrf_forbidden" });
+    return;
+  }
+  const origin = req.headers.origin;
+  if (origin) {
+    try {
+      const publicOrigin = new URL(config.publicUrl).origin;
+      if (new URL(origin).origin !== publicOrigin) {
+        res.status(403).json({ error: "csrf_forbidden" });
+        return;
+      }
+    } catch {
+      res.status(403).json({ error: "csrf_forbidden" });
+      return;
+    }
+  }
+  next();
+});
 
 // Generic API rate limit as defense in depth on top of the stricter
 // per-route limiter on /api/auth/login.

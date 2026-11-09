@@ -36,7 +36,10 @@ function oauthError(res: Response, status: number, error: string, description?: 
 }
 
 function sameResource(value: unknown): boolean {
-  return typeof value === "string" && value.replace(/\/+$/, "") === MCP_RESOURCE;
+  if (typeof value !== "string") return false;
+  let normalized = value;
+  while (normalized.endsWith("/")) normalized = normalized.slice(0, -1);
+  return normalized === MCP_RESOURCE;
 }
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -217,6 +220,7 @@ export const oauthAuthorizeRouter = Router();
 const publicOrigin = new URL(issuer).origin;
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
+const authorizeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: true, legacyHeaders: false });
 const formOnly = express.urlencoded({ extended: false, limit: "20kb" });
 
 /**
@@ -316,7 +320,7 @@ function mayUseMcp(req: Request, res: Response, userId: number): boolean {
   return false;
 }
 
-oauthAuthorizeRouter.get("/oauth/authorize", (req, res) => {
+oauthAuthorizeRouter.get("/oauth/authorize", authorizeLimiter, (req, res) => {
   const parsed = parseAuthorization(req.query);
   if (parsed.kind === "fatal") {
     page(res, 400, renderError(req, parsed.message));
@@ -382,7 +386,7 @@ oauthAuthorizeRouter.post("/oauth/authorize/login", sameOriginOnly, loginLimiter
   res.redirect(303, returnTo);
 });
 
-oauthAuthorizeRouter.post("/oauth/authorize/decision", sameOriginOnly, formOnly, (req, res) => {
+oauthAuthorizeRouter.post("/oauth/authorize/decision", authorizeLimiter, sameOriginOnly, formOnly, (req, res) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   const parsed = parseAuthorization(body);
   if (parsed.kind === "fatal") {

@@ -721,7 +721,7 @@ resourcesRouter.get("/items/:id/image", imageLimiter, async (req, res) => {
       res.status(503).json({ error: "image_busy" });
       return;
     }
-    console.error(`[image_proxy] Failed to fetch image for item ${req.params.id} (${src}):`, error instanceof Error ? error.message : error);
+    console.error("[image_proxy] Failed to fetch image for item %s (%s):", req.params.id, src, error instanceof Error ? error.message : error);
     res.status(502).json({ error: "image_unavailable" });
   }
 });

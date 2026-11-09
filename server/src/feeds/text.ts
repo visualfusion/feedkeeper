@@ -26,7 +26,14 @@ const TITLE_MARKUP = /<\/?(?:b|i|u|em|strong|mark|span|small|sub|sup|font|a|br)\
 
 /** A title as one line of text: entities decoded, inline markup removed, line breaks and runs of spaces collapsed to one space, trimmed. */
 export function plainTitle(text: string | null | undefined): string | undefined {
-  const cleaned = decodeEntities(text)?.replace(TITLE_MARKUP, tag => (/^<br/i.test(tag) ? " " : "")).replace(/\s+/g, " ").trim();
+  let cleaned = decodeEntities(text);
+  if (!cleaned) return undefined;
+  let previous: string;
+  do {
+    previous = cleaned;
+    cleaned = cleaned.replace(TITLE_MARKUP, tag => (/^<br/i.test(tag) ? " " : ""));
+  } while (cleaned !== previous);
+  cleaned = cleaned.replace(/\s+/g, " ").trim();
   return cleaned || undefined;
 }
 

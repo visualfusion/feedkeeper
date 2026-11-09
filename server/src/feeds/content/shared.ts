@@ -34,7 +34,10 @@ export function pruneEmpty(node: Node | null): void {
 export function linkParagraph(document: Document, url: string, text: string): Element {
   const paragraph = document.createElement("p");
   const link = document.createElement("a");
-  link.setAttribute("href", url);
+  const parsed = parseAddress(url);
+  if (parsed && (parsed.protocol === "https:" || parsed.protocol === "http:")) {
+    link.setAttribute("href", parsed.href);
+  }
   link.textContent = text;
   paragraph.append(link);
   return paragraph;

@@ -10,6 +10,7 @@ test("a native app pairs with a one-time code and gets its own revocable token",
   const { v1Router } = await import("../src/api/v1/index.js");
   const { createPairingCode } = await import("../src/auth/pairing.js");
   const { requireBearerToken } = await import("../src/auth/middleware.js");
+  const { default: rateLimit } = await import("express-rate-limit");
   const { resolveToken, createPersonalAccessToken } = await import("../src/auth/tokens.js");
   runMigrations();
 
@@ -26,7 +27,7 @@ test("a native app pairs with a one-time code and gets its own revocable token",
     next();
   });
   app.use("/api/v1", v1Router);
-  app.get("/mcp-like", requireBearerToken, (_req, res) => void res.json({ ok: true }));
+  app.get("/mcp-like", rateLimit({ windowMs: 60000, limit: 100 }), requireBearerToken, (_req, res) => void res.json({ ok: true }));
   const server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/v1`;
   const call = async (path: string, init: RequestInit & { user?: number; token?: string } = {}) => {

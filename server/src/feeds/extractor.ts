@@ -51,6 +51,13 @@ function cleanConsentDom(doc: Document): void {
   }
 }
 
+function isSafeSource(value: string | null): value is string {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 4000 || /^javascript:/i.test(trimmed)) return false;
+  return /^https?:\/\//i.test(trimmed) || /^data:image\//i.test(trimmed) || trimmed.startsWith("/");
+}
+
 function resolveLazyImages(doc: Document): void {
   const images = doc.querySelectorAll("img");
   for (const img of images) {
@@ -60,20 +67,20 @@ function resolveLazyImages(doc: Document): void {
       img.getAttribute("data-original") ||
       img.getAttribute("data-actualsrc");
     const src = img.getAttribute("src");
-    if (lazySrc && (!src || src.startsWith("data:") || src.length < 10 || SCRIPT_IMAGE_SOURCE.test(src))) {
-      img.setAttribute("src", lazySrc);
+    if (isSafeSource(lazySrc) && (!src || src.startsWith("data:") || src.length < 10 || SCRIPT_IMAGE_SOURCE.test(src))) {
+      img.setAttribute("src", lazySrc.trim());
     }
     const lazySrcset = img.getAttribute("data-lazy-srcset") || img.getAttribute("data-srcset");
     const srcset = img.getAttribute("srcset");
-    if (lazySrcset && (!srcset || srcset.startsWith("data:"))) {
-      img.setAttribute("srcset", lazySrcset);
+    if (isSafeSource(lazySrcset) && (!srcset || srcset.startsWith("data:"))) {
+      img.setAttribute("srcset", lazySrcset.trim());
     }
   }
   const sources = doc.querySelectorAll("source");
   for (const source of sources) {
     const lazySrcset = source.getAttribute("data-lazy-srcset") || source.getAttribute("data-srcset");
-    if (lazySrcset) {
-      source.setAttribute("srcset", lazySrcset);
+    if (isSafeSource(lazySrcset)) {
+      source.setAttribute("srcset", lazySrcset.trim());
     }
   }
 }

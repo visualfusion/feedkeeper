@@ -181,7 +181,7 @@ export function extractFeedsFromHtml(html: string, baseUrl: string): DiscoveredF
   for (const match of html.matchAll(/<a\b([^>]*href=["']([^"']+)["'][^>]*)>(.*?)<\/a>/gis)) {
     const href = match[2];
     if (href.endsWith("/feed") || href.endsWith(".rss") || href.endsWith(".xml") || href.includes("/rss/")) {
-      add(href, decodeEntities(match[3].replace(/<[^>]+>/g, "").trim()) || null, "application/rss+xml");
+      add(href, decodeEntities(stripHtmlTags(match[3]).trim()) || null, "application/rss+xml");
     }
   }
 
@@ -197,5 +197,15 @@ function getAttr(attrsStr: string, attrName: string): string | null {
   const match = regex.exec(attrsStr);
   if (!match) return null;
   return match[1] ?? match[2] ?? match[3] ?? null;
+}
+
+function stripHtmlTags(input: string): string {
+  let text = input;
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]+>/g, "");
+  } while (text !== previous);
+  return text;
 }
 
