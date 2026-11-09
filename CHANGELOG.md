@@ -2,6 +2,17 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.36.3] - 2026-11-09
+
+### Added
+- Local stdio MCP transport mode via `feedkeeper mcp` command and direct entrypoint `server/dist/mcp-stdio.js`, enabling local MCP client execution (such as Claude Desktop) and automated containerized MCP proxies without HTTP configuration.
+- Support for `pnpm` workspaces and flat dependency hoisting via `pnpm-workspace.yaml` and `.npmrc`.
+- Ownership verification manifest `glama.json` for MCP registry maintainer verification.
+
+### Changed
+- Automatically redirect server log outputs to stderr when running in stdio MCP mode or inside Glama container environments, guaranteeing clean JSON-RPC protocol communication on stdout.
+- Updated npm dependencies to latest releases (`i18next`, `i18next-browser-languagedetector`, `vite`, `@vitejs/plugin-react`, `eslint`).
+
 ## [0.36.2] - 2026-11-08
 
 ### Added
@@ -785,7 +796,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 First public release: an RSS and Atom reader with a remote MCP server, multi-user accounts, a trilingual interface (English, German, Japanese), SSRF-guarded feed fetching and a single-file SQLite database.
 
-[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.36.2...HEAD
+[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.36.3...HEAD
+[0.36.3]: https://github.com/visualfusion/feedkeeper/compare/v0.36.2...v0.36.3
 [0.36.2]: https://github.com/visualfusion/feedkeeper/compare/v0.36.1...v0.36.2
 [0.36.1]: https://github.com/visualfusion/feedkeeper/compare/v0.36.0...v0.36.1
 [0.36.0]: https://github.com/visualfusion/feedkeeper/compare/v0.35.8...v0.36.0
