@@ -17,7 +17,7 @@
 
 FeedKeeper is an independent RSS and Atom feed manager built for people who want full ownership over their subscriptions. It runs quietly on your own server or Raspberry Pi, stores everything in a local SQLite database, and requires zero cloud accounts.
 
-Beyond a clean web reader, FeedKeeper includes a native, authenticated **[Model Context Protocol (MCP)](https://modelcontextprotocol.io)** endpoint. This lets MCP clients read, search, bookmark, and organize your feeds over a remote connection. Your subscriptions and reading history stay in your own SQLite database.
+Beyond a clean web reader, FeedKeeper includes a native, authenticated **[Model Context Protocol (MCP)](https://modelcontextprotocol.io)** endpoint. Listed in the official MCP Registry (`io.github.visualfusion/feedkeeper`) and verified for the Anthropic Claude Directory, it lets MCP clients read, search, bookmark, and organize your feeds over a remote connection. Your subscriptions and reading history stay in your own SQLite database.
 
 It is multi-user by default, with isolated accounts, personal access tokens, and a trilingual interface (English, German, and Japanese).
 
@@ -31,7 +31,7 @@ It is multi-user by default, with isolated accounts, personal access tokens, and
 
 There are good self-hosted readers already, such as Miniflux and FreshRSS. FeedKeeper is for you if you want your feeds to be part of your AI workflows without giving up ownership:
 
-- **MCP built in.** Claude, ChatGPT and other MCP clients connect to `/mcp` directly, with OAuth sign-in or personal access tokens, read-only or read and write. Ask for a daily briefing, let an agent triage unread articles, or let it curate an edition. No separate bridge to run.
+- **MCP built in.** Claude, ChatGPT and other MCP clients connect to `/mcp` directly, with OAuth sign-in or personal access tokens, read-only or read and write. FeedKeeper is listed in the official Model Context Protocol Registry (`io.github.visualfusion/feedkeeper`) and verified in Claude's connector directory. Ask for a daily briefing, let an agent triage unread articles, or let it curate an edition. No separate bridge to run.
 - **Small to run.** One Node process and one SQLite file, with full-text search built in. No PostgreSQL, no Redis. It runs on a Raspberry Pi or on shared hosting such as Uberspace.
 - **An open API.** The REST API under `/api/v1` is described in an [OpenAPI file](docs/openapi.yaml), with offline sync, notes and editions, so third parties can build their own clients.
 - **Built to be extended.** Operators can add settings, footer links or a single sign-on form to the web app without forking it, see [Extending the web app](docs/extending-the-web-app.md).
