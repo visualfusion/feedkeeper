@@ -1,11 +1,11 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from "node:crypto";
 import type { Request } from "express";
 import { TOTP, Secret } from "otpauth";
 import { db } from "../db/index.js";
 import { config } from "../config.js";
 
 export const opaque = () => randomBytes(32).toString("base64url");
-const tokenDigest = (text: string) => createHash("sha256").update(text).digest("hex");
+const tokenDigest = (text: string) => createHmac("sha256", config.sessionSecret).update(text).digest("hex");
 const encryptionKey = () => createHash("sha256").update(`feedkeeper-totp:${config.sessionSecret}`).digest();
 export function seal(text: string): string {
   const iv = randomBytes(12);

@@ -175,9 +175,13 @@ v1Router.get("/me/avatar", (req, res) => {
 
 // The type is taken from the file signature, never from the declared content type.
 v1Router.put("/me/avatar", express.raw({ type: ["image/jpeg", "image/png", "image/webp"], limit: AVATAR_MAX_BYTES }), (req, res) => {
-  const data = Buffer.isBuffer(req.body) ? req.body : null;
-  const mimeType = data ? detectAvatarType(data) : null;
-  if (!data || !mimeType) {
+  if (typeof req.body === "string" || Array.isArray(req.body) || !Buffer.isBuffer(req.body)) {
+    res.status(400).json({ error: "invalid_image" });
+    return;
+  }
+  const data: Buffer = req.body;
+  const mimeType = detectAvatarType(data);
+  if (!mimeType) {
     res.status(400).json({ error: "invalid_image" });
     return;
   }

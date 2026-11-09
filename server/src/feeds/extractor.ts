@@ -68,19 +68,19 @@ function resolveLazyImages(doc: Document): void {
       img.getAttribute("data-actualsrc");
     const src = img.getAttribute("src");
     if (isSafeSource(lazySrc) && (!src || src.startsWith("data:") || src.length < 10 || SCRIPT_IMAGE_SOURCE.test(src))) {
-      img.setAttribute("src", lazySrc.trim());
+      img.setAttribute("src", encodeURI(lazySrc.trim()));
     }
     const lazySrcset = img.getAttribute("data-lazy-srcset") || img.getAttribute("data-srcset");
     const srcset = img.getAttribute("srcset");
     if (isSafeSource(lazySrcset) && (!srcset || srcset.startsWith("data:"))) {
-      img.setAttribute("srcset", lazySrcset.trim());
+      img.setAttribute("srcset", encodeURI(lazySrcset.trim()));
     }
   }
   const sources = doc.querySelectorAll("source");
   for (const source of sources) {
     const lazySrcset = source.getAttribute("data-lazy-srcset") || source.getAttribute("data-srcset");
     if (isSafeSource(lazySrcset)) {
-      source.setAttribute("srcset", lazySrcset.trim());
+      source.setAttribute("srcset", encodeURI(lazySrcset.trim()));
     }
   }
 }
