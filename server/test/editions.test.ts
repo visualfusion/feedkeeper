@@ -310,8 +310,8 @@ test("server editions and app preferences keep devices in step without changing 
     const writer = await connect("write"), reader = await connect("read");
     try {
       const tools = (await reader.client.listTools()).tools.map((tool) => tool.name);
-      assert.ok(tools.includes("get_edition") && tools.includes("get_edition_candidates") && tools.includes("get_native_preferences"));
-      for (const name of ["publish_edition", "generate_edition", "dismiss_edition", "update_native_preferences"]) assert.ok(!tools.includes(name));
+      assert.ok(tools.includes("get_edition") && tools.includes("get_edition_candidates"));
+      for (const name of ["publish_edition", "dismiss_edition"]) assert.ok(!tools.includes(name));
       const id = randomUUID();
       const overview = [{heading: "Original report", segments: [{text: "Source report", itemId: a}]}];
       const first = await writer.client.callTool({ name: "publish_edition", arguments: { itemIds: [a], requestId: id, expectedRevision: 0, overview } });

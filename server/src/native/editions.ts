@@ -112,15 +112,15 @@ function writeEdition(userId: number, itemIds: number[], source: ServerEdition["
 }
 
 export const publishEditionFields = {
-  itemIds: z.array(z.number().int().positive()).min(1).max(24),
-  expiresAt: z.string().datetime({ offset: true }).optional(),
-  durationHours: z.number().positive().max(168).optional(),
-  expectedRevision: z.number().int().min(0).optional(),
-  requestId: z.uuid().optional(),
-  title: z.string().trim().min(1).max(200).optional(),
-  summary: z.string().trim().min(1).max(2000).optional(),
-  overview: overviewSchema.optional(),
-  layout: editionLayoutSchema.optional(),
+  itemIds: z.array(z.number().int().positive()).min(1).max(24).describe("Ordered list of 1 to 24 article IDs to include in this edition"),
+  expiresAt: z.string().datetime({ offset: true }).optional().describe("ISO datetime when this edition expires and a new issue is due (max 7 days)"),
+  durationHours: z.number().positive().max(168).optional().describe("Duration in hours until this edition expires (1 to 168 hours, default: 24)"),
+  expectedRevision: z.number().int().min(0).optional().describe("The revision from get_edition to ensure optimistic concurrency and avoid conflicts"),
+  requestId: z.uuid().optional().describe("Idempotency key (UUID v4) to safely retry publication without duplicate processing"),
+  title: z.string().trim().min(1).max(200).optional().describe("Optional editorial headline for this edition (e.g. 'Monday Morning Briefing')"),
+  summary: z.string().trim().min(1).max(2000).optional().describe("Optional editorial summary or introduction text for the edition"),
+  overview: overviewSchema.optional().describe("Optional structured briefing sections grouping items with editorial commentary"),
+  layout: editionLayoutSchema.optional().describe("Optional visual layout specification (character and editorial blocks)"),
 };
 const publishSchema = z.object(publishEditionFields).strict().refine((input) => !(input.expiresAt && input.durationHours), "Use expiresAt or durationHours, not both");
 export type PublishEditionInput = z.infer<typeof publishSchema>;

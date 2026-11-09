@@ -83,6 +83,12 @@ test("MCP batch actions, date filters and feed management stay scoped to the use
   db.prepare("UPDATE feeds SET last_error = 'timeout', consecutive_errors = 3 WHERE id = ?").run(feedId);
   assert.equal((await owner.call("list_feeds", { onlyWithErrors: true })).json().length, 1);
 
+  // Single feed detail.
+  const single = (await owner.call("get_feed", { feedId })).json();
+  assert.equal(single.id, feedId);
+  assert.equal(single.url, "https://example.test/feed");
+  assert.equal((await owner.call("get_feed", { feedId: foreignFeedId })).isError, true);
+
   // Full text is a write tool and reports missing links instead of fetching.
   assert.equal((await owner.call("fetch_full_text", { itemId: early })).text, "item_has_no_link");
   assert.equal((await owner.call("fetch_full_text", { itemId: foreign })).text, "item_not_found");

@@ -2,6 +2,16 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.36.4] - 2026-11-09
+
+### Added
+- New MCP tool `get_feed` for single-feed inspection, returning subscription settings, polling health, and unread counts by feed ID.
+
+### Changed
+- Comprehensive refinement of all MCP tool definitions and parameter schemas: added clear usage guidelines, explicit `.describe()` documentation to every parameter, return structures, and disambiguation between reading paths (`get_digest`, `get_new_items`, `list_items`, `search_items`, `get_edition_candidates`).
+- Clarified distinction between `get_item` (cached content retrieval) and `fetch_full_text` (on-demand web extraction via Readability).
+- Streamlined MCP toolset by removing redundant compatibility alias `generate_edition` and app-only client preference tools (`get_native_preferences`, `update_native_preferences`).
+
 ## [0.36.3] - 2026-11-09
 
 ### Added
@@ -796,7 +806,8 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 
 First public release: an RSS and Atom reader with a remote MCP server, multi-user accounts, a trilingual interface (English, German, Japanese), SSRF-guarded feed fetching and a single-file SQLite database.
 
-[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.36.3...HEAD
+[Unreleased]: https://github.com/visualfusion/feedkeeper/compare/v0.36.4...HEAD
+[0.36.4]: https://github.com/visualfusion/feedkeeper/compare/v0.36.3...v0.36.4
 [0.36.3]: https://github.com/visualfusion/feedkeeper/compare/v0.36.2...v0.36.3
 [0.36.2]: https://github.com/visualfusion/feedkeeper/compare/v0.36.1...v0.36.2
 [0.36.1]: https://github.com/visualfusion/feedkeeper/compare/v0.36.0...v0.36.1

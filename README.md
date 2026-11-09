@@ -239,6 +239,7 @@ To have an AI assistant configure the MCP connection for you, create a Personal 
 | Tool | Description |
 |---|---|
 | `list_feeds` | List subscribed feeds with unread counts and health status, optionally only feeds with errors |
+| `get_feed` | Inspect a single subscribed feed's metadata, subscription settings, unread count and health status |
 | `subscribe_feed` | Subscribe to a feed URL or website URL (auto-discovering the feed) |
 | `discover_feeds` | Discover available RSS/Atom feeds on a website URL |
 | `save_to_inbox` | Save a web clipping, URL, or personal note to your inbox with automatic full-text and image archiving |
@@ -270,10 +271,7 @@ To have an AI assistant configure the MCP connection for you, create a Personal 
 | `get_edition` | Read the current issue, source and revision, including expired or dismissed state |
 | `get_edition_candidates` | Get compact candidates respecting app section preferences and muted keywords |
 | `publish_edition` | Publish an ordered curated issue with optional structured topic overviews and a presentation layout, expiry, revision checks and safe retries |
-| `generate_edition` | Compatibility request that reads the latest curated publication without changing it |
 | `dismiss_edition` | Dismiss the shared issue with revision and replay protection |
-| `get_native_preferences` | Read app-only section order, newspaper visibility and edition preferences |
-| `update_native_preferences` | Patch shared app preferences without changing the web reader |
 
 Besides tools, the server offers prompts (`daily_briefing`, `catch_up_on_topic`, `saved_reading_list`, `triage_unread`) and resources (`feedkeeper://feeds`, `opml`, `saved`, `digest` and `feedkeeper://items/{id}`) that clients can show as ready-made actions.
 
