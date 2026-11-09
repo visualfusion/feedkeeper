@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { db } from "../db/index.js";
 import { hashPassword } from "./password.js";
 import type { AvatarMimeType } from "./avatar.js";
@@ -36,6 +37,18 @@ export function findUserByEmail(email: string): User | undefined {
 
 export function findUserById(id: number): User | undefined {
   return db.prepare<[number], User>(`${SELECT_USER} WHERE users.id = ?`).get(id);
+}
+
+/** Returns the first existing user, or creates a local admin user for single-user/stdio mode. */
+export function getOrCreateDefaultUser(): User {
+  const existing = db.prepare<[], User>(`${SELECT_USER} ORDER BY users.id ASC LIMIT 1`).get();
+  if (existing) return existing;
+  return createUser({
+    email: "local@feedkeeper.internal",
+    password: randomBytes(32).toString("hex"),
+    displayName: "FeedKeeper User",
+    role: "admin",
+  });
 }
 
 export function createUser(input: {

@@ -7,6 +7,7 @@ export const HELP = `FeedKeeper: a self-hosted RSS reader and remote MCP server
 
 Usage:
   feedkeeper [options]                   Start the server
+  feedkeeper mcp [options]               Start in stdio MCP mode
   feedkeeper backup <file>               Back up the database (see docs for restore)
   feedkeeper restore <file> --force      Restore the database from a backup
 
@@ -22,7 +23,7 @@ A .env file in the current folder is read first; real environment variables win 
 Without SESSION_SECRET, one is generated on first start and kept in the data folder.
 All other settings are the environment variables of .env.example in the repository.`;
 
-export type CliAction = "start" | "backup" | "restore" | "help" | "version";
+export type CliAction = "start" | "backup" | "restore" | "help" | "version" | "mcp";
 
 export interface CliOptions {
   action: CliAction;
@@ -73,6 +74,8 @@ export function parseArgs(argv: string[]): CliOptions {
       const [value, next] = takeValue(argv, index, "--data-dir");
       options.dataDir = value;
       index = next;
+    } else if (options.action === "start" && argument === "mcp") {
+      options.action = "mcp";
     } else if (options.action === "start" && (argument === "backup" || argument === "restore")) {
       options.action = argument;
       options.forwarded.push(argument);

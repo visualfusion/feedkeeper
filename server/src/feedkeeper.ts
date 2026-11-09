@@ -22,6 +22,12 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (options.action === "mcp" || (options.action === "start" && process.env.GLAMA_VERSION)) {
+    const { runMcpStdio } = await import("./mcp-stdio.js");
+    await runMcpStdio();
+    return;
+  }
+
   console.log(`[feedkeeper] version ${APP_VERSION}, data in ${prepared.dataDir}`);
   if (prepared.secretCreated) console.log(`[feedkeeper] created a session secret at ${prepared.secretPath}; keep it with your backups`);
   await import("./server.js");
