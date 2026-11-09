@@ -2,6 +2,17 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.36.6] - 2026-11-09
+
+### Fixed
+- Resolved GitHub CodeQL security scanning alerts across request routing, XML/HTML content sanitization, and workflow automation.
+- Hardened lazy-image loading and iframe link card conversions against DOM-based XSS through strict URL protocol validation.
+- Replaced polynomial regular expressions in OAuth resource checks and tag strippers with iterative, deterministic string processing.
+- Added explicit rate limiters to MCP endpoint handlers and OAuth consent routes.
+- Enforced origin and cross-site request validation (CSRF defense) for cookie-authenticated state-changing requests.
+- Added runtime buffer type validation for avatar upload handling.
+- Restricted top-level GitHub Actions permissions in CI to read-only content access.
+
 ## [0.36.5] - 2026-11-09
 
 ### Added
