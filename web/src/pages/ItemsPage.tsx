@@ -52,6 +52,8 @@ export function ItemsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [feedsLoaded, setFeedsLoaded] = useState(false);
+  /** Stays false when the folder list could not be fetched, so a failed request never clears a valid folder filter. */
+  const [foldersLoaded, setFoldersLoaded] = useState(false);
   const { syncAllowed } = usePlanLimits();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -308,15 +310,28 @@ export function ItemsPage() {
   useEffect(() => {
     Promise.all([
       api.listFeeds(),
-      api.listFolders().catch(() => ({ folders: [] })),
+      api.listFolders().then((result) => ({ ...result, ok: true })).catch(() => ({ folders: [], ok: false })),
     ])
       .then(([f, fol]) => {
         setFeeds(f);
         setFolders(fol.folders);
+        setFoldersLoaded(fol.ok);
         setFeedsLoaded(true);
       })
       .catch((err) => console.error("Failed to load initial feeds/folders:", err));
   }, []);
+
+  // A remembered or linked scope can point at a feed or folder that was deleted (and perhaps recreated under a new id).
+  // It would then list nothing while the dropdown shows "all feeds", so it falls back to the whole library.
+  useEffect(() => {
+    if (!feedsLoaded || !filterScope) return;
+    const stale = filterScope.startsWith("feed:")
+      ? !feeds.some((feed) => `feed:${feed.id}` === filterScope)
+      : filterScope.startsWith("folder:") && foldersLoaded && !folders.some((folder) => `folder:${folder.id}` === filterScope);
+    if (stale) onScopeChange("");
+    // onScopeChange only wraps stable setters; the scope is validated whenever the loaded lists change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedsLoaded, foldersLoaded, feeds, folders, filterScope]);
 
   const currentFeedId = filterScope.startsWith("feed:") ? Number(filterScope.slice(5)) : undefined;
   const currentFolderId = filterScope.startsWith("folder:") ? Number(filterScope.slice(7)) : undefined;
@@ -328,13 +343,17 @@ export function ItemsPage() {
 
   async function reloadFeeds(): Promise<Feed[] | null> {
     try {
-      const [f, fol] = await Promise.all([api.listFeeds(), api.listFolders().catch(() => ({ folders: [] }))]);
+      const [f, fol] = await Promise.all([
+        api.listFeeds(),
+        api.listFolders().then((result) => ({ ...result, ok: true })).catch(() => ({ folders: [], ok: false })),
+      ]);
       if (f.length === 0 && (searchParams.has("folder") || searchParams.has("feed"))) {
         setSearchParams({}, { replace: true });
         setFilterScope("");
       }
       setFeeds(f);
       setFolders(fol.folders);
+      setFoldersLoaded(fol.ok);
       setFeedsLoaded(true);
       return f;
     } catch (err) {
