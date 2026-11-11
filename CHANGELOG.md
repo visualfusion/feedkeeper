@@ -2,6 +2,11 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.36.9] - 2026-11-11
+
+### Changed
+- Reissued 0.36.8 from GitHub-verified commits with a new npm package version and matching image provenance. No application behavior changed.
+
 ## [0.36.8] - 2026-11-11
 
 ### Changed
