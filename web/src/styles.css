@@ -94,6 +94,26 @@ h3 {
   font-family: "Manrope", sans-serif;
 }
 
+/* Japanese interface: Japanese system fonts after the Latin ones, the Japanese line-breaking rules, and no negative letter spacing. */
+html:lang(ja),
+html:lang(ja) body {
+  font-family: "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+  line-break: strict;
+  word-break: auto-phrase;
+}
+
+html:lang(ja) h1,
+html:lang(ja) h2,
+html:lang(ja) h3 {
+  font-family: "Manrope", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+  letter-spacing: 0;
+}
+
+html:lang(ja) .tracking-tight,
+html:lang(ja) .tracking-tighter {
+  letter-spacing: 0;
+}
+
 /* Ensure hand cursor (pointer) on all interactive elements */
 button,
 a,
