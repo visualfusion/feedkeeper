@@ -322,6 +322,36 @@ input[type="checkbox"]:disabled {
   word-break: break-word;
 }
 
+/* Japanese text: the lines break by the Japanese rules (no punctuation at the start of a line, whole phrases where the browser can), the glyphs
+   are the Japanese ones, and the lines are a little airier. The Latin headline font stays for Latin words, the Japanese ones come from the system. */
+:lang(ja) {
+  letter-spacing: 0;
+}
+
+.reader-content:lang(ja),
+.reader-content :lang(ja) {
+  font-family: "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+  line-height: 1.9;
+  line-break: strict;
+  word-break: auto-phrase;
+  overflow-wrap: anywhere;
+}
+
+.reader-content:lang(ja) h1,
+.reader-content:lang(ja) h2,
+.reader-content:lang(ja) h3,
+.reader-content:lang(ja) h4 {
+  font-family: "Manrope", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+  line-height: 1.5;
+}
+
+h1:lang(ja),
+p:lang(ja) {
+  line-break: strict;
+  word-break: auto-phrase;
+  overflow-wrap: anywhere;
+}
+
 .reader-content p {
   margin-top: 1.25rem;
   margin-bottom: 1.25rem;

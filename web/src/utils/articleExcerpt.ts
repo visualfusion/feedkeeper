@@ -1,4 +1,5 @@
 import type { Item } from "../api/client.ts";
+import { cutAtBoundary, textLanguage } from "./japanese.ts";
 
 type ArticleContent = Pick<Item, "full_content_html" | "content_html" | "content_snippet">;
 
@@ -20,7 +21,8 @@ export function articleExcerpt(item: ArticleContent): string | null {
   const snippet = item.content_snippet?.replace(/\s+/g, " ").trim() ?? "";
   const text = readerText || (feedText.length >= snippet.length ? feedText : snippet);
   if (!text) return null;
-  return text.length > MAX_EXCERPT_LENGTH
-    ? `${text.slice(0, MAX_EXCERPT_LENGTH).trimEnd()}…`
-    : text;
+  if (text.length <= MAX_EXCERPT_LENGTH) return text;
+  return textLanguage(text) === "ja"
+    ? cutAtBoundary(text, MAX_EXCERPT_LENGTH)
+    : `${text.slice(0, MAX_EXCERPT_LENGTH).trimEnd()}…`;
 }

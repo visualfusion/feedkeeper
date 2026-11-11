@@ -699,15 +699,18 @@ export function cleanSnippet(snippet: string | null | undefined, title?: string 
 }
 
 /** Raised whenever the rules above change what they remove, so stored leads are derived again. */
-export const LEAD_VERSION = 3;
+export const LEAD_VERSION = 4;
 const LEAD_LENGTH = 600;
 
 function shorten(text: string, max: number): string {
   if (text.length <= max) return text;
   let slice = text.slice(0, max);
   if (/[\uD800-\uDBFF]$/.test(slice)) slice = slice.slice(0, -1);
-  const sentence = Math.max(slice.lastIndexOf(". "), slice.lastIndexOf("! "), slice.lastIndexOf("? "));
+  // Japanese and Chinese text has no spaces: a sentence ends at its own full stop, and a clause at its comma.
+  const sentence = Math.max(slice.lastIndexOf(". "), slice.lastIndexOf("! "), slice.lastIndexOf("? "), slice.lastIndexOf("。"), slice.lastIndexOf("！"), slice.lastIndexOf("？"));
   if (sentence >= max * 0.5) return slice.slice(0, sentence + 1);
+  const clause = Math.max(slice.lastIndexOf("、"), slice.lastIndexOf("，"));
+  if (clause >= max * 0.5) return slice.slice(0, clause) + "…";
   const space = slice.lastIndexOf(" ");
   return (space >= max * 0.5 ? slice.slice(0, space) : slice).replace(/[\s,;:–-]+$/, "") + "…";
 }

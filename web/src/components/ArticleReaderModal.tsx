@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { api, ApiError, type Item } from "../api/client.js";
 import { sanitizeHtml, leadingArticleImage, estimateReadingTime, safeHttpUrl } from "../utils/sanitizeHtml.js";
+import { textLanguage } from "../utils/japanese.js";
 import { Favicon } from "./Favicon.js";
 
 export type ArticleContentUpdate = Pick<Item, "id" | "full_content_html">;
@@ -326,7 +327,7 @@ export function ArticleReaderModal({
                 </div>
               )}
 
-              <h1 className="text-2xl sm:text-3xl font-bold font-['Manrope'] text-[var(--c-text)] leading-snug tracking-tight mb-3">
+              <h1 lang={textLanguage(item.title)} className="text-2xl sm:text-3xl font-bold font-['Manrope'] text-[var(--c-text)] leading-snug tracking-tight mb-3">
                 {item.title}
               </h1>
             </div>
@@ -390,10 +391,11 @@ export function ArticleReaderModal({
             {sanitizedContent ? (
               <div
                 className="reader-content"
+                lang={textLanguage(item.content_snippet ?? item.title)}
                 dangerouslySetInnerHTML={{ __html: sanitizedContent }}
               />
             ) : item.content_snippet ? (
-              <div className="reader-content">
+              <div className="reader-content" lang={textLanguage(item.content_snippet)}>
                 {item.content_snippet.split("\n\n").map((para, i) => (
                   <p key={i}>{para}</p>
                 ))}

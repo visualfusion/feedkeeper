@@ -83,3 +83,20 @@ test("a feed that alternates between a full and a shortened variant does not cha
   assert.equal(item.content_revision, revision, "the shortened variants must not bump the revision");
   assert.equal(item.content_snippet, full.contentSnippet);
 });
+
+test("a long Japanese lead ends at a sentence or a clause, not in the middle of a word", async () => {
+  const { leadText } = await import("../src/feeds/contentNoise.js");
+  const sentence = "文部科学省は火曜日、新しい規則が十一月から適用されると発表しました。";
+  const text = sentence.repeat(30);
+  const lead = leadText({ html: `<p>${text}</p>` }, 100);
+  assert.ok(lead.length <= 100, String(lead.length));
+  assert.ok(lead.endsWith("。"), lead);
+  assert.equal(lead.length % sentence.length, 0, "only whole sentences");
+  // Without a full stop it still stops at a comma instead of cutting a phrase in two.
+  const clauses = "新しい規則が十一月から適用されるため、事業者は年末までにシステムを改修する必要があり、".repeat(10);
+  const clipped = leadText({ html: `<p>${clauses}</p>` }, 100);
+  assert.ok(clipped.endsWith("…"), clipped);
+  assert.ok(!clipped.slice(0, -1).endsWith("、"), clipped);
+  // Latin text keeps its behaviour.
+  assert.equal(leadText({ html: "<p>Only a short sentence here.</p>" }, 100), "Only a short sentence here.");
+});
