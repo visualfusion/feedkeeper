@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.36.8] - 2026-11-11
+
+### Changed
+- Japanese text is set by the Japanese rules in the web app: texts with kana carry `lang="ja"` in the article reader, the interface uses Japanese system fonts, lines break by the Japanese rules (no punctuation at the start of a line, whole phrases where the browser supports it) and the letter spacing is not narrowed.
+
+### Fixed
+- A long Japanese lead or excerpt is cut at the end of a sentence or at a comma instead of in the middle of a word. Stored leads are derived again once.
+
 ## [0.36.7] - 2026-11-09
 
 ### Fixed

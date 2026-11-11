@@ -1,6 +1,6 @@
 {
   "name": "feedkeeper",
-  "version": "0.36.7",
+  "version": "0.36.8",
   "private": true,
   "description": "Self-hosted, multi-user RSS/Atom feed manager with a remote-capable MCP server.",
   "license": "MIT",
