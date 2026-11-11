@@ -2,6 +2,11 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.36.10] - 2026-11-11
+
+### Fixed
+- The article list no longer stays empty when a remembered or linked feed or folder filter points to a feed or folder that was deleted. The filter falls back to all feeds.
+
 ## [0.36.9] - 2026-11-11
 
 ### Changed
