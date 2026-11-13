@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.36.11] - 2026-11-13
+
+### Fixed
+- Article text no longer keeps a hover card that a page shows only on mouseover (an author box with a "Read Full Bio" link), the heading of a table of contents that a script was meant to fill, or the heading of a comment box ("What do you think so far?"). A "preferred source on Google" call written without the site's name is removed, too, also as a link inside a short line or in front of a picture.
+
+### Upgrade notes
+- Articles that are already stored are cleaned when they are fetched again.
+
 ## [0.36.10] - 2026-11-11
 
 ### Fixed
