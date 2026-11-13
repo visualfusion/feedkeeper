@@ -2,11 +2,13 @@ import { lazyImages } from "./noise/lazyImages.js";
 import { EMBED_RULES, resolveEmbeds } from "./embeds/index.js";
 import { embedHeadings } from "./embeds/headings.js";
 import { boilerplate } from "./noise/boilerplate.js";
+import { emptyContents } from "./noise/emptyContents.js";
 import { loadingPlaceholders } from "./noise/loading.js";
 import { pageChrome } from "./noise/pageChrome.js";
 import { trackingPixels } from "./noise/pixels.js";
 import { permalinkGlyphs } from "./noise/permalinkGlyphs.js";
 import { sidebars } from "./noise/sidebars.js";
+import { stateHidden } from "./noise/stateHidden.js";
 import { teaserLinks } from "./noise/teaserLinks.js";
 import type { ContentRoot, ContentRule, NoiseStats } from "./shared.js";
 
@@ -15,7 +17,7 @@ import type { ContentRoot, ContentRule, NoiseStats } from "./shared.js";
  * tags that are removed next), then the clutter around the story. The tests check each rule against its fixtures in
  * `test/fixtures/content/<rule name>` and that running it twice changes nothing. See `docs/content-rules.md`.
  */
-export const PAGE_RULES: readonly ContentRule[] = [lazyImages, ...EMBED_RULES, embedHeadings, pageChrome, sidebars, loadingPlaceholders, trackingPixels, boilerplate, teaserLinks, permalinkGlyphs];
+export const PAGE_RULES: readonly ContentRule[] = [lazyImages, ...EMBED_RULES, embedHeadings, pageChrome, stateHidden, sidebars, loadingPlaceholders, trackingPixels, boilerplate, emptyContents, teaserLinks, permalinkGlyphs];
 
 export { resolveEmbeds };
 

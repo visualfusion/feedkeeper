@@ -5,6 +5,7 @@
 export const ANYWHERE: readonly RegExp[] = [
   // Calls to follow the site on Google or elsewhere.
   /^(?:Google(?: ニュース)?でフォロー(?:する)?|Google ニュースで[^.!?]{2,40}をフォロー)$/i,
+  /^(?:Googleで)?優先(?:ソース|的なソース)(?:として|に)(?:追加|設定)(?:する)?$/i,
   // The text of download buttons whose picture is gone.
   /^(?:App Storeからダウンロード|Google Playで手に入れよう|Google Playで入手|App Storeでダウンロード)$/i,
   // A picture's filename shown as text.

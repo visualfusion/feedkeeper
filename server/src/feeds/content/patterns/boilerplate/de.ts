@@ -6,6 +6,8 @@ export const ANYWHERE: readonly RegExp[] = [
   // Aufrufe, der Seite bei Google oder in anderen Diensten zu folgen.
   /^(?:Uns|Folge uns|Folgen Sie uns) (?:auf|bei) Google(?: News| Discover)? folgen$/i,
   /^(?:Wähle|Wählen Sie|Füge|Fügen Sie) [^.!?]{2,50} (?:als )?(?:bevorzugte|bevorzugten|bevorzugter)\b[^.!?]{0,30}$/i,
+  // „Als bevorzugte Quelle bei Google hinzufügen“, ohne den Namen der Seite.
+  /^Als bevorzugte[nr]? (?:Google-)?Quelle (?:bei Google )?(?:hinzufügen|auswählen|wählen)$/i,
   // „★ ifun.de bei Google bevorzugen ★“ und ähnliche Bitten, die Seite als bevorzugte Quelle zu wählen.
   /^★?\s*[^★!?]{2,40} bei Google bevorzugen\s*★?$/i,
   // Texte von Download-Schaltflächen, deren Grafik nicht mehr da ist.

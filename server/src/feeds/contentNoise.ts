@@ -7,8 +7,10 @@ import { SIDEBAR_HEADINGS } from "./content/patterns/sidebars/index.js";
 import { resolveEmbeds } from "./content/embeds/index.js";
 import { loadingPlaceholders } from "./content/noise/loading.js";
 import { trackingPixels } from "./content/noise/pixels.js";
+import { emptyContents } from "./content/noise/emptyContents.js";
 import { pageChrome } from "./content/noise/pageChrome.js";
 import { permalinkGlyphs } from "./content/noise/permalinkGlyphs.js";
+import { stateHidden } from "./content/noise/stateHidden.js";
 import { teaserLinks } from "./content/noise/teaserLinks.js";
 import { markVideoTeasers } from "./content/noise/videoTeasers.js";
 import { type NoiseStats, flat, pruneEmpty } from "./content/shared.js";
@@ -105,6 +107,8 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
   if (loadingPlaceholders.apply(root, stats)) changed = true;
   if (trackingPixels.apply(root, stats)) changed = true;
   if (pageChrome.apply(root, stats)) changed = true;
+  if (stateHidden.apply(root, stats)) changed = true;
+  if (emptyContents.apply(root, stats)) changed = true;
 
   for (const selector of BREADCRUMB_MARKERS) {
     try { root.querySelectorAll(selector).forEach(element => drop(element, "breadcrumb")); } catch { /* selector unsupported by the DOM */ }

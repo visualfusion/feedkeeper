@@ -1,0 +1,6 @@
+<div x-data="{ open: true, items: 3 }">
+  <div x-show="open"><p>This box starts out open: it is part of the page the reader sees.</p></div>
+  <div x-show="items > 0"><p>An expression that is not a bare state name is left alone.</p></div>
+  <div x-show="!open"><p>A negation is left alone, too.</p></div>
+  <div x-show="missing"><p>A state that no scope declares is left alone.</p></div>
+</div>

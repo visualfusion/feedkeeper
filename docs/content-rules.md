@@ -43,10 +43,13 @@ Most contributions are a pattern in one of the files under `patterns/`:
 - A heading or markup that introduces a list of other articles: `patterns/sidebars/`.
 - The label of a play-button picture: `patterns/play-labels/`.
 - A line a site puts into its own text ("Follow us on Google", the words of a download button, "first appeared on", related links under a story): `patterns/boilerplate/`. `ANYWHERE` holds lines that are noise wherever they stand, `TRAILING` footers that count only in the second half of the text. A block, or a run of text between two `<br>`, goes only when its whole text is one of these lines.
-- The label of a block that a script fills, such as "wird geladen …" or "Loading…": `patterns/loading/`.
+- The label of a block that a script fills, such as "wird geladen …" or "Loading…", or the heading of a comment box ("What do you think so far?"): `patterns/loading/`.
+- The heading of a table of contents that a script builds, such as "Table of Contents" or "Inhaltsverzeichnis": `patterns/contents/`. The heading goes only when no list of links follows it.
 
 To support a new language, add a file next to the existing ones and list it in the folder's `index.ts`. Every language
 is searched at once, because an article in one language can sit on a site in another.
+
+Two rules need no list of words. `state-hidden` removes what Alpine shows only while a state that starts out `false` is true (`x-show="open"` inside `x-data="{ open: false }"`: hover cards, menus, dialogs), because a reader never flips that state. `empty-contents` removes a table-of-contents heading that has no list after it.
 
 ## Adding a rule
 

@@ -1,5 +1,5 @@
 import { BOILERPLATE_ANYWHERE, BOILERPLATE_TRAILING } from "../patterns/boilerplate/index.js";
-import { type ContentRoot, type ContentRule, count, flat, pruneEmpty } from "../shared.js";
+import { type ContentRoot, type ContentRule, type NoiseStats, count, flat, pruneEmpty } from "../shared.js";
 
 const BLOCKS = "p, div, li, h2, h3, h4, h5, h6, span";
 const NESTED = "p, div, li, ul, ol, h2, h3, h4, h5, h6";
@@ -65,9 +65,33 @@ export const boilerplate: ContentRule = {
       count(stats, "boilerplate");
       changed = true;
     }
+    if (inlineCalls(root, stats)) changed = true;
     return lineFooters(root, stats, total) || changed;
   },
 };
+
+/** A short line holds more than the call ("November 12, 2026 · Add as a preferred source on Google"): longer text is prose and is left alone. */
+const SHORT_LINE = 200;
+
+/**
+ * The same calls as a link inside a short line of other words, or in front of a picture in the same paragraph: the link goes, the rest stays.
+ * A block that holds nothing else was dealt with above.
+ */
+function inlineCalls(root: ContentRoot, stats: NoiseStats): boolean {
+  let changed = false;
+  for (const link of [...root.querySelectorAll("a[href]")]) {
+    const parent = link.parentElement;
+    if (!parent || !root.contains(link) || link.querySelector("img, picture, video, audio, iframe")) continue;
+    const text = flat(link.textContent);
+    if (text === "" || text.length > 120 || !BOILERPLATE_ANYWHERE.some(pattern => pattern.test(text))) continue;
+    const line = flat(parent.textContent);
+    if (line.length > SHORT_LINE) continue;
+    link.remove();
+    count(stats, "boilerplate");
+    changed = true;
+  }
+  return changed;
+}
 
 /**
  * Footers that stand as bare text between `<br>` ("This article … first appeared on …", "Discuss this article in our forums"), not in a block of

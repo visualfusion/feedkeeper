@@ -4,4 +4,6 @@
  */
 export default [
   /^(?:loading|please wait)(?:\s*(?:\.{3}|…))?$/i,
+  // The heading of a comment box that a script fills.
+  /^(?:what do you think(?: so far)?|join the (?:conversation|discussion))\??$/i,
 ];
