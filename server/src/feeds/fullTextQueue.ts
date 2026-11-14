@@ -6,6 +6,9 @@ import { loadFullText, executeFullText, type FullTextResult } from "./fullText.j
 import { articleWorkPool, restartArticleWorkPool } from "./articleWorkPool.js";
 import { sourceHost } from "./requestGate.js";
 import { canAccessItem, findSubscriptionFullTextMode, findItemById } from "./repository.js";
+import { isBackgroundFullTextLinkPaused, isBackgroundFullTextPaused, pruneFullTextBlocks } from "./fullTextBackoff.js";
+
+db.function("background_full_text_paused", (link: string) => Number(isBackgroundFullTextLinkPaused(link)));
 
 /** Refillable durable queue, bounded independently of library size. */
 export function scheduleFullTexts(): number {
@@ -14,9 +17,9 @@ export function scheduleFullTexts(): number {
   if (!room) return 0;
   const eligible = (db.prepare("SELECT id FROM users").all() as { id: number }[]).filter(user => hasUserCapability(user.id, "fulltext")).map(user => user.id);
   if (!eligible.length) return 0;
-  const candidates = db.prepare<[string, string, string, string, number], { id: number; user_id: number; priority: number }>(`
+  const candidates = db.prepare<[string, string, string, string, number, number], { id: number; user_id: number; priority: number }>(`
     WITH candidate_articles AS (
-      SELECT ids.value AS item_id, e.user_id, 3 AS priority, i.created_at
+      SELECT ids.value AS item_id, e.user_id, 3 AS priority, i.created_at, i.link
       FROM editions e, json_each(e.item_ids) ids
       JOIN items i ON i.id = ids.value
       WHERE e.user_id IN (SELECT value FROM json_each(?))
@@ -29,7 +32,7 @@ export function scheduleFullTexts(): number {
 
       UNION ALL
 
-      SELECT b.item_id, b.user_id, 2 AS priority, i.created_at
+      SELECT b.item_id, b.user_id, 2 AS priority, i.created_at, i.link
       FROM item_bookmarks b
       JOIN items i ON i.id = b.item_id
       WHERE b.user_id IN (SELECT value FROM json_each(?))
@@ -41,7 +44,7 @@ export function scheduleFullTexts(): number {
 
       UNION ALL
 
-      SELECT n.item_id, n.user_id, 2 AS priority, i.created_at
+      SELECT n.item_id, n.user_id, 2 AS priority, i.created_at, i.link
       FROM item_notes n
       JOIN items i ON i.id = n.item_id
       WHERE n.user_id IN (SELECT value FROM json_each(?))
@@ -53,7 +56,7 @@ export function scheduleFullTexts(): number {
 
       UNION ALL
 
-      SELECT i.id AS item_id, s.user_id, 1 AS priority, i.created_at
+      SELECT i.id AS item_id, s.user_id, 1 AS priority, i.created_at, i.link
       FROM subscriptions s
       JOIN items i ON i.feed_id = s.feed_id
       WHERE s.user_id IN (SELECT value FROM json_each(?))
@@ -65,8 +68,9 @@ export function scheduleFullTexts(): number {
     )
     SELECT item_id AS id, user_id, MAX(priority) AS priority
     FROM candidate_articles
+    WHERE ? = 0 OR background_full_text_paused(link) = 0
     GROUP BY item_id
-    ORDER BY (priority + CAST((julianday('now')-julianday(created_at))*1440 / 60 AS INTEGER)) DESC, created_at ASC LIMIT ?`).all(JSON.stringify(eligible), JSON.stringify(eligible), JSON.stringify(eligible), JSON.stringify(eligible), room);
+    ORDER BY (priority + CAST((julianday('now')-julianday(created_at))*1440 / 60 AS INTEGER)) DESC, created_at ASC LIMIT ?`).all(JSON.stringify(eligible), JSON.stringify(eligible), JSON.stringify(eligible), JSON.stringify(eligible), pruneFullTextBlocks(), room);
   const add = db.prepare("INSERT OR IGNORE INTO full_text_jobs(item_id, user_id, priority, created_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))");
   let count = 0;
   db.transaction(() => {
@@ -216,6 +220,11 @@ function pump() {
       db.prepare("DELETE FROM full_text_jobs WHERE item_id=?").run(job.item_id);
       finishListeners(job.item_id, { ok: false, error: "item_has_no_link" }); continue;
     }
+    // Drop planned work so paused sources cannot fill the queue. The planner can select it again after the pause.
+    if (job.priority < 4 && isBackgroundFullTextPaused(host)) {
+      db.prepare("DELETE FROM full_text_jobs WHERE item_id=?").run(job.item_id);
+      continue;
+    }
     const cooldown = db.prepare<[string], { retry_at: string }>("SELECT retry_at FROM full_text_hosts WHERE host=?").get(host);
     if (cooldown && Date.parse(cooldown.retry_at) > Date.now()) {
       db.prepare("UPDATE full_text_jobs SET available_at=? WHERE item_id=?").run(cooldown.retry_at, job.item_id); continue;
@@ -288,7 +297,7 @@ export function startFullTextScheduler(): NodeJS.Timeout {
   const tick = () => {
     db.prepare("DELETE FROM full_text_hosts WHERE julianday(retry_at) <= julianday(?)").run(new Date().toISOString());
     scheduleFullTexts(); wake();
-    console.log(JSON.stringify({ event: "fulltext_queue", ...fullTextMetrics() }));
+    console.log(JSON.stringify({ event: "fulltext_queue", ...fullTextMetrics(), pausedHosts: pruneFullTextBlocks() }));
   };
   // Repair old consent-only caches once; the normal bounded planner performs network work.
   const cached = db.prepare<[], { id: number; full_content_html: string }>("SELECT id,full_content_html FROM items WHERE full_content_html IS NOT NULL AND (lower(full_content_html) LIKE '%cookie%' OR lower(full_content_html) LIKE '%consent%') LIMIT 100").all();

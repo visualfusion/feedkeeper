@@ -12,6 +12,21 @@ const until = async (predicate: () => boolean, timeout = 5000) => {
   while (!predicate()) { assert.ok(Date.now() < end, "fixture deadline"); await sleep(10); }
 };
 
+test("publisher pauses expire without being prolonged by direct requests", async () => {
+  const { recordFullTextBlock, isBackgroundFullTextPaused, pruneFullTextBlocks } = await import("../src/feeds/fullTextBackoff.js");
+  const host = "blocked.example";
+  const start = Date.now();
+  recordFullTextBlock(host, start);
+  recordFullTextBlock(host, start + 1);
+  assert.equal(isBackgroundFullTextPaused(host, start + 2), false);
+  const blockedAt = start + 2;
+  recordFullTextBlock(host, blockedAt);
+  recordFullTextBlock(host, blockedAt + 10 * 60_000);
+  assert.equal(isBackgroundFullTextPaused(host, blockedAt + 30 * 60_000 - 1), true);
+  assert.equal(isBackgroundFullTextPaused(host, blockedAt + 30 * 60_000), false);
+  assert.equal(pruneFullTextBlocks(blockedAt + 30 * 60_000), 0);
+});
+
 test("durable full texts share triggers, retry without occupying workers and resume after shutdown", async () => {
   const { db, runMigrations } = await import("../src/db/index.js");
   const repo = await import("../src/feeds/repository.js");
@@ -24,6 +39,7 @@ test("durable full texts share triggers, retry without occupying workers and res
   const body = "<html><title>Local fixture</title><article><h1>Local fixture</h1><p>" + "A useful article with facts and context. ".repeat(100) + "</p></article></html>";
   const source = createServer((req, res) => {
     const path = req.url!; starts.push(path); requests.set(path, (requests.get(path) ?? 0) + 1);
+    if (path.startsWith("/blocked")) return res.writeHead(403).end();
     if (path === "/retry" && requests.get(path) === 1) return res.writeHead(429, { "Retry-After": "1" }).end();
     if (path === "/retry-date" && requests.get(path) === 1) return res.writeHead(503, { "Retry-After": new Date(Date.now()+2000).toUTCString() }).end();
     if (path === "/timeout" || path === "/held" && hold) return;
@@ -92,5 +108,21 @@ test("durable full texts share triggers, retry without occupying workers and res
     assert.throws(() => queue.enqueueArticleContents(user, [ids[1000].id]), /queue_full/);
     assert.equal((db.prepare("SELECT COUNT(*) n FROM full_text_jobs").get() as {n:number}).n, 1000);
     db.prepare("DELETE FROM full_text_jobs").run();
+    db.prepare("DELETE FROM items WHERE guid LIKE 'capacity-%'").run();
+
+    const blocked = Array.from({ length: 8 }, (_, index) => add(`/blocked-${index}`));
+    const healthy = add("/other-host", `http://[::1]:${(alternate.address() as AddressInfo).port}/other-host`);
+    // Ignore earlier fixtures still eligible for automatic preparation.
+    db.prepare("UPDATE items SET extraction_retry_at='2099-01-01T00:00:00.000Z' WHERE id < ?").run(blocked[0]);
+    queue.startFullTextScheduler();
+    await until(() => queue.fullTextMetrics().queued === 0 && repo.findItemById(healthy)!.extraction_status === "ready");
+    assert.equal([...requests].filter(([path]) => path.startsWith("/blocked")).length, 3);
+    assert.equal(queue.scheduleFullTexts(), 0, "paused hosts do not refill the queue");
+    const untouched = blocked.find(id => repo.findItemById(id)!.extraction_status === "pending")!;
+    assert.deepEqual(await loadFullText(user, untouched), { ok: false, error: "bot_blocked" });
+    assert.equal([...requests].filter(([path]) => path.startsWith("/blocked")).length, 4, "a direct request still reaches the publisher");
+    const recovered = add("/recovered");
+    assert.equal((await loadFullText(user, recovered)).ok, true);
+    assert.equal(queue.scheduleFullTexts(), 4, "a successful request resumes automatic work for the host");
   } finally { await queue.stopFullTextScheduler(); alternate.closeAllConnections(); await new Promise<void>(done => alternate.close(() => done())); source.closeAllConnections(); await new Promise<void>(done => source.close(() => done())); }
 });

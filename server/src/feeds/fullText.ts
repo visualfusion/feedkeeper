@@ -7,6 +7,8 @@ import { SsrfBlockedError } from "./ssrfGuard.js";
 import { improvesContent } from "./articleContent.js";
 import { refreshLead } from "./lead.js";
 import { canAccessItem, findItemById, findSubscriptionFullTextMode, updateItemFullContent } from "./repository.js";
+import { clearFullTextBlocks, recordFullTextBlock } from "./fullTextBackoff.js";
+import { sourceHost } from "./requestGate.js";
 
 // Kept for integrations importing the old constant; retries now belong to individual articles.
 export const FULL_TEXT_BLOCK_THRESHOLD = 2;
@@ -64,6 +66,8 @@ export async function executeFullText(userId: number, itemId: number, force: boo
     if (articleWorkPool().isClosing) return { ok: false, error: "queue_full" };
     if (authorizedFullTextRequester(itemId, userId) === undefined) return { ok: false, error: "capability_not_available" };
     if (result.status === "throttled") return { ok: false, error: "source_busy", retryable: true, retryAt: result.retryAt, host: result.host, deferred: result.deferred };
+    if (result.status === "bot_blocked") recordFullTextBlock(result.host);
+    if (result.status === "ok" || result.status === "partial") clearFullTextBlocks(sourceHost(item.link!));
     if (result.status !== "ok") {
       recordAttempt(itemId, result.status);
       return { ok: false, error: result.status === "failed" ? "could_not_extract_content" : result.status,

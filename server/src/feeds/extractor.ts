@@ -208,7 +208,8 @@ export type ExtractionResult =
   | { status: "consent_wall" }
   | { status: "partial"; article: ExtractedArticle }
   | { status: "throttled"; retryAt?: number; host: string; deferred?: boolean }
-  | { status: "paywall" | "bot_blocked" | "timeout" | "failed" };
+  | { status: "bot_blocked"; host: string }
+  | { status: "paywall" | "timeout" | "failed" };
 
 export async function extractArticleFromUrl(rawUrl: string, fetchImpl: ArticleFetch = defaultFetch): Promise<ExtractedArticle | null> {
   const result = await extractArticle(rawUrl, fetchImpl);
@@ -274,7 +275,7 @@ async function extractArticleContent(rawUrl: string, fetchImpl: ArticleFetch, si
     if (signal.aborted || controller.signal.aborted) return { status: "timeout" };
     if (error instanceof ArticleHttpError && [401, 402].includes(error.status)) return { status: "paywall" };
     if (error instanceof ArticleHttpError && [429, 503].includes(error.status)) return { status: "throttled", retryAt: error.retryAt, host: error.host };
-    if (error instanceof ArticleHttpError && error.status === 403) return { status: "bot_blocked" };
+    if (error instanceof ArticleHttpError && error.status === 403) return { status: "bot_blocked", host: error.host };
     return { status: "failed" };
   } finally {
     clearTimeout(timeout);
