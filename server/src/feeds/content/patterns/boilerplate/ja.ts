@@ -17,4 +17,6 @@ export const TRAILING: readonly RegExp[] = [
   /^(?:この記事|本記事|本稿).{3,120}(?:で初出|に初出|で公開|に掲載|転載).*$/i,
   /^(?:この記事について(?:話し合う|語る|コメント)|コメントする)\b.{0,40}$/i,
   /^(?:関連記事|トピック|タグ|関連タグ):.{0,200}$/i,
+  // Author social follow lines at the end of an article.
+  /^[^.!?。]{1,40}(?:をフォロー|のSNS)\s*[:：]\s*(?:X(?:\s*\/\s*Twitter)?|Twitter|Bluesky|Mastodon|Threads|Instagram|Facebook|YouTube|LinkedIn|TikTok|RSS)\b.{0,120}$/i,
 ];

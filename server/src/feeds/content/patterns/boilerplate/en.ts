@@ -18,4 +18,6 @@ export const TRAILING: readonly RegExp[] = [
   /^(?:Tag|Tags|Buyer's Guides?|Related Forums?):.{0,200}$/i,
   // The Verge: the box that offers to follow the story's topics and authors.
   /^Follow topics and authors from this story\b.{0,200}$/i,
+  // Author social follow lines at the end of an article.
+  /^Follow [^.!?]{1,60}:\s*(?:X(?:\s*\/\s*Twitter)?|Twitter|Bluesky|Mastodon|Threads|Instagram|Facebook|YouTube|LinkedIn|TikTok|RSS)\b.{0,120}$/i,
 ];

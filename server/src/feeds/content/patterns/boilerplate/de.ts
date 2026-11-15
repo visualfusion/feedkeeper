@@ -21,4 +21,6 @@ export const TRAILING: readonly RegExp[] = [
   /^(?:Der Beitrag|Dieser Beitrag|Der Artikel|Dieser Artikel) .{3,200} (?:erschien|erschien zuerst|erschien erstmals) (?:zuerst )?(?:auf|bei) .{2,60}$/i,
   /^Der Beitrag .{3,200} wurde (?:zuerst|erstmals) (?:auf|bei) .{2,60} veröffentlicht\.?$/i,
   /^Diskutiere (?:diesen|den) (?:Artikel|Beitrag) .{0,40}$/i,
+  // Autoren-Follow-Zeilen am Artikelende.
+  /^(?:Folge|Folgen Sie)\s+[^.!?]{1,60}:\s*(?:X(?:\s*\/\s*Twitter)?|Twitter|Bluesky|Mastodon|Threads|Instagram|Facebook|YouTube|LinkedIn|TikTok|RSS)\b.{0,120}$/i,
 ];
