@@ -398,7 +398,7 @@
     "confirmTitle": "Confirm identity",
     "orPassword": "or with password",
     "invalidCredentials": "The password or confirmation code is incorrect.",
-    "passkeyCancelled": "Passkey confirmation was cancelled or not recognized.",
+    "passkeyCancelled": "Passkey confirmation was canceled or not recognized.",
     "confirmAction": "Confirm"
   }
 }
