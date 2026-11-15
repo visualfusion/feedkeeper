@@ -23,4 +23,6 @@ export const TRAILING: readonly RegExp[] = [
   /^Diskutiere (?:diesen|den) (?:Artikel|Beitrag) .{0,40}$/i,
   // Autoren-Follow-Zeilen am Artikelende.
   /^(?:Folge|Folgen Sie)\s+[^.!?]{1,60}:\s*(?:X(?:\s*\/\s*Twitter)?|Twitter|Bluesky|Mastodon|Threads|Instagram|Facebook|YouTube|LinkedIn|TikTok|RSS)\b.{0,120}$/i,
+  // Verwaiste Empfehlungs-/Rubrik-Überschriften am Artikelende ohne nachfolgende Liste.
+  /^(?:Topaktuell|Mehr zum Thema|Weitere (?:Artikel|Meldungen)|Ähnliche Artikel|Verwandte Artikel|Auch interessant|Meistgelesen(?:e Artikel)?|Beliebte Artikel)$/i,
 ];
