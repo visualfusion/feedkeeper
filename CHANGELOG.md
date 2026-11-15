@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.37.0] - 2026-11-15
+
+### Changed
+- Japanese localization across the web app and OAuth consent pages now uses consistent terminology and punctuation (`ログイン` / `ログアウト` for sign-in and sign-out, `フォルダー` for folders, `購読` for subscriptions, `二要素認証` for two-factor authentication, `ワードフィルター` for word filters, and full-width Japanese punctuation without stray ASCII spaces).
+
+### Fixed
+- Background full-text extraction pauses a source host for 30 minutes after three HTTP 401/403 responses within five minutes and drops already queued background jobs for that host, preventing sources that block automated fetches from occupying the extraction queue. On-demand extraction in the reader remains unaffected.
+
 ## [0.36.11] - 2026-11-13
 
 ### Fixed
