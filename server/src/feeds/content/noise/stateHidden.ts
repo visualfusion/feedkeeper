@@ -2,12 +2,14 @@ import { type ContentRule, count, pruneEmpty } from "../shared.js";
 
 /** An expression that is nothing but the name of a state variable. */
 const STATE_NAME = /^[A-Za-z_$][\w$]*$/;
+const DECLARATION = /(?:^|[{,\s])([A-Za-z_$][\w$]*)\s*:\s*(false\b)?/g;
 
 /** Whether an `x-data` object declares the variable and starts it out as `false` (`{ open: false }`). */
 function declaration(data: string, name: string): "false" | "other" | null {
-  const escaped = name.replace(/\$/g, "\\$");
-  if (!new RegExp(`(?:^|[{,\\s])${escaped}\\s*:`).test(data)) return null;
-  return new RegExp(`(?:^|[{,\\s])${escaped}\\s*:\\s*false\\b`).test(data) ? "false" : "other";
+  for (const match of data.matchAll(DECLARATION)) {
+    if (match[1] === name) return match[2] ? "false" : "other";
+  }
+  return null;
 }
 
 /** Whether the state that an element's `x-show` names starts out as false in the nearest scope that declares it. */
