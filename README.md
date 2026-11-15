@@ -342,7 +342,7 @@ Operators and products built on FeedKeeper can add settings sections, footer lin
 ## Tech stack
 
 - **Server**: Node.js, TypeScript, Express, better-sqlite3, `@modelcontextprotocol/sdk`
-- **Web**: React, Vite, Tailwind CSS, react-i18next
+- **Web**: React, Vite, Tailwind CSS, react-i18next, [BudouX](https://github.com/google/budoux) Japanese model ([Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0))
 
 ## Contributing
 
@@ -350,7 +350,7 @@ Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) 
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — third-party licenses (including the Apache License 2.0 copy for the BudouX Japanese model) are listed in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 
 ---
 

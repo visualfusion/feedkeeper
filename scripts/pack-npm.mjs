@@ -29,6 +29,7 @@ const runtimeOnly = (source) => !/\.(map|d\.ts)$/.test(source);
 cpSync(join(root, "server/dist"), join(out, "server/dist"), { recursive: true, filter: runtimeOnly });
 cpSync(join(root, "web/dist"), join(out, "web/dist"), { recursive: true });
 cpSync(join(root, "LICENSE"), join(out, "LICENSE"));
+cpSync(join(root, "THIRD-PARTY-LICENSES.md"), join(out, "THIRD-PARTY-LICENSES.md"));
 
 // The compiled server reads its version and its module type from the package.json next to dist/.
 writeFileSync(
@@ -47,7 +48,7 @@ const manifest = {
   bugs: { url: "https://github.com/visualfusion/feedkeeper/issues" },
   bin: { feedkeeper: "server/dist/feedkeeper.js" },
   engines: rootPackage.engines,
-  files: ["server", "web", "LICENSE", "README.md"],
+  files: ["server", "web", "LICENSE", "THIRD-PARTY-LICENSES.md", "README.md"],
   dependencies: serverPackage.dependencies,
 };
 writeFileSync(join(out, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
@@ -76,7 +77,7 @@ are the ones of [.env.example](https://github.com/visualfusion/feedkeeper/blob/m
 
 Documentation, Docker images and the changelog: <https://github.com/visualfusion/feedkeeper>
 
-MIT licensed.
+MIT licensed. Third-party notices and the Apache License 2.0 copy for the BudouX Japanese model are in \`THIRD-PARTY-LICENSES.md\`.
 `,
 );
 

@@ -56,9 +56,10 @@ COPY --chown=node:node server/package.json ./server/
 COPY --chown=node:node web/package.json ./web/
 COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
 
-# Copy built applications
+# Copy built applications and license notices
 COPY --from=builder --chown=node:node /app/server/dist ./server/dist
 COPY --from=builder --chown=node:node /app/web/dist ./web/dist
+COPY --chown=node:node LICENSE THIRD-PARTY-LICENSES.md ./
 
 USER node
 
