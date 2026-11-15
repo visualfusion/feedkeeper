@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import type { Item } from "../api/client.ts";
 import { Favicon } from "./Favicon.tsx";
 import { ArticleExcerpt } from "./ArticleExcerpt.tsx";
+import { JapaneseText } from "./JapaneseText.tsx";
 import { editorialCompanions, editorialFeatures } from "../utils/editorialLayout.ts";
+import { textLanguage } from "../utils/japanese.ts";
 
 interface NewspaperGridProps {
   items: Item[];
@@ -63,8 +65,11 @@ function EditorialCard({ item, featured, besideFeature, onOpen, onBookmark, onRe
             <Favicon feedId={item.feed_id} iconUrl={item.feed_icon_url} siteUrl={item.feed_site_url} feedUrl={item.feed_url} articleUrl={item.link} className="h-3.5 w-3.5 shrink-0 rounded-xs object-contain" />
             <span className="truncate">{item.feed_title}</span>
           </div>
-          <h2 className={`text-[var(--c-text)] ${featured ? "text-lg leading-snug lg:text-2xl lg:leading-tight" : "text-lg leading-snug"} font-semibold`}>
-            {item.title || item.feed_title}
+          <h2
+            lang={textLanguage(item.title || item.feed_title)}
+            className={`text-[var(--c-text)] ${featured ? "text-lg leading-snug lg:text-2xl lg:leading-tight" : "text-lg leading-snug"} font-semibold${textLanguage(item.title || item.feed_title) === "ja" ? " ja-phrases" : ""}`}
+          >
+            {(item.title || item.feed_title) ? <JapaneseText text={(item.title || item.feed_title)!} /> : null}
           </h2>
           <ArticleExcerpt
             item={item}

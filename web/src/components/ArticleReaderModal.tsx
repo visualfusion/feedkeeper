@@ -3,8 +3,9 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { api, ApiError, type Item } from "../api/client.js";
 import { sanitizeHtml, leadingArticleImage, estimateReadingTime, safeHttpUrl } from "../utils/sanitizeHtml.js";
-import { textLanguage } from "../utils/japanese.js";
+import { breakJapaneseHtml, textLanguage } from "../utils/japanese.js";
 import { Favicon } from "./Favicon.js";
+import { JapaneseText } from "./JapaneseText.js";
 
 export type ArticleContentUpdate = Pick<Item, "id" | "full_content_html">;
 
@@ -227,7 +228,7 @@ export function ArticleReaderModal({
   const sanitizedContent = useMemo(() => {
     if (!item) return "";
     if (activeContentHtml) {
-      return sanitizeHtml(activeContentHtml, { heroImageUrl, baseUrl: item.link, paywallLabel: t("reader.paywallRead") });
+      return breakJapaneseHtml(sanitizeHtml(activeContentHtml, { heroImageUrl, baseUrl: item.link, paywallLabel: t("reader.paywallRead") }));
     }
     return "";
   }, [item, activeContentHtml, heroImageUrl, t]);
@@ -327,8 +328,8 @@ export function ArticleReaderModal({
                 </div>
               )}
 
-              <h1 lang={textLanguage(item.title)} className="text-2xl sm:text-3xl font-bold font-['Manrope'] text-[var(--c-text)] leading-snug tracking-tight mb-3">
-                {item.title}
+              <h1 lang={textLanguage(item.title)} className={`text-2xl sm:text-3xl font-bold font-['Manrope'] text-[var(--c-text)] leading-snug tracking-tight mb-3${textLanguage(item.title) === "ja" ? " ja-phrases" : ""}`}>
+                {item.title ? <JapaneseText text={item.title} /> : null}
               </h1>
             </div>
 
@@ -397,7 +398,7 @@ export function ArticleReaderModal({
             ) : item.content_snippet ? (
               <div className="reader-content" lang={textLanguage(item.content_snippet)}>
                 {item.content_snippet.split("\n\n").map((para, i) => (
-                  <p key={i}>{para}</p>
+                  <p key={i}><JapaneseText text={para} /></p>
                 ))}
               </div>
             ) : (

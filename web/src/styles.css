@@ -104,13 +104,20 @@ html:lang(ja) body {
 
 html:lang(ja) h1,
 html:lang(ja) h2,
-html:lang(ja) h3 {
+html:lang(ja) h3,
+h1:lang(ja),
+h2:lang(ja),
+h3:lang(ja) {
   font-family: "Manrope", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
   letter-spacing: 0;
 }
 
 html:lang(ja) .tracking-tight,
-html:lang(ja) .tracking-tighter {
+html:lang(ja) .tracking-tighter,
+:lang(ja).tracking-tight,
+:lang(ja).tracking-tighter,
+:lang(ja) .tracking-tight,
+:lang(ja) .tracking-tighter {
   letter-spacing: 0;
 }
 
@@ -353,8 +360,29 @@ input[type="checkbox"]:disabled {
   font-family: "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
   line-height: 1.9;
   line-break: strict;
-  word-break: auto-phrase;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.reader-content:lang(ja) code,
+.reader-content :lang(ja) code {
+  word-break: normal;
+}
+
+.reader-content:lang(ja) pre,
+.reader-content :lang(ja) pre {
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.ja-phrases:lang(ja) {
+  line-break: strict;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.nb {
+  white-space: nowrap;
 }
 
 .reader-content:lang(ja) h1,
@@ -365,11 +393,12 @@ input[type="checkbox"]:disabled {
   line-height: 1.5;
 }
 
+/* Fallback for Japanese headings and paragraphs without explicit BudouX phrase hints. */
 h1:lang(ja),
 p:lang(ja) {
   line-break: strict;
   word-break: auto-phrase;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .reader-content p {

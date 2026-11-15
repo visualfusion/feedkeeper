@@ -21,6 +21,13 @@ function serviceWorker(): Plugin {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), serviceWorker()],
+  build: {
+    rolldownOptions: {
+      output: {
+        comments: { legal: true },
+      },
+    },
+  },
   server: {
     proxy: {
       "/api": "http://localhost:3000",

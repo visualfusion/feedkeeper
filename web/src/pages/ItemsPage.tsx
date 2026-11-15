@@ -7,9 +7,11 @@ import { TodayDate } from "../components/TodayDate.tsx";
 import { ArticleReaderModal, type ArticleContentUpdate } from "../components/ArticleReaderModal.tsx";
 import { ArticleExcerpt } from "../components/ArticleExcerpt.tsx";
 import { Favicon } from "../components/Favicon.tsx";
+import { JapaneseText } from "../components/JapaneseText.tsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.tsx";
 import { NewspaperGrid } from "../components/NewspaperGrid.tsx";
 import { PullToRefresh } from "../components/PullToRefresh.tsx";
+import { textLanguage } from "../utils/japanese.ts";
 import { getItemsScrollY, setItemsScrollY, resetItemsScrollY } from "../utils/scrollState.ts";
 import { toast } from "../utils/toast.ts";
 import { reportAllRefresh } from "../utils/refreshFeedback.ts";
@@ -899,8 +901,11 @@ export function ItemsPage() {
                         <span className="truncate">{item.feed_title}</span>
                       </div>
 
-                      <h2 className="text-lg leading-snug font-semibold text-[var(--c-text)]">
-                        {item.title}
+                      <h2
+                        lang={textLanguage(item.title)}
+                        className={`text-lg leading-snug font-semibold text-[var(--c-text)]${textLanguage(item.title) === "ja" ? " ja-phrases" : ""}`}
+                      >
+                        {item.title ? <JapaneseText text={item.title} /> : null}
                       </h2>
 
                       <ArticleExcerpt item={item} className="mt-3 text-sm leading-relaxed line-clamp-3 text-[var(--c-text-muted)]" />
