@@ -72,8 +72,17 @@ const DATE_PREFIX = "(?:(?:stand|zuletzt aktualisiert|aktualisiert(?:\\s+am)?|ve
 const DATE_PART = `(?:\\d{1,2}\\.\\s?\\d{1,2}\\.\\s?\\d{2,4}|\\d{1,2}\\.?\\s(?:${MONTHS})\\.?\\s\\d{4}|(?:${MONTHS})\\.?\\s\\d{1,2},?\\s\\d{4})`;
 const DATE_ONLY = new RegExp(`^${DATE_PREFIX}${DATE_PART}${TIME_OF_DAY}$`, "iu");
 /** The date at the end of a byline (`von Michael Bartl I 15.10.2026 - 11:41`): the author stays, the date is in the reader's head. */
-const BYLINE = /^(von|by|text|autor(in)?|author|written by|words by|story by|report(ed)? by|posted by|photo(s)? by)\b/i;
+const BYLINE = /^(?:(?:von|by|text|autor(?:in)?|author|written by|words by|story by|report(?:ed)? by|posted by|photo(?:s)? by)\b|著者|文)/i;
 const BYLINE_DATE_TAIL = new RegExp(`(?:^|\\s)[|•·–—I-]\\s*${DATE_PART}${TIME_OF_DAY}\\s*$`, "iu");
+const EMPTY_BYLINE_PART = new RegExp(
+  `(?:^(?:(?:von|by|text|autor(?:in)?|author|written by|words by|story by|report(?:ed)? by|posted by|photo(?:s)? by)\\b|著者|文)|${DATE_PART}${TIME_OF_DAY}|\\d{4}[-/年]\\d{1,2}[-/月]\\d{1,2}日?${TIME_OF_DAY}|\\b(?:kommentieren|kommentare?|comments?|leave a comment)\\b|コメント(?:する)?)`,
+  "giu"
+);
+
+function isEmptyBylineMetadata(text: string): boolean {
+  if (!BYLINE.test(text) || text.length > 120) return false;
+  return text.replace(EMPTY_BYLINE_PART, "").replace(/[\s|•·–—I:/-]+/g, "") === "";
+}
 
 function stripBylineDate(block: Element): boolean {
   const walker = block.ownerDocument.createTreeWalker(block, 4);
@@ -252,16 +261,19 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
     }
 
     // Near the start, a line that is only a date or a reading time repeats what the reader shows in its own head.
-    if (!pastStart && text.length <= 60) {
+    if (!pastStart && text.length <= 120) {
       const before = charsBefore(root, block);
       if (before > 800) {
         pastStart = true;
       } else {
-        if (DATE_ONLY.test(text)) { drop(block, "dateline"); continue; }
-        if (READING_TIME_ONLY.test(text)) { drop(block, "reading-time"); continue; }
-        // When the feed names the author, the reader shows the name in its head: a byline that only says that goes.
-        cleanByline(block, text);
-        if (!root.contains(block)) continue;
+        if (isEmptyBylineMetadata(text)) { drop(block, "byline"); continue; }
+        if (text.length <= 60) {
+          if (DATE_ONLY.test(text)) { drop(block, "dateline"); continue; }
+          if (READING_TIME_ONLY.test(text)) { drop(block, "reading-time"); continue; }
+          // When the feed names the author, the reader shows the name in its head: a byline that only says that goes.
+          cleanByline(block, text);
+          if (!root.contains(block)) continue;
+        }
       }
     }
     // A block that holds a picture is more than the repeated headline: the picture stays.

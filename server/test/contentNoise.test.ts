@@ -645,3 +645,18 @@ test("leading author bio cards with avatar and biography are removed when the fe
   const later = BODY + bio;
   assert.match(cleanReaderHtml(later, "Headline", {}, "Jane Doe"), /writes about tech news/, "an author bio card at the end of a long article is kept");
 });
+
+test("empty bylines with only a date and comment link near the start are removed in German, English and Japanese", () => {
+  const cases = [
+    '<p>Von &nbsp;|&nbsp;<time datetime="2026-11-15 13:31">15.11.2026 13:31 Uhr</time>&nbsp;|&nbsp;<a href="#comments">Kommentieren</a></p>',
+    '<p>By | <time>Nov 15, 2026</time> | <a href="#comments">Comments</a></p>',
+    '<p>著者 | 2026年11月15日 | <a href="#comments">コメント</a></p>',
+  ];
+  for (const line of cases) {
+    const cleaned = cleanReaderHtml(line + BODY);
+    assert.doesNotMatch(cleaned, /Kommentieren|Comments|コメント|15\.11\.2026|Nov 15/);
+    assert.match(cleaned, /ministry confirmed/);
+  }
+  const withAuthor = '<p>Von Max Mustermann | 15.11.2026 13:31 Uhr</p>' + BODY;
+  assert.match(cleanReaderHtml(withAuthor), /Von Max Mustermann/, "a byline that names an author stays when the feed has none");
+});
