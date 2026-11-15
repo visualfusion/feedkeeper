@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.38.1] - 2026-11-15
+
+### Fixed
+- Article extraction removes trailing author social follow lines (`Follow …: X/Twitter, Bluesky, …`), orphaned trailing recommendation headings (`Top Stories`, `Topaktuell`, `関連記事`, and related titles), leading author bio cards when the feed already names the author, and empty leading bylines that only contain a date and a comment link.
+
+### Upgrade notes
+- Articles that are already stored are cleaned when they are fetched again.
+
 ## [0.38.0] - 2026-11-15
 
 ### Added
