@@ -635,3 +635,13 @@ test("inline breadcrumb trails near the start are removed in English, German and
   const late = BODY + '<p>You are here: <a href="/">Home</a> » <a href="/tech/">Tech</a></p>';
   assert.match(cleanReaderHtml(late), /You are here:/, "a trail later in the article is not treated as a page breadcrumb");
 });
+
+test("leading author bio cards with avatar and biography are removed when the feed already names the author", () => {
+  const bio = '<div><p><a href="https://example.test/authors/jane-doe"><img alt="Jane Doe" width="36" height="36" src="https://example.test/avatar.jpg"></a></p><div><p>Jane Doe</p><p>writes about tech news, reviews gadgets, and covers consumer hardware.</p></div></div>';
+  const cleaned = cleanReaderHtml(bio + BODY, "Headline", {}, "Jane Doe");
+  assert.doesNotMatch(cleaned, /Jane Doe|avatar\.jpg|writes about tech news/);
+  assert.match(cleaned, /ministry confirmed/);
+
+  const later = BODY + bio;
+  assert.match(cleanReaderHtml(later, "Headline", {}, "Jane Doe"), /writes about tech news/, "an author bio card at the end of a long article is kept");
+});

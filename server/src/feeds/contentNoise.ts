@@ -196,6 +196,29 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
   const headline = normalized(title ?? "");
   const seen = new Set<string>();
   const authorKeys = (author ?? "").split(",").map(name => normalized(name)).filter(Boolean);
+  if (authorKeys.length > 0) {
+    for (const box of [...root.querySelectorAll("div, section, aside")]) {
+      if (!root.contains(box) || charsBefore(root, box) > 400) continue;
+      if (box.querySelector("h1, h2, h3, ul, ol, table, blockquote, video, audio, iframe")) continue;
+      const boxText = flat(box.textContent);
+      if (!boxText || boxText.length > 350) continue;
+      const images = [...box.querySelectorAll("img")];
+      if (images.length > 1) continue;
+      const hasSmallAvatar = images.length === 1 && (() => {
+        const w = Number(images[0]!.getAttribute("width") ?? 0);
+        const h = Number(images[0]!.getAttribute("height") ?? 0);
+        return (w > 0 && w <= 96 && h > 0 && h <= 96) || Boolean(box.querySelector('a[href*="/author/"], a[href*="/authors/"]'));
+      })();
+      const hasAuthorLink = Boolean(box.querySelector('a[href*="/author/"], a[href*="/authors/"]'));
+      const hasAuthorNameBlock = [...box.querySelectorAll("p, span, div, a, strong")].some(el => {
+        const t = normalized(flat(el.textContent));
+        return t.length > 0 && authorKeys.includes(t);
+      });
+      if (hasAuthorNameBlock && (hasSmallAvatar || hasAuthorLink || boxText.length <= 120)) {
+        drop(box, "author-bio");
+      }
+    }
+  }
   const cleanByline = (block: Element, text: string) => {
     if (!BYLINE.test(text)) return;
     if (authorKeys.length > 0 && authorKeys.every(name => normalized(text).includes(name))) { drop(block, "byline"); return; }
