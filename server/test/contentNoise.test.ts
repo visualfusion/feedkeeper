@@ -607,3 +607,15 @@ test("plain feed summaries lose leading bylines, filenames and credits before le
   assert.equal(cleanSnippet("By Michael Bartl, the discussion had changed."), "By Michael Bartl, the discussion had changed.");
   assert.equal(cleanSnippet("© copyright is discussed in this article."), "© copyright is discussed in this article.");
 });
+
+test("empty list items and gutted image-only lists are removed while real lists keep their items", () => {
+  const gutted = BODY + '<div><header></header><ol><li><a href="https://example.test/other"><img src="https://example.test/thumb.jpg" alt="Story"></a></li><li></li><li></li><li></li></ol></div>';
+  const cleanedGutted = cleanReaderHtml(gutted);
+  assert.doesNotMatch(cleanedGutted, /<ol|<li|thumb\.jpg|<header/);
+  assert.match(cleanedGutted, /ministry confirmed/);
+
+  const partial = BODY + "<ul><li>First item</li><li></li><li>Second item</li></ul>";
+  const cleanedPartial = cleanReaderHtml(partial);
+  assert.match(cleanedPartial, /<ul><li>First item<\/li><li>Second item<\/li><\/ul>/);
+  assert.equal(cleanReaderHtml(cleanedPartial), cleanedPartial);
+});

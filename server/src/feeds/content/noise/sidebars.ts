@@ -17,11 +17,22 @@ function textBefore(root: ContentRoot, node: Node): number {
   return flat(range.toString()).length;
 }
 
+/** Climbs out of a single-heading wrapper (like `<header><h2>Most Read</h2></header>`) so its siblings are the section. */
+function sectionAnchor(heading: Element): Element {
+  let anchor = heading;
+  const text = flat(heading.textContent);
+  while (!anchor.nextElementSibling && anchor.parentElement &&
+    anchor.parentElement.children.length === 1 && flat(anchor.parentElement.textContent) === text) {
+    anchor = anchor.parentElement;
+  }
+  return anchor;
+}
+
 /** The elements that follow a heading up to the next heading of the same or a higher level. */
-function sectionOf(heading: Element): Element[] {
+function sectionOf(anchor: Element, headingLevel: number): Element[] {
   const section: Element[] = [];
-  for (let sibling = heading.nextElementSibling; sibling; sibling = sibling.nextElementSibling) {
-    if (/^H[1-6]$/.test(sibling.tagName) && level(sibling) <= level(heading)) break;
+  for (let sibling = anchor.nextElementSibling; sibling; sibling = sibling.nextElementSibling) {
+    if (/^H[1-6]$/.test(sibling.tagName) && level(sibling) <= headingLevel) break;
     section.push(sibling);
   }
   return section;
@@ -55,11 +66,12 @@ export const sidebars: ContentRule = {
     if (total === 0) return changed;
     for (const heading of [...root.querySelectorAll(HEADINGS)]) {
       if (!root.contains(heading) || !SIDEBAR_HEADINGS.some(pattern => pattern.test(flat(heading.textContent)))) continue;
-      const section = sectionOf(heading);
+      const anchor = sectionAnchor(heading);
+      const section = sectionOf(anchor, level(heading));
       const links = section.reduce((sum, element) => sum + element.querySelectorAll("a[href]").length + (element.matches("a[href]") ? 1 : 0), 0);
-      if (links < MIN_LINKS || textBefore(root, heading) / total < AFTER_SHARE) continue;
+      if (links < MIN_LINKS || textBefore(root, anchor) / total < AFTER_SHARE) continue;
       section.forEach(element => element.remove());
-      removeBlock(heading, stats);
+      removeBlock(anchor, stats);
       changed = true;
     }
     return changed;

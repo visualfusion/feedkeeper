@@ -129,6 +129,24 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
     if (onlyLinks) drop(list, isHead ? "breadcrumb" : "topic-list");
   }
 
+  // Empty list items render as blank bullets or numbers; a list gutted to empty items and textless media links is a broken widget.
+  for (const list of [...root.querySelectorAll("ol, ul")]) {
+    if (!root.contains(list)) continue;
+    const items = [...list.children].filter(child => child.tagName === "LI");
+    if (items.length === 0) continue;
+    let removedEmpty = 0;
+    for (const item of items) {
+      if (flat(item.textContent) !== "" || item.querySelector("img, picture, video, audio, iframe, svg, canvas, object, embed")) continue;
+      item.remove();
+      removedEmpty++;
+      stats["empty-list-item"] = (stats["empty-list-item"] ?? 0) + 1;
+      changed = true;
+    }
+    if (removedEmpty === items.length || (removedEmpty > 0 && flat(list.textContent) === "")) {
+      drop(list, "empty-list");
+    }
+  }
+
   // A product card of a shop link: its picture is a CSS background, which no reader draws, and its price is a snapshot
   // that is out of date when the article is read later. What is left would be a label, a link and a number.
   for (const shell of [...root.querySelectorAll("[style*='url(' i]")]) {
