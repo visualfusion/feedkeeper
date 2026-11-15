@@ -2,6 +2,16 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.38.0] - 2026-11-15
+
+### Added
+- Japanese text across the web app (headlines, excerpts, newspaper cards, and reader view) is now segmented into natural phrases with BudouX and `Intl.Segmenter` so lines wrap cleanly without breaking words apart on WebKit and Safari.
+- Bundled third-party open-source license attributions (`THIRD-PARTY-LICENSES.md`, including the full Apache License 2.0 notice for BudouX) in the repository, Docker image, and npm package.
+
+### Fixed
+- Article extraction removes leftover gutted lists, wrapped sidebar headings, and inline breadcrumb trails near the start of articles, and matches hidden state declarations without dynamic regular expressions.
+- Normalized remaining English web terminology (`canceled`) and updated `fast-xml-parser` to `5.12.0`.
+
 ## [0.37.0] - 2026-11-15
 
 ### Changed
