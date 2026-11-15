@@ -619,3 +619,19 @@ test("empty list items and gutted image-only lists are removed while real lists 
   assert.match(cleanedPartial, /<ul><li>First item<\/li><li>Second item<\/li><\/ul>/);
   assert.equal(cleanReaderHtml(cleanedPartial), cleanedPartial);
 });
+
+test("inline breadcrumb trails near the start are removed in English, German and Japanese", () => {
+  const trails = [
+    '<p>You are here: <a href="/">Home</a> » <a href="/tech/">Tech</a> » <strong>Article Title</strong></p>',
+    '<p>Du bist hier: <a href="/">Startseite</a> » <a href="/news/">News</a> » <strong>Beitrag</strong></p>',
+    '<p>現在位置：<a href="/">ホーム</a> › <a href="/tech/">技術</a> › <strong>記事</strong></p>',
+    '<p><a href="/">Home</a> › <a href="/tech/">Tech</a> › <strong>Article Title</strong></p>',
+  ];
+  for (const trail of trails) {
+    const cleaned = cleanReaderHtml(trail + BODY);
+    assert.doesNotMatch(cleaned, /Home|Startseite|ホーム|Article Title/);
+    assert.match(cleaned, /ministry confirmed/);
+  }
+  const late = BODY + '<p>You are here: <a href="/">Home</a> » <a href="/tech/">Tech</a></p>';
+  assert.match(cleanReaderHtml(late), /You are here:/, "a trail later in the article is not treated as a page breadcrumb");
+});

@@ -54,7 +54,10 @@ const BREADCRUMB_MARKERS = [
   "[itemtype*='BreadcrumbList' i]",
   "[class~='breadcrumb']",
   "[class~='breadcrumbs']",
+  "[id='breadcrumb' i]",
+  "[id='breadcrumbs' i]",
 ];
+const BREADCRUMB_PREFIX = /^(?:you are here\s*:|du bist hier\s*:|sie sind hier\s*:|現在の?位置\s*[：:])/i;
 
 const LANGUAGE_NAMES = ["English", "Deutsch", "Français", "Español", "Italiano", "Português", "Nederlands", "Polski", "Türkçe",
   "Русский", "日本語", "한국어", "简体字", "繁體字", "简体中文", "繁體中文", "中文", "العربية"];
@@ -127,6 +130,20 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
       return links.length === 1 && label.length > 0 && label.length <= 30 && flat(links[0].textContent) === label;
     });
     if (onlyLinks) drop(list, isHead ? "breadcrumb" : "topic-list");
+  }
+
+  // Inline breadcrumb trail near the start ("You are here: Home » News » Title" or "Home › News › Title").
+  for (const block of leafBlocks(root)) {
+    if (!block.parentNode) continue;
+    if (charsBefore(root, block) > 300) break;
+    const text = flat(block.textContent);
+    if (text.length === 0 || text.length > 300 || block.querySelector("img, picture, video, iframe")) continue;
+    const links = block.querySelectorAll("a[href]").length;
+    if (links === 0) continue;
+    const separators = text.match(/[»›]/g)?.length ?? 0;
+    if (BREADCRUMB_PREFIX.test(text) || (links >= 2 && separators >= 2)) {
+      drop(block, "breadcrumb");
+    }
   }
 
   // Empty list items render as blank bullets or numbers; a list gutted to empty items and textless media links is a broken widget.
