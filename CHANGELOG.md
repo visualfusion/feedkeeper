@@ -2,6 +2,11 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.38.2] - 2026-11-16
+
+### Changed
+- Updated runtime and build dependencies (`otpauth` `9.6.0`, `jsdom` `31.0.1`, `i18next` `27.1.3`, `vite` `8.3.8`, `@tailwindcss/vite` `4.3.5`).
+
 ## [0.38.1] - 2026-11-15
 
 ### Fixed
