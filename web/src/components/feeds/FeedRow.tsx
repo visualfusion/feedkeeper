@@ -3,6 +3,7 @@ import { announceItemsChanged } from "../../utils/badge.ts";
 import { pushSupported } from "../../utils/push.ts";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { api, type Feed } from "../../api/client.ts";
 import { usePlanLimits } from "../../utils/planLimits.ts";
 import { ActionMenu, type ActionMenuItem } from "../ActionMenu.tsx";
@@ -13,7 +14,7 @@ import { formatRelativeTime } from "../../utils/relativeTime.ts";
 import { toast } from "../../utils/toast.ts";
 import { AlertIcon, BellIcon, CheckAllIcon, EditIcon, GripIcon, RefreshIcon, TrashIcon } from "./icons.tsx";
 
-export function formatInterval(t: (key: string, opts?: Record<string, unknown>) => string, minutes: number): string {
+export function formatInterval(t: TFunction, minutes: number): string {
   if (minutes < 60) return t("feeds.minutesShort", { count: minutes });
   return t("feeds.hoursShort", { count: Math.round(minutes / 60) });
 }
