@@ -15,12 +15,12 @@ export default {
   companions: [
     /\bInhalte? (von \S+ )?erlauben\b/i,
     /-Inhalte erlauben\b/i,
-    /^Ich bin damit einverstanden, dass mir .+ angezeigt (?:wird|werden)/i,
+    /Ich bin damit einverstanden, dass mir .{0,80} angezeigt (?:wird|werden)/i,
     /Erst wenn Sie (?:hier )?klicken, werden .{0,60}nachgeladen/i,
     /^Externen? Inhalt(?:e)? anzeigen$/i,
     /^Inhalte? (?:ansehen|anzeigen)$/i,
-    /Personenbezogene Daten können an Drittplattformen/i,
+    /Personenbezogene Daten (?:können|werden) an Drittplattformen/i,
     /^Link zum .+-Inhalt$/i,
-    /^Mehr dazu in unserer Datenschutzerklärung/i,
+    /Mehr dazu in unserer Datenschutzerklärung/i,
   ],
 };

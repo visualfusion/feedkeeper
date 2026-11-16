@@ -5,6 +5,8 @@ import { SNIPPET_BYLINES, SNIPPET_IMAGE_METADATA } from "./content/patterns/snip
 import { CONSENT_ANCHORS, CONSENT_COMPANIONS } from "./content/patterns/consent/index.js";
 import { SIDEBAR_HEADINGS } from "./content/patterns/sidebars/index.js";
 import { resolveEmbeds } from "./content/embeds/index.js";
+import { embedTarget } from "./content/embeds/video.js";
+import { socialFrameTarget } from "./content/embeds/social.js";
 import { loadingPlaceholders } from "./content/noise/loading.js";
 import { trackingPixels } from "./content/noise/pixels.js";
 import { emptyContents } from "./content/noise/emptyContents.js";
@@ -13,7 +15,7 @@ import { permalinkGlyphs } from "./content/noise/permalinkGlyphs.js";
 import { stateHidden } from "./content/noise/stateHidden.js";
 import { teaserLinks } from "./content/noise/teaserLinks.js";
 import { markVideoTeasers } from "./content/noise/videoTeasers.js";
-import { type NoiseStats, flat, pruneEmpty } from "./content/shared.js";
+import { type NoiseStats, flat, linkParagraph, pruneEmpty } from "./content/shared.js";
 
 export type { NoiseStats };
 
@@ -366,14 +368,51 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
   });
 
   // Consent placeholders of embedded third-party content: only the neighbours of a known anchor phrase go.
+  // A single block may hold the whole notice (up to 800 chars) when both an anchor and a companion phrase match;
+  // if it also carries a known video or social link, keep that as a marked media card.
   const blocks = leafBlocks(root);
   blocks.forEach((block, index) => {
-    if (!block.parentNode || flat(block.textContent).length > 400 || !CONSENT_ANCHORS.some(pattern => pattern.test(flat(block.textContent)))) return;
-    drop(block, "consent-placeholder");
+    if (!block.parentNode) return;
+    const blockText = flat(block.textContent);
+    const hasAnchor = CONSENT_ANCHORS.some(pattern => pattern.test(blockText));
+    if (!hasAnchor) return;
+    if (blockText.length > 800) return;
+    if (blockText.length > 400 && !CONSENT_COMPANIONS.some(pattern => pattern.test(blockText))) return;
+
+    const matched: Element[] = [block];
     for (const next of blocks.slice(index + 1, index + 7)) {
       const text = flat(next.textContent);
       if (!next.parentNode || text.length > 220) break;
-      if (CONSENT_ANCHORS.some(pattern => pattern.test(text)) || CONSENT_COMPANIONS.some(pattern => pattern.test(text))) drop(next, "consent-placeholder");
+      if (CONSENT_ANCHORS.some(pattern => pattern.test(text)) || CONSENT_COMPANIONS.some(pattern => pattern.test(text))) {
+        matched.push(next);
+      }
+    }
+
+    let media: { url: string; name: string; kind: string; source: string } | null = null;
+    for (const element of matched) {
+      for (const link of element.querySelectorAll("a[href]")) {
+        const href = link.getAttribute("href") ?? "";
+        const video = embedTarget(href);
+        if (video) { media = { url: video.url, name: video.name, kind: "video", source: video.name }; break; }
+        const post = socialFrameTarget(href);
+        if (post) { media = { url: post.url, name: post.platform.name, kind: post.platform.kind, source: post.platform.name }; break; }
+      }
+      if (media) break;
+    }
+
+    if (media) {
+      const replacement = linkParagraph(block.ownerDocument, media.url, media.name);
+      const anchor = replacement.querySelector("a");
+      if (anchor) {
+        anchor.setAttribute("data-media", media.kind);
+        anchor.setAttribute("data-source", media.source);
+      }
+      block.replaceWith(replacement);
+      stats["consent-placeholder"] = (stats["consent-placeholder"] ?? 0) + 1;
+      changed = true;
+      for (const rest of matched.slice(1)) drop(rest, "consent-placeholder");
+    } else {
+      for (const item of matched) drop(item, "consent-placeholder");
     }
   });
   // Last, so that nothing above takes the card for a repeated headline.

@@ -660,3 +660,24 @@ test("empty bylines with only a date and comment link near the start are removed
   const withAuthor = '<p>Von Max Mustermann | 15.11.2026 13:31 Uhr</p>' + BODY;
   assert.match(cleanReaderHtml(withAuthor), /Von Max Mustermann/, "a byline that names an author stays when the feed has none");
 });
+
+test("single-paragraph consent placeholders over 400 chars keep their embed as a marked card in German, English and Japanese", () => {
+  const de = '<p>Empfohlener redaktioneller Inhalt <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">https://www.youtube.com/watch?v=dQw4w9WgXcQ</a> ' +
+    'An dieser Stelle findest du externe Inhalte von YouTube. Zum Schutz deiner persönlichen Daten werden externe Einbindungen erst angezeigt, ' +
+    'wenn du dies durch Klick auf "Alle externen Inhalte laden" bestätigst: Ich bin damit einverstanden, dass mir externe Inhalte angezeigt werden. ' +
+    'Damit werden personenbezogene Daten an Drittplattformen übermittelt. Mehr dazu in unserer <a href="/datenschutz/">Datenschutzerklärung</a>.</p>';
+  const en = '<p>Recommended editorial content <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">https://www.youtube.com/watch?v=dQw4w9WgXcQ</a> ' +
+    'Here you can find external content from YouTube. To protect your personal data, external embeds are only shown once you confirm loading them: ' +
+    'I agree to external content being displayed to me. Personal data may be transmitted to third-party platforms. ' +
+    'More information in our <a href="/privacy/">privacy policy</a>.</p>';
+  const ja = '<p>おすすめの外部コンテンツ <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">https://www.youtube.com/watch?v=dQw4w9WgXcQ</a> ' +
+    '外部コンテンツを表示するには、個人データが外部プラットフォームに送信されることに同意する必要があります。外部コンテンツの表示に同意する場合はこちらをクリックしてください。' +
+    '詳細は<a href="/privacy/">プライバシーポリシー</a>をご確認ください。' + 'あ'.repeat(260) + '</p>';
+
+  for (const consent of [de, en, ja]) {
+    const cleaned = cleanReaderHtml(BODY + consent);
+    assert.match(cleaned, /<a href="https:\/\/www\.youtube\.com\/watch\?v=dQw4w9WgXcQ" data-media="video" data-source="YouTube">YouTube<\/a>/);
+    assert.doesNotMatch(cleaned, /Datenschutzerklärung|privacy policy|プライバシーポリシー/);
+    assert.equal(cleanReaderHtml(cleaned), cleaned, "cleaning must be idempotent");
+  }
+});
