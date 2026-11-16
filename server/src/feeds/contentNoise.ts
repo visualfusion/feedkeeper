@@ -368,10 +368,11 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
     // Readability may remove the empty slot, leaving only its enclosing block and label paragraph.
     const isolated = container.matches("div, aside, section") && container.querySelector("p") &&
       (product || AD_SLOT_LABEL.test(text));
+    const standaloneBox = container.matches("aside, section") && AD_SLOT_LABEL.test(text) && !product;
     const next = container.nextElementSibling;
     const nextHasMedia = next && (next.matches("img, picture, iframe, video, audio, a[href]") ||
       next.querySelector("img, picture, iframe, video, audio, a[href]"));
-    if (emptySlot || (isolated && !nextHasMedia)) drop(container, product ? "empty-product-label" : "empty-ad-label");
+    if (emptySlot || standaloneBox || (isolated && !nextHasMedia)) drop(container, product ? "empty-product-label" : "empty-ad-label");
   }
 
   // Orphaned newsletter signup boxes in the second half whose `<form>` was already stripped during extraction.

@@ -733,3 +733,13 @@ test("standalone author profile avatars near the start are removed in German, En
   const galleryPhoto = '<p><a href="https://example.test/gallery/1"><img alt="A robot in a lab" src="https://example.test/photo.jpg"></a></p>' + BODY;
   assert.match(cleanReaderHtml(galleryPhoto), /photo\.jpg/, "a normal linked photo at the start stays");
 });
+
+test("standalone section or aside holding only an ad label is removed even before an author card in DE, EN and JA", () => {
+  const after = '<div><p><a href="https://example.test/author/jane"><img alt="Jane" src="https://example.test/jane.jpg"></a></p><p>Author bio text.</p></div>';
+  for (const label of ["Anzeige", "Advertisement", "広告"]) {
+    const html = `${BODY}<section><p>${label}</p></section>${after}`;
+    const cleaned = cleanReaderHtml(html);
+    assert.doesNotMatch(cleaned, new RegExp(label));
+    assert.match(cleaned, /Author bio text/);
+  }
+});
