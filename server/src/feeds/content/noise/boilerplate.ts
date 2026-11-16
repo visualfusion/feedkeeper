@@ -52,7 +52,20 @@ export const boilerplate: ContentRule = {
     let changed = false;
     const total = flat(root.textContent).length;
     for (const block of [...root.querySelectorAll(BLOCKS)]) {
-      if (!root.contains(block) || block.querySelector("img, picture, video, audio, iframe") || block.querySelector(NESTED)) continue;
+      if (!root.contains(block) || block.querySelector("video, audio, iframe") || block.querySelector(NESTED)) continue;
+      const images = block.querySelectorAll("img");
+      if (images.length > 1) continue;
+      if (images.length === 1) {
+        if (flat(block.textContent) !== "") continue;
+        const alt = flat(images[0]!.getAttribute("alt"));
+        if (!alt || alt.length > 200 || !BOILERPLATE_ANYWHERE.some(pattern => pattern.test(alt))) continue;
+        const parent = block.parentNode;
+        block.remove();
+        pruneEmpty(parent);
+        count(stats, "boilerplate");
+        changed = true;
+        continue;
+      }
       const text = flat(block.textContent);
       if (text === "" || text.length > 400) continue;
       const anywhere = BOILERPLATE_ANYWHERE.some(pattern => pattern.test(text));

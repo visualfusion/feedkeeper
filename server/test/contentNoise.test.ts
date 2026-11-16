@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { JSDOM } from "jsdom";
+import { cleanPage } from "../src/feeds/content/index.js";
 import { cleanReaderHtml, cleanSnippet, derivedText, leadText, type NoiseStats } from "../src/feeds/contentNoise.js";
 
 const BODY = [
@@ -679,5 +681,28 @@ test("single-paragraph consent placeholders over 400 chars keep their embed as a
     assert.match(cleaned, /<a href="https:\/\/www\.youtube\.com\/watch\?v=dQw4w9WgXcQ" data-media="video" data-source="YouTube">YouTube<\/a>/);
     assert.doesNotMatch(cleaned, /Datenschutzerklärung|privacy policy|プライバシーポリシー/);
     assert.equal(cleanReaderHtml(cleaned), cleaned, "cleaning must be idempotent");
+  }
+});
+
+test("preferred-source, Google News and app-download calls with badge images at the end are removed in German, English and Japanese", () => {
+  const de = BODY +
+    '<div><p>Füge Beispielzeitung bei Google als bevorzugte Quelle hinzu, um mehr News zu sehen.</p>' +
+    '<p><a href="https://example.test/pref"><img alt="Add as a preferred source on Google" src="https://example.test/a.png"></a></p></div>' +
+    '<div><p>Noch mehr News? Dann folge Beispielzeitung bei Google News oder hol dir unsere App.</p>' +
+    '<p><a href="https://example.test/play"><img alt="Beispielzeitung für Android bei Google Play" src="https://example.test/b.png"></a></p>' +
+    '<p><a href="https://example.test/gnews"><img alt="Beispielzeitung bei Google News folgen" src="https://example.test/c.png"></a></p></div>';
+  const ja = BODY +
+    '<div><p>最新ニュースを見るにはGoogleでExample Newsを優先ソースとして追加してください。</p>' +
+    '<p><a href="https://example.test/pref"><img alt="Googleで優先ソースとして追加" src="https://example.test/a.png"></a></p></div>' +
+    '<div><p>さらに最新ニュース？GoogleニュースでExample Newsをフォローするか、公式アプリを入手。</p>' +
+    '<p><a href="https://example.test/play"><img alt="Google PlayでExample Newsを入手" src="https://example.test/b.png"></a></p></div>';
+
+  for (const sample of [de, ja]) {
+    const dom = new JSDOM(`<!doctype html><html><body>${sample}</body></html>`);
+    cleanPage(dom.window.document.body);
+    const cleaned = dom.window.document.body.innerHTML;
+    dom.window.close();
+    assert.doesNotMatch(cleaned, /bevorzugte Quelle|Google News|Google Play|優先ソース|公式アプリ/);
+    assert.match(cleaned, /ministry confirmed/);
   }
 });

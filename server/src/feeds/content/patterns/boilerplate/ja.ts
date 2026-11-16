@@ -4,10 +4,10 @@
  */
 export const ANYWHERE: readonly RegExp[] = [
   // Calls to follow the site on Google or elsewhere.
-  /^(?:Google(?: ニュース)?でフォロー(?:する)?|Google ニュースで[^.!?]{2,40}をフォロー)$/i,
-  /^(?:Googleで)?優先(?:ソース|的なソース)(?:として|に)(?:追加|設定)(?:する)?$/i,
+  /^(?:Google(?: ニュース)?でフォロー(?:する)?|Google ニュースで[^.!?。]{2,40}をフォロー)$/i,
+  /^(?:Googleで)?[^.!?。]{0,40}優先(?:ソース|的なソース)(?:として|に)(?:追加|設定)(?:する)?[^.!?。]{0,60}[。.]?$/i,
   // The text of download buttons whose picture is gone.
-  /^(?:App Storeからダウンロード|Google Playで手に入れよう|Google Playで入手|App Storeでダウンロード)$/i,
+  /^(?:App Storeからダウンロード|Google Playで手に入れよう|Google Playで入手|App Storeでダウンロード|Google Playで[^.!?。]{2,40}を入手)$/i,
   // A picture's filename shown as text.
   /^[\w\-. ]{3,120}\.(?:jpe?g|png|webp|gif|avif)$/i,
 ];
@@ -21,4 +21,6 @@ export const TRAILING: readonly RegExp[] = [
   /^[^.!?。]{1,40}(?:をフォロー|のSNS)\s*[:：]\s*(?:X(?:\s*\/\s*Twitter)?|Twitter|Bluesky|Mastodon|Threads|Instagram|Facebook|YouTube|LinkedIn|TikTok|RSS)\b.{0,120}$/i,
   // Orphaned recommendation headings at the end of an article when the list itself was stripped or empty.
   /^(?:関連記事|おすすめ記事|オススメ記事|人気の記事|人気記事|最新記事|新着記事|注目の記事)$/i,
+  // Calls at the end of an article to follow on Google News or download the app.
+  /^(?:さらに[^.!?。]{2,40}[？?]\s*)?(?:Google(?:ニュース|ディスカバー)?で[^.!?。]{2,40}をフォロー(?:するか、公式アプリを入手)?|公式アプリを入手)[。.]?$/i,
 ];

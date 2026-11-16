@@ -4,9 +4,10 @@
  */
 export const ANYWHERE: readonly RegExp[] = [
   // Calls to follow the site on Google or elsewhere.
-  /^(?:Follow us on Google(?: News| Discover)?|Add(?: [^.!?]{2,50})? as a preferred (?:source|publisher)(?: on Google)?)$/i,
+  /^(?:Follow us|Follow [^.!?]{2,40}) on Google(?: News| Discover)?$/i,
+  /^Add(?: [^.!?]{2,50})? as a preferred (?:source|publisher)(?: on Google)?[^.!?]{0,80}\.?$/i,
   // The text of download buttons whose picture is gone.
-  /^(?:Download on the (?:App|Mac App) Store|Get it on Google Play|Available on Google Play)$/i,
+  /^(?:Download on the (?:App|Mac App) Store|Get it on Google Play|Available on Google Play|[^.!?]{2,40} (?:for Android )?on Google Play)$/i,
 ];
 
 /** Footers at the end of the text; they count only in the second half. */
@@ -22,4 +23,6 @@ export const TRAILING: readonly RegExp[] = [
   /^Follow [^.!?]{1,60}:\s*(?:X(?:\s*\/\s*Twitter)?|Twitter|Bluesky|Mastodon|Threads|Instagram|Facebook|YouTube|LinkedIn|TikTok|RSS)\b.{0,120}$/i,
   // Orphaned recommendation headings at the end of an article when the list itself was stripped or empty.
   /^(?:Top Stories|Trending(?: Now| Stories)?|More (?:Stories|Articles)|Related (?:Articles|Stories|Posts)|Most (?:Read|Popular)|Recommended(?: for you)?)$/i,
+  // Calls at the end of an article to follow on Google News or download the app.
+  /^(?:Want more [^.!?]{2,50}\?\s*)?(?:Then\s+)?follow\s+[^.!?]{2,50}\s+on\s+Google(?:\s+News|\s+Discover)?(?:\s+or\s+(?:get|download)\s+our\s+app)?\.?$/i,
 ];

@@ -4,14 +4,14 @@
  */
 export const ANYWHERE: readonly RegExp[] = [
   // Aufrufe, der Seite bei Google oder in anderen Diensten zu folgen.
-  /^(?:Uns|Folge uns|Folgen Sie uns) (?:auf|bei) Google(?: News| Discover)? folgen$/i,
-  /^(?:Wähle|Wählen Sie|Füge|Fügen Sie) [^.!?]{2,50} (?:als )?(?:bevorzugte|bevorzugten|bevorzugter)\b[^.!?]{0,30}$/i,
+  /^(?:Uns|Folge uns|Folgen Sie uns|[^.!?]{2,40}) (?:auf|bei) Google(?: News| Discover)? folgen$/i,
+  /^(?:Wähle|Wählen Sie|Füge|Fügen Sie) [^.!?]{2,50} (?:als |bei Google als )?(?:bevorzugte|bevorzugten|bevorzugter)\b[^.!?]{0,80}\.?$/i,
   // „Als bevorzugte Quelle bei Google hinzufügen“, ohne den Namen der Seite.
   /^Als bevorzugte[nr]? (?:Google-)?Quelle (?:bei Google )?(?:hinzufügen|auswählen|wählen)$/i,
   // „★ ifun.de bei Google bevorzugen ★“ und ähnliche Bitten, die Seite als bevorzugte Quelle zu wählen.
   /^★?\s*[^★!?]{2,40} bei Google bevorzugen\s*★?$/i,
   // Texte von Download-Schaltflächen, deren Grafik nicht mehr da ist.
-  /^(?:Laden im (?:App|Mac App|Google Play) Store|Im (?:App|Mac App) Store laden|Jetzt bei Google Play|Bei Google Play herunterladen|Laden bei Google Play)$/i,
+  /^(?:Laden im (?:App|Mac App|Google Play) Store|Im (?:App|Mac App) Store laden|Jetzt bei Google Play|Bei Google Play herunterladen|Laden bei Google Play|[^.!?]{2,40} für (?:Android|iOS|iPhone|iPad) bei Google Play)$/i,
   // Der Dateiname eines Bildes, den ein Link oder eine Beschriftung als Text zeigt.
   /^[\w\-. ]{3,120}\.(?:jpe?g|png|webp|gif|avif)$/i,
 ];
@@ -25,4 +25,6 @@ export const TRAILING: readonly RegExp[] = [
   /^(?:Folge|Folgen Sie)\s+[^.!?]{1,60}:\s*(?:X(?:\s*\/\s*Twitter)?|Twitter|Bluesky|Mastodon|Threads|Instagram|Facebook|YouTube|LinkedIn|TikTok|RSS)\b.{0,120}$/i,
   // Verwaiste Empfehlungs-/Rubrik-Überschriften am Artikelende ohne nachfolgende Liste.
   /^(?:Topaktuell|Mehr zum Thema|Weitere (?:Artikel|Meldungen)|Ähnliche Artikel|Verwandte Artikel|Auch interessant|Meistgelesen(?:e Artikel)?|Beliebte Artikel)$/i,
+  // Aufrufe am Artikelende, der Seite bei Google News zu folgen oder die App herunterzuladen.
+  /^(?:Noch mehr [^.!?]{2,50}\?\s*)?(?:Dann\s+)?(?:folge|folgen Sie)\s+[^.!?]{2,50}\s+(?:bei|auf)\s+Google(?:\s+News|\s+Discover)?(?:\s+oder\s+(?:hol|holen Sie)\s+(?:dir|sich)\s+unsere\s+App)?\.?$/i,
 ];
