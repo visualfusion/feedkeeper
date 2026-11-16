@@ -718,3 +718,18 @@ test("orphaned newsletter signup boxes in the second half are removed in German,
     assert.match(cleaned, /ministry confirmed/);
   }
 });
+
+test("standalone author profile avatars near the start are removed in German, English and Japanese", () => {
+  const cases = [
+    '<p><a href="https://example.test/korrespondenten/max-mustermann-100.html"><img alt="Max Mustermann" src="https://example.test/avatar.jpg"></a></p>',
+    '<p><a href="https://example.test/correspondents/jane-doe"><img alt="Jane Doe" src="https://example.test/avatar.jpg"></a></p>',
+    '<p><a href="https://example.test/著者/tanaka"><img alt="田中太郎" src="https://example.test/avatar.jpg"></a></p>',
+  ];
+  for (const avatar of cases) {
+    const cleaned = cleanReaderHtml(avatar + BODY);
+    assert.doesNotMatch(cleaned, /avatar\.jpg/);
+    assert.match(cleaned, /ministry confirmed/);
+  }
+  const galleryPhoto = '<p><a href="https://example.test/gallery/1"><img alt="A robot in a lab" src="https://example.test/photo.jpg"></a></p>' + BODY;
+  assert.match(cleanReaderHtml(galleryPhoto), /photo\.jpg/, "a normal linked photo at the start stays");
+});

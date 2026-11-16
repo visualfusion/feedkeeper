@@ -49,7 +49,7 @@ function charsBefore(root: DocumentFragment, element: Element): number {
   const range = root.ownerDocument.createRange();
   range.setStart(root, 0);
   range.setEndBefore(element);
-  return range.toString().length;
+  return flat(range.toString()).length;
 }
 
 const BREADCRUMB_MARKERS = [
@@ -207,6 +207,7 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
 
   const headline = normalized(title ?? "");
   const seen = new Set<string>();
+  const authorHref = /\/(?:authors?|autoren?|korrespondenten?|correspondents?|redaktion|journalists?|writers?|contributors?|staff|team|profiles?|people|著者)\//i;
   const authorKeys = (author ?? "").split(",").map(name => normalized(name)).filter(Boolean);
   if (authorKeys.length > 0) {
     for (const box of [...root.querySelectorAll("div, section, aside")]) {
@@ -216,12 +217,12 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
       if (!boxText || boxText.length > 350) continue;
       const images = [...box.querySelectorAll("img")];
       if (images.length > 1) continue;
+      const hasAuthorLink = [...box.querySelectorAll("a[href]")].some(a => authorHref.test(a.getAttribute("href") ?? ""));
       const hasSmallAvatar = images.length === 1 && (() => {
         const w = Number(images[0]!.getAttribute("width") ?? 0);
         const h = Number(images[0]!.getAttribute("height") ?? 0);
-        return (w > 0 && w <= 96 && h > 0 && h <= 96) || Boolean(box.querySelector('a[href*="/author/"], a[href*="/authors/"]'));
+        return (w > 0 && w <= 96 && h > 0 && h <= 96) || hasAuthorLink;
       })();
-      const hasAuthorLink = Boolean(box.querySelector('a[href*="/author/"], a[href*="/authors/"]'));
       const hasAuthorNameBlock = [...box.querySelectorAll("p, span, div, a, strong")].some(el => {
         const t = normalized(flat(el.textContent));
         return t.length > 0 && authorKeys.includes(t);
@@ -230,6 +231,21 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
         drop(box, "author-bio");
       }
     }
+  }
+
+  // Standalone author avatar near the start (linked to an author/correspondent profile, no caption or prose).
+  for (const block of [...root.querySelectorAll("p, div")]) {
+    if (!root.contains(block) || charsBefore(root, block) > 600) continue;
+    if (block.querySelector("p, div, figcaption, h1, h2, h3, h4, h5, h6")) continue;
+    if (flat(block.textContent) !== "") continue;
+    const images = [...block.querySelectorAll("img")];
+    if (images.length !== 1) continue;
+    const link = images[0]!.closest("a[href]");
+    if (!link || !authorHref.test(link.getAttribute("href") ?? "")) continue;
+    const alt = flat(images[0]!.getAttribute("alt"));
+    const w = Number(images[0]!.getAttribute("width") ?? 0);
+    const isShortName = alt.length >= 2 && alt.length <= 50 && !/[.!?。]/.test(alt) && alt.split(" ").length <= 5;
+    if (isShortName || (w > 0 && w <= 160)) drop(block, "author-avatar");
   }
   const cleanByline = (block: Element, text: string) => {
     if (!BYLINE.test(text)) return;
