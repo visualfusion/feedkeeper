@@ -777,3 +777,10 @@ test("standalone media type labels near the start are removed in DE, EN and JA",
     assert.match(cleaned, /ministry confirmed/);
   }
 });
+
+test("standalone image filenames shown as headings or links are removed in reader HTML", () => {
+  const html = '<h2><a href="/file/example-photo-01.jpg">example_photo_01.jpg</a></h2>' + BODY;
+  const cleaned = cleanReaderHtml(html);
+  assert.doesNotMatch(cleaned, /example_photo_01\.jpg/);
+  assert.match(cleaned, /ministry confirmed/);
+});

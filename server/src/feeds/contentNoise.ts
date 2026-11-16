@@ -300,6 +300,7 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
     if (position < 14 && /^(Audiobeitrag|Videobeitrag)\s*>/.test(text) && headline && normalized(text).endsWith(headline)) { drop(block, "title-repeat"); continue; }
     if (/^[>›»|/·•–—-]+$/.test(text)) { drop(block, "separator"); continue; }
     if (/^(Audiobeitrag|Videobeitrag|Bildbeitrag|Autoplay)$/i.test(text) || (position < 8 && /^(Bild|Photo|写真)$/i.test(text))) { drop(block, "player"); continue; }
+    if (!block.querySelector("img, picture, video, audio, iframe") && /^[\w\-. ]{3,120}\.(?:jpe?g|png|webp|gif|avif)$/i.test(text)) { drop(block, "filename"); continue; }
     if (!pastStart && text.length <= 70 && block.querySelector("time") && charsBefore(root, block) <= 600) {
       const rest = flat(text.replace(flat(block.querySelector("time")?.textContent), ""));
       if (/^(news|ニュース|nachrichten|stand|zuletzt aktualisiert|aktualisiert|ver(ö|oe)ffentlicht|updated|published|posted)?\s*[:·|•-]*\s*$/i.test(rest)) { drop(block, "dateline"); continue; }

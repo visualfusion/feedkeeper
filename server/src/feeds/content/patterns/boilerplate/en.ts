@@ -8,6 +8,8 @@ export const ANYWHERE: readonly RegExp[] = [
   /^Add(?: [^.!?]{2,50})? as a preferred (?:source|publisher)(?: on Google)?[^.!?]{0,80}\.?$/i,
   // The text of download buttons whose picture is gone.
   /^(?:Download on the (?:App|Mac App) Store|Get it on Google Play|Available on Google Play|[^.!?]{2,40} (?:for Android )?on Google Play)$/i,
+  // A picture's filename shown as text.
+  /^[\w\-. ]{3,120}\.(?:jpe?g|png|webp|gif|avif)$/i,
 ];
 
 /** Orphaned recommendation headings without a following list. */
