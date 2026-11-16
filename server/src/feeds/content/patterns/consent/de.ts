@@ -11,6 +11,7 @@ export default {
     /Hier findest du externe Inhalte von/i,
     /An dieser Stelle findest du einen externen Inhalt/i,
     /Du kannst ihn dir mit einem Klick anzeigen lassen/i,
+    /Mit (?:Ihrer|deiner) Zustimmung wird (?:hier )?ein externes? .{0,60} geladen/i,
   ],
   companions: [
     /\bInhalte? (von \S+ )?erlauben\b/i,

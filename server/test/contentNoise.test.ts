@@ -743,3 +743,16 @@ test("standalone section or aside holding only an ad label is removed even befor
     assert.match(cleaned, /Author bio text/);
   }
 });
+
+test("with-your-consent external video notices are removed in German, English and Japanese", () => {
+  const cases = [
+    '<p>Mit Ihrer Zustimmung wird hier ein externes YouTube-Video (Example Corp) geladen.</p>',
+    '<p>With your consent, an external YouTube video will be loaded here.</p>',
+    '<p>同意すると、外部のYouTube動画が読み込まれます。</p>',
+  ];
+  for (const notice of cases) {
+    const cleaned = cleanReaderHtml(BODY + notice);
+    assert.doesNotMatch(cleaned, /Zustimmung|consent|同意すると/);
+    assert.match(cleaned, /ministry confirmed/);
+  }
+});
