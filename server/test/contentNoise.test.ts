@@ -769,3 +769,11 @@ test("orphaned recommendation headings with surrounding rules in the second half
   const withList = `${BODY}<p><strong>Topaktuell</strong></p><ul><li><a href="https://example.test/a">Related article</a></li></ul>`;
   assert.match(cleanReaderHtml(withList), /Topaktuell/, "a heading followed by a real list stays");
 });
+
+test("standalone media type labels near the start are removed in DE, EN and JA", () => {
+  for (const label of ["Bildbeitrag", "Bild", "Photo", "写真"]) {
+    const cleaned = cleanReaderHtml(`<p>${label}</p>` + BODY);
+    assert.doesNotMatch(cleaned, new RegExp(`^<p>${label}</p>`));
+    assert.match(cleaned, /ministry confirmed/);
+  }
+});
