@@ -2,6 +2,15 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.38.3] - 2026-11-16
+
+### Fixed
+- Article extraction now converts single-paragraph consent notices containing embedded video or social links into marked media cards, strips `<a-opt-in>` wrappers and "with your consent" embed notices, and removes Google News / Google Play badge images and trailing app-download calls.
+- Reader cleanup now removes orphaned newsletter signup boxes, standalone ad-label sections, leading author profile avatars, orphaned recommendation headings with adjacent horizontal rules, standalone media type labels (`Bildbeitrag`, `Bild`, `Photo`, `写真`), and standalone image filenames shown as headings or links.
+
+### Upgrade notes
+- Articles that are already stored are cleaned when they are fetched again.
+
 ## [0.38.2] - 2026-11-16
 
 ### Changed
