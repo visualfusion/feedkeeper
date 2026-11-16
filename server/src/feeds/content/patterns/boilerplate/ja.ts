@@ -24,3 +24,8 @@ export const TRAILING: readonly RegExp[] = [
   // Calls at the end of an article to follow on Google News or download the app.
   /^(?:さらに[^.!?。]{2,40}[？?]\s*)?(?:Google(?:ニュース|ディスカバー)?で[^.!?。]{2,40}をフォロー(?:するか、公式アプリを入手)?|公式アプリを入手)[。.]?$/i,
 ];
+
+/** Copy of a newsletter signup box (container with a form before Readability, or orphaned box afterwards). */
+export const NEWSLETTER_BOX: readonly RegExp[] = [
+  /(?:(?:日刊|週刊|月刊|無料).{0,20}(?:ニュースレター|メルマガ)|(?:ニュースレター|メルマガ).{0,60}(?:登録|購読|受信|メールボックス|無料))/,
+];

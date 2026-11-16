@@ -28,3 +28,8 @@ export const TRAILING: readonly RegExp[] = [
   // Aufrufe am Artikelende, der Seite bei Google News zu folgen oder die App herunterzuladen.
   /^(?:Noch mehr [^.!?]{2,50}\?\s*)?(?:Dann\s+)?(?:folge|folgen Sie)\s+[^.!?]{2,50}\s+(?:bei|auf)\s+Google(?:\s+News|\s+Discover)?(?:\s+oder\s+(?:hol|holen Sie)\s+(?:dir|sich)\s+unsere\s+App)?\.?$/i,
 ];
+
+/** Hinweise einer Newsletter-Anmeldebox (Container mit Formular vor Readability oder verwaiste Box danach). */
+export const NEWSLETTER_BOX: readonly RegExp[] = [
+  /(?:\b(?:täglicher?|wöchentlicher?|monatlicher?|kostenloser?)\b.{0,30}Newsletter|\bNewsletter.{0,120}(?:Postfach|E-Mail|anmelden|abonnieren|kostenlos))/i,
+];

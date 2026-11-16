@@ -1,4 +1,4 @@
-import { BOILERPLATE_ANYWHERE, BOILERPLATE_TRAILING } from "../patterns/boilerplate/index.js";
+import { BOILERPLATE_ANYWHERE, BOILERPLATE_NEWSLETTER, BOILERPLATE_TRAILING } from "../patterns/boilerplate/index.js";
 import { type ContentRoot, type ContentRule, type NoiseStats, count, flat, pruneEmpty } from "../shared.js";
 
 const BLOCKS = "p, div, li, h2, h3, h4, h5, h6, span";
@@ -79,9 +79,30 @@ export const boilerplate: ContentRule = {
       changed = true;
     }
     if (inlineCalls(root, stats)) changed = true;
+    if (newsletterBoxes(root, stats)) changed = true;
     return lineFooters(root, stats, total) || changed;
   },
 };
+
+/**
+ * Signup boxes ("Subscribe to our newsletter") hold a `<form>` or email field that Readability later strips,
+ * leaving only the promotional copy behind. Removing the whole short container before Readability keeps the copy out too.
+ */
+function newsletterBoxes(root: ContentRoot, stats: NoiseStats): boolean {
+  let changed = false;
+  for (const box of [...root.querySelectorAll("section, aside, div")]) {
+    if (!root.contains(box) || box.querySelector("article, main")) continue;
+    if (!box.querySelector("form, input[type='email']")) continue;
+    const text = flat(box.textContent);
+    if (text === "" || text.length > 500 || !BOILERPLATE_NEWSLETTER.some(pattern => pattern.test(text))) continue;
+    const parent = box.parentNode;
+    box.remove();
+    pruneEmpty(parent);
+    count(stats, "boilerplate");
+    changed = true;
+  }
+  return changed;
+}
 
 /** A short line holds more than the call ("November 12, 2026 · Add as a preferred source on Google"): longer text is prose and is left alone. */
 const SHORT_LINE = 200;

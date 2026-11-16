@@ -706,3 +706,15 @@ test("preferred-source, Google News and app-download calls with badge images at 
     assert.match(cleaned, /ministry confirmed/);
   }
 });
+
+test("orphaned newsletter signup boxes in the second half are removed in German, English and Japanese", () => {
+  const de = BODY + '<section><p>Kostenlos · der tägliche Beispiel-Newsletter</p><h2>Fakten direkt in dein Postfach.</h2><p>Jeden Morgen kostenlos und unabhängig.</p></section>';
+  const en = BODY + '<section><p>Free · Daily Briefing Newsletter</p><h2>Facts directly in your inbox.</h2><p>Delivered every morning for free.</p></section>';
+  const ja = BODY + '<section><p>無料・日刊ニュースレター</p><h2>毎朝の重要ニュースをメールボックスへ。</h2><p>毎日無料でお届けします。</p></section>';
+
+  for (const sample of [de, en, ja]) {
+    const cleaned = cleanReaderHtml(sample);
+    assert.doesNotMatch(cleaned, /Postfach|inbox|メールボックス|Newsletter|ニュースレター/);
+    assert.match(cleaned, /ministry confirmed/);
+  }
+});

@@ -5,3 +5,4 @@ import * as ja from "./ja.js";
 /** One file per language, searched all at once. To add a language, add a file next to these and list it here. */
 export const BOILERPLATE_ANYWHERE: readonly RegExp[] = [de.ANYWHERE, en.ANYWHERE, ja.ANYWHERE].flat();
 export const BOILERPLATE_TRAILING: readonly RegExp[] = [de.TRAILING, en.TRAILING, ja.TRAILING].flat();
+export const BOILERPLATE_NEWSLETTER: readonly RegExp[] = [de.NEWSLETTER_BOX, en.NEWSLETTER_BOX, ja.NEWSLETTER_BOX].flat();

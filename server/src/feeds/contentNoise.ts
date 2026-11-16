@@ -2,6 +2,7 @@ import { cleanVideoPage } from "./content/noise/videoPages.js";
 import { lazyImages } from "./content/noise/lazyImages.js";
 import { JSDOM } from "jsdom";
 import { SNIPPET_BYLINES, SNIPPET_IMAGE_METADATA } from "./content/patterns/snippet-metadata/index.js";
+import { BOILERPLATE_NEWSLETTER } from "./content/patterns/boilerplate/index.js";
 import { CONSENT_ANCHORS, CONSENT_COMPANIONS } from "./content/patterns/consent/index.js";
 import { SIDEBAR_HEADINGS } from "./content/patterns/sidebars/index.js";
 import { resolveEmbeds } from "./content/embeds/index.js";
@@ -355,6 +356,17 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
     const nextHasMedia = next && (next.matches("img, picture, iframe, video, audio, a[href]") ||
       next.querySelector("img, picture, iframe, video, audio, a[href]"));
     if (emptySlot || (isolated && !nextHasMedia)) drop(container, product ? "empty-product-label" : "empty-ad-label");
+  }
+
+  // Orphaned newsletter signup boxes in the second half whose `<form>` was already stripped during extraction.
+  if (total > 0) {
+    for (const box of [...root.querySelectorAll("section, aside, div")]) {
+      if (!box.parentNode || box.querySelector("article, main, img, picture, video, audio, iframe")) continue;
+      if (box.querySelectorAll("p, h2, h3, h4").length < 2) continue;
+      const text = flat(box.textContent);
+      if (text === "" || text.length > 400 || charsBefore(root, box) / total < 0.5) continue;
+      if (BOILERPLATE_NEWSLETTER.some(pattern => pattern.test(text))) drop(box, "newsletter-box");
+    }
   }
 
   // An ad label whose ad is not there (a script fills it): sponsored content itself stays, the label above nothing goes.
