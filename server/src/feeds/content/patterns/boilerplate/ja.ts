@@ -12,6 +12,11 @@ export const ANYWHERE: readonly RegExp[] = [
   /^[\w\-. ]{3,120}\.(?:jpe?g|png|webp|gif|avif)$/i,
 ];
 
+/** Orphaned recommendation headings without a following list. */
+export const ORPHAN_HEADINGS: readonly RegExp[] = [
+  /^(?:関連記事|おすすめ記事|オススメ記事|人気の記事|人気記事|最新記事|新着記事|注目の記事)$/i,
+];
+
 /** Footers at the end of the text; they count only in the second half. */
 export const TRAILING: readonly RegExp[] = [
   /^(?:この記事|本記事|本稿).{3,120}(?:で初出|に初出|で公開|に掲載|転載).*$/i,
@@ -19,8 +24,7 @@ export const TRAILING: readonly RegExp[] = [
   /^(?:関連記事|トピック|タグ|関連タグ):.{0,200}$/i,
   // Author social follow lines at the end of an article.
   /^[^.!?。]{1,40}(?:をフォロー|のSNS)\s*[:：]\s*(?:X(?:\s*\/\s*Twitter)?|Twitter|Bluesky|Mastodon|Threads|Instagram|Facebook|YouTube|LinkedIn|TikTok|RSS)\b.{0,120}$/i,
-  // Orphaned recommendation headings at the end of an article when the list itself was stripped or empty.
-  /^(?:関連記事|おすすめ記事|オススメ記事|人気の記事|人気記事|最新記事|新着記事|注目の記事)$/i,
+  ...ORPHAN_HEADINGS,
   // Calls at the end of an article to follow on Google News or download the app.
   /^(?:さらに[^.!?。]{2,40}[？?]\s*)?(?:Google(?:ニュース|ディスカバー)?で[^.!?。]{2,40}をフォロー(?:するか、公式アプリを入手)?|公式アプリを入手)[。.]?$/i,
 ];

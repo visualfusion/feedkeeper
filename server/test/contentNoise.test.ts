@@ -756,3 +756,16 @@ test("with-your-consent external video notices are removed in German, English an
     assert.match(cleaned, /ministry confirmed/);
   }
 });
+
+test("orphaned recommendation headings with surrounding rules in the second half are removed in DE, EN and JA", () => {
+  const after = "<p>Next section of the story continues here with real content.</p>";
+  for (const heading of ["Topaktuell", "Trending Now", "関連記事"]) {
+    const html = `${BODY}<hr><p><strong>${heading}</strong></p><hr>${after}`;
+    const cleaned = cleanReaderHtml(html);
+    assert.doesNotMatch(cleaned, new RegExp(heading));
+    assert.doesNotMatch(cleaned, /<hr>/);
+    assert.match(cleaned, /Next section of the story/);
+  }
+  const withList = `${BODY}<p><strong>Topaktuell</strong></p><ul><li><a href="https://example.test/a">Related article</a></li></ul>`;
+  assert.match(cleanReaderHtml(withList), /Topaktuell/, "a heading followed by a real list stays");
+});

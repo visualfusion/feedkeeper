@@ -10,6 +10,11 @@ export const ANYWHERE: readonly RegExp[] = [
   /^(?:Download on the (?:App|Mac App) Store|Get it on Google Play|Available on Google Play|[^.!?]{2,40} (?:for Android )?on Google Play)$/i,
 ];
 
+/** Orphaned recommendation headings without a following list. */
+export const ORPHAN_HEADINGS: readonly RegExp[] = [
+  /^(?:Top Stories|Trending(?: Now| Stories)?|More (?:Stories|Articles)|Related (?:Articles|Stories|Posts)|Most (?:Read|Popular)|Recommended(?: for you)?)$/i,
+];
+
 /** Footers at the end of the text; they count only in the second half. */
 export const TRAILING: readonly RegExp[] = [
   /^(?:This (?:article|post)|The post),? .{3,200} (?:first )?appeared (?:first )?on .{2,60}$/i,
@@ -21,8 +26,7 @@ export const TRAILING: readonly RegExp[] = [
   /^Follow topics and authors from this story\b.{0,200}$/i,
   // Author social follow lines at the end of an article.
   /^Follow [^.!?]{1,60}:\s*(?:X(?:\s*\/\s*Twitter)?|Twitter|Bluesky|Mastodon|Threads|Instagram|Facebook|YouTube|LinkedIn|TikTok|RSS)\b.{0,120}$/i,
-  // Orphaned recommendation headings at the end of an article when the list itself was stripped or empty.
-  /^(?:Top Stories|Trending(?: Now| Stories)?|More (?:Stories|Articles)|Related (?:Articles|Stories|Posts)|Most (?:Read|Popular)|Recommended(?: for you)?)$/i,
+  ...ORPHAN_HEADINGS,
   // Calls at the end of an article to follow on Google News or download the app.
   /^(?:Want more [^.!?]{2,50}\?\s*)?(?:Then\s+)?follow\s+[^.!?]{2,50}\s+on\s+Google(?:\s+News|\s+Discover)?(?:\s+or\s+(?:get|download)\s+our\s+app)?\.?$/i,
 ];

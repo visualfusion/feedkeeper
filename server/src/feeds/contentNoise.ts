@@ -2,7 +2,7 @@ import { cleanVideoPage } from "./content/noise/videoPages.js";
 import { lazyImages } from "./content/noise/lazyImages.js";
 import { JSDOM } from "jsdom";
 import { SNIPPET_BYLINES, SNIPPET_IMAGE_METADATA } from "./content/patterns/snippet-metadata/index.js";
-import { BOILERPLATE_NEWSLETTER } from "./content/patterns/boilerplate/index.js";
+import { BOILERPLATE_NEWSLETTER, BOILERPLATE_ORPHAN_HEADINGS } from "./content/patterns/boilerplate/index.js";
 import { CONSENT_ANCHORS, CONSENT_COMPANIONS } from "./content/patterns/consent/index.js";
 import { SIDEBAR_HEADINGS } from "./content/patterns/sidebars/index.js";
 import { resolveEmbeds } from "./content/embeds/index.js";
@@ -383,6 +383,24 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
       const text = flat(box.textContent);
       if (text === "" || text.length > 400 || charsBefore(root, box) / total < 0.5) continue;
       if (BOILERPLATE_NEWSLETTER.some(pattern => pattern.test(text))) drop(box, "newsletter-box");
+    }
+  }
+
+  // Orphaned recommendation headings in the second half (left behind when an embed/related-links widget was empty).
+  if (total > 0) {
+    for (const block of [...root.querySelectorAll("p, h2, h3, h4")]) {
+      if (!block.parentNode || block.querySelector("img, picture, video, audio, iframe, a[href]")) continue;
+      const text = flat(block.textContent);
+      if (!text || charsBefore(root, block) / total < 0.5 || !BOILERPLATE_ORPHAN_HEADINGS.some(p => p.test(text))) continue;
+      let after: Element | null = block.nextElementSibling;
+      while (after?.tagName === "HR") after = after.nextElementSibling;
+      const hasList = after && (after.matches("ul, ol") || Boolean(after.querySelector("ul, ol, a[href]")) && flat(after.textContent).length < 240 && !after.matches("h1, h2, h3, h4, h5, h6, p"));
+      if (hasList) continue;
+      const prev = block.previousElementSibling;
+      const next = block.nextElementSibling;
+      if (prev?.tagName === "HR") prev.remove();
+      if (next?.tagName === "HR") next.remove();
+      drop(block, "orphan-heading");
     }
   }
 

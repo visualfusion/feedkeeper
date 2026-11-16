@@ -16,6 +16,11 @@ export const ANYWHERE: readonly RegExp[] = [
   /^[\w\-. ]{3,120}\.(?:jpe?g|png|webp|gif|avif)$/i,
 ];
 
+/** Verwaiste Empfehlungs-/Rubrik-Überschriften ohne nachfolgende Liste. */
+export const ORPHAN_HEADINGS: readonly RegExp[] = [
+  /^(?:Topaktuell|Mehr zum Thema|Weitere (?:Artikel|Meldungen)|Ähnliche Artikel|Verwandte Artikel|Auch interessant|Meistgelesen(?:e Artikel)?|Beliebte Artikel)$/i,
+];
+
 /** Fußzeilen am Ende des Textes; sie zählen nur in der zweiten Hälfte. */
 export const TRAILING: readonly RegExp[] = [
   /^(?:Der Beitrag|Dieser Beitrag|Der Artikel|Dieser Artikel) .{3,200} (?:erschien|erschien zuerst|erschien erstmals) (?:zuerst )?(?:auf|bei) .{2,60}$/i,
@@ -23,8 +28,7 @@ export const TRAILING: readonly RegExp[] = [
   /^Diskutiere (?:diesen|den) (?:Artikel|Beitrag) .{0,40}$/i,
   // Autoren-Follow-Zeilen am Artikelende.
   /^(?:Folge|Folgen Sie)\s+[^.!?]{1,60}:\s*(?:X(?:\s*\/\s*Twitter)?|Twitter|Bluesky|Mastodon|Threads|Instagram|Facebook|YouTube|LinkedIn|TikTok|RSS)\b.{0,120}$/i,
-  // Verwaiste Empfehlungs-/Rubrik-Überschriften am Artikelende ohne nachfolgende Liste.
-  /^(?:Topaktuell|Mehr zum Thema|Weitere (?:Artikel|Meldungen)|Ähnliche Artikel|Verwandte Artikel|Auch interessant|Meistgelesen(?:e Artikel)?|Beliebte Artikel)$/i,
+  ...ORPHAN_HEADINGS,
   // Aufrufe am Artikelende, der Seite bei Google News zu folgen oder die App herunterzuladen.
   /^(?:Noch mehr [^.!?]{2,50}\?\s*)?(?:Dann\s+)?(?:folge|folgen Sie)\s+[^.!?]{2,50}\s+(?:bei|auf)\s+Google(?:\s+News|\s+Discover)?(?:\s+oder\s+(?:hol|holen Sie)\s+(?:dir|sich)\s+unsere\s+App)?\.?$/i,
 ];
