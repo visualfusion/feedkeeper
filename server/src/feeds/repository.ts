@@ -1,3 +1,4 @@
+import { config } from "../config.js";
 import { db } from "../db/index.js";
 import { articleText } from "./articleContent.js";
 import { LEAD_VERSION } from "./contentNoise.js";
@@ -147,12 +148,14 @@ export function subscribe(
          folder_id = COALESCE(excluded.folder_id, subscriptions.folder_id)`,
     )
     .run(userId, feedId, label?.trim() || null, folderId ?? null, nextPosition);
+  refreshFeedPollInterval(feedId);
   return Number(result.lastInsertRowid);
 }
 
 export function unsubscribe(userId: number, feedId: number): void {
   db.transaction(() => {
     db.prepare("DELETE FROM subscriptions WHERE user_id = ? AND feed_id = ?").run(userId, feedId);
+    refreshFeedPollInterval(feedId);
     removeFeedIfUnused(feedId);
   })();
 }
@@ -168,6 +171,8 @@ export function removeFeedIfUnused(feedId: number): void {
       AND id NOT IN (SELECT CAST(selected.value AS INTEGER) FROM editions e, json_each(e.item_ids) selected
         WHERE e.source = 'curated' AND e.status <> 'dismissed')`,
   ).run(feedId);
+  // A later subscriber starts with everything the feed lists, as with a feed nobody had before.
+  db.prepare("DELETE FROM item_tombstones WHERE feed_id = ?").run(feedId);
   db.prepare("DELETE FROM feeds WHERE id = ? AND is_system_inbox = 0 AND NOT EXISTS (SELECT 1 FROM items WHERE feed_id = ?)").run(feedId, feedId);
 }
 
@@ -215,6 +220,7 @@ export function listSubscriptionsForUser(userId: number): SubscribedFeed[] {
          s.full_text_mode AS full_text_mode,
          s.notify AS notify,
          s.badge AS badge,
+         COALESCE(s.poll_interval_minutes, f.poll_interval_minutes) AS poll_interval_minutes,
          (
            SELECT COUNT(*) FROM items i
            WHERE i.feed_id = f.id
@@ -286,6 +292,9 @@ export function updateFeedAfterPoll(
   }
 }
 
+/** A tombstone records that its feed still lists the article; once a day is enough for its 90-day expiry. */
+const TOMBSTONE_TOUCH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
 export function upsertItems(
   feedId: number,
   items: Array<{
@@ -315,9 +324,18 @@ export function upsertItems(
        author = COALESCE(?, author)
      WHERE feed_id = ? AND guid = ?`,
   );
+  const tombstone = db.prepare<[number, string], { last_seen_at: string }>("SELECT last_seen_at FROM item_tombstones WHERE feed_id = ? AND guid = ?");
+  const touchTombstone = db.prepare("UPDATE item_tombstones SET last_seen_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE feed_id = ? AND guid = ?");
+  const touchBefore = new Date(Date.now() - TOMBSTONE_TOUCH_INTERVAL_MS).toISOString();
   const insertMany = db.transaction((rows: typeof items) => {
     let inserted = 0;
     for (const row of rows) {
+      // Retention removed this article; the feed still lists it. Keep it gone instead of adding it again as new.
+      const removed = tombstone.get(feedId, row.guid);
+      if (removed) {
+        if (removed.last_seen_at < touchBefore) touchTombstone.run(feedId, row.guid);
+        continue;
+      }
       const values = [
         feedId,
         row.guid,
@@ -574,6 +592,7 @@ export function findSubscriptionForUser(userId: number, feedId: number): Subscri
          s.full_text_mode AS full_text_mode,
          s.notify AS notify,
          s.badge AS badge,
+         COALESCE(s.poll_interval_minutes, f.poll_interval_minutes) AS poll_interval_minutes,
          (
            SELECT COUNT(*) FROM items i
            WHERE i.feed_id = f.id
@@ -666,8 +685,27 @@ export function deleteFolder(userId: number, id: number): void {
   db.prepare("DELETE FROM folders WHERE id = ? AND user_id = ?").run(id, userId);
 }
 
-export function updateFeedPollInterval(feedId: number, minutes: number): void {
-  db.prepare("UPDATE feeds SET poll_interval_minutes = ? WHERE id = ?").run(minutes, feedId);
+/** The interval a subscription gets until its subscriber picks one. */
+export function defaultPollIntervalMinutes(): number {
+  return Math.max(config.minPollIntervalMinutes, 15);
+}
+
+/** A subscriber's own choice; it never slows down the feed for anyone else. */
+export function updateSubscriptionPollInterval(userId: number, feedId: number, minutes: number): void {
+  db.transaction(() => {
+    db.prepare("UPDATE subscriptions SET poll_interval_minutes = ? WHERE user_id = ? AND feed_id = ?").run(minutes, userId, feedId);
+    refreshFeedPollInterval(feedId);
+  })();
+}
+
+/** One poll serves every subscriber, so a feed runs at the shortest interval any of them chose. */
+export function refreshFeedPollInterval(feedId: number): void {
+  db.prepare(
+    `UPDATE feeds SET poll_interval_minutes = (
+       SELECT MIN(COALESCE(s.poll_interval_minutes, ?)) FROM subscriptions s WHERE s.feed_id = feeds.id
+     )
+     WHERE id = ? AND is_system_inbox = 0 AND EXISTS (SELECT 1 FROM subscriptions s WHERE s.feed_id = feeds.id)`,
+  ).run(defaultPollIntervalMinutes(), feedId);
 }
 
 export function markAllRead(userId: number, filter?: number | { feedId?: number; folderId?: number }): number {
@@ -827,6 +865,8 @@ export function replaceFeedUrl(feedId: number, url: string): void {
 export function moveSubscription(userId: number, fromFeedId: number, toFeedId: number): void {
   db.transaction(() => {
     db.prepare("UPDATE subscriptions SET feed_id = ? WHERE user_id = ? AND feed_id = ?").run(toFeedId, userId, fromFeedId);
+    refreshFeedPollInterval(toFeedId);
+    refreshFeedPollInterval(fromFeedId);
     removeFeedIfUnused(fromFeedId);
   })();
 }

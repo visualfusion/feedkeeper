@@ -106,6 +106,29 @@ export function updateRetentionSettings(settings: Partial<RetentionSettings>): R
   return getRetentionSettings();
 }
 
+/** Feeds poll at most weekly, so an article a feed still lists refreshes its tombstone long before this. */
+const TOMBSTONE_RETENTION_DAYS = 90;
+
+/**
+ * Deletes the matching articles and remembers them per feed. Retention cannot remove an article from the publisher's feed,
+ * so without the tombstone the next poll would add it again as a new, unread article.
+ */
+function retireItems(where: string, ...params: unknown[]): number {
+  return db.transaction(() => {
+    db.prepare(
+      `INSERT INTO item_tombstones (feed_id, guid)
+       SELECT feed_id, guid FROM items WHERE ${where}
+       ON CONFLICT (feed_id, guid) DO UPDATE SET last_seen_at = excluded.last_seen_at`,
+    ).run(...params);
+    return db.prepare(`DELETE FROM items WHERE ${where}`).run(...params).changes;
+  })();
+}
+
+/** Forgets articles their feed has stopped listing; those cannot come back. */
+function pruneItemTombstones(): void {
+  db.prepare("DELETE FROM item_tombstones WHERE last_seen_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?)").run(`-${TOMBSTONE_RETENTION_DAYS} days`);
+}
+
 export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
   const settings = {
     ...getRetentionSettings(),
@@ -119,9 +142,8 @@ export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
 
   // 1. Delete read items older than retentionReadDays (excluding bookmarked items and items with notes)
   if (settings.retentionReadDays > 0) {
-    const res = db.prepare(
-      `DELETE FROM items
-       WHERE id IN (
+    deletedReadItems = retireItems(
+      `id IN (
          SELECT i.id
          FROM items i
          WHERE i.id NOT IN (SELECT item_id FROM item_bookmarks)
@@ -137,29 +159,27 @@ export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
            )
            AND COALESCE(julianday(i.published_at), julianday(i.created_at)) <= julianday('now', '-' || ? || ' days')
        )`,
-    ).run(settings.retentionReadDays);
-    deletedReadItems = res.changes;
+      settings.retentionReadDays,
+    );
   }
 
   // 2. Delete all items older than retentionMaxDays (excluding bookmarked items and items with notes)
   if (settings.retentionMaxDays > 0) {
-    const res = db.prepare(
-      `DELETE FROM items
-       WHERE id NOT IN (SELECT item_id FROM item_bookmarks)
+    deletedOldItems = retireItems(
+      `id NOT IN (SELECT item_id FROM item_bookmarks)
          AND id NOT IN (SELECT item_id FROM item_notes)
          AND feed_id NOT IN (SELECT id FROM feeds WHERE is_system_inbox = 1)
          AND id NOT IN (SELECT CAST(selected.value AS INTEGER) FROM editions e, json_each(e.item_ids) selected
            WHERE e.source = 'curated' AND e.status <> 'dismissed')
          AND COALESCE(julianday(published_at), julianday(created_at)) <= julianday('now', '-' || ? || ' days')`,
-    ).run(settings.retentionMaxDays);
-    deletedOldItems = res.changes;
+      settings.retentionMaxDays,
+    );
   }
 
   // 3. Delete items exceeding retentionMaxItemsPerFeed (excluding bookmarked items and items with notes)
   if (settings.retentionMaxItemsPerFeed > 0) {
-    const res = db.prepare(
-      `DELETE FROM items
-       WHERE id NOT IN (SELECT item_id FROM item_bookmarks)
+    deletedPerFeedExcess = retireItems(
+      `id NOT IN (SELECT item_id FROM item_bookmarks)
          AND id NOT IN (SELECT item_id FROM item_notes)
          AND feed_id NOT IN (SELECT id FROM feeds WHERE is_system_inbox = 1)
          AND id NOT IN (SELECT CAST(selected.value AS INTEGER) FROM editions e, json_each(e.item_ids) selected
@@ -174,9 +194,11 @@ export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
            )
            WHERE rn > ?
          )`,
-    ).run(settings.retentionMaxItemsPerFeed);
-    deletedPerFeedExcess = res.changes;
+      settings.retentionMaxItemsPerFeed,
+    );
   }
+
+  pruneItemTombstones();
 
   // Feeds kept only for saved articles go once nothing of them is saved anymore.
   removeUnusedFeeds();

@@ -8,7 +8,7 @@ import {
   findSubscriptionForUser,
   updateSubscriptionLabel,
   updateSubscriptionFolder,
-  updateFeedPollInterval,
+  updateSubscriptionPollInterval,
   updateSubscriptionFullTextMode,
   updateSubscriptionNotify,
   updateSubscriptionBadge,
@@ -147,10 +147,9 @@ export function updateFeedSettings(
   }
 
   if (settings.pollIntervalMinutes !== undefined) {
-    // The poll interval is stored per feed (shared across every subscriber),
-    // so it's floored account-wide rather than trusting each caller's input.
+    // Stored per subscription; the feed polls at the shortest interval among its subscribers, never below the server minimum.
     const minutes = Math.max(settings.pollIntervalMinutes, config.minPollIntervalMinutes);
-    updateFeedPollInterval(feedId, minutes);
+    updateSubscriptionPollInterval(userId, feedId, minutes);
   }
 
   const subscription = findSubscriptionForUser(userId, feedId);

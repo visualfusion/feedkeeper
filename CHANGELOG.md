@@ -2,6 +2,15 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [Unreleased]
+
+### Fixed
+- Articles removed by retention no longer come back as new, unread articles (with a push notification) on the next poll while their feed still lists them. The server remembers removed articles per feed and forgets them once the feed stops listing them for 90 days or loses its last subscriber.
+- A subscriber's poll interval now applies to their own subscription only. A shared feed polls at the shortest interval any of its subscribers chose, so one account can no longer slow a feed down for everyone else on the instance.
+
+### Upgrade notes
+- Existing subscriptions keep the poll interval their feed has today. New subscriptions start at the server default.
+
 ## [0.38.3] - 2026-11-16
 
 ### Fixed
