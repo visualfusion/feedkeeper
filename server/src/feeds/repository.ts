@@ -746,14 +746,10 @@ export function markItemUnread(userId: number, itemId: number): number {
   return db.prepare("DELETE FROM item_reads WHERE user_id = ? AND item_id = ?").run(userId, itemId).changes;
 }
 
+/** Whatever a person may open they may also save, including articles of their edition from a feed they have left. */
 export function bookmarkItem(userId: number, itemId: number): number {
-  return db.prepare(
-    `INSERT INTO item_bookmarks (user_id, item_id)
-     SELECT ?, i.id FROM items i
-     JOIN subscriptions s ON s.feed_id = i.feed_id AND s.user_id = ?
-     WHERE i.id = ?
-     ON CONFLICT (user_id, item_id) DO NOTHING`,
-  ).run(userId, userId, itemId).changes;
+  if (!canAccessItem(userId, itemId)) return 0;
+  return db.prepare("INSERT INTO item_bookmarks (user_id, item_id) VALUES (?, ?) ON CONFLICT (user_id, item_id) DO NOTHING").run(userId, itemId).changes;
 }
 
 export function unbookmarkItem(userId: number, itemId: number): number {

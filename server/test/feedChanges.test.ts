@@ -11,6 +11,7 @@ const consentPage = `<html><head><title>Cookies zustimmen</title></head><body><h
 
 test("feed URL changes are validated and consent walls use article-specific retry delays", async () => {
   const hits: Record<string, number> = {};
+  let duringRaceProbe: (() => void) | undefined;
   const server = createServer((req, res) => {
     const path = req.url ?? "/";
     hits[path] = (hits[path] ?? 0) + 1;
@@ -18,6 +19,12 @@ test("feed URL changes are validated and consent walls use article-specific retr
     if (path === "/old.xml") return res.writeHead(200, { "content-type": "application/rss+xml" }).end(rss("Old", ["one", "walled"]).replaceAll("HOST", host));
     if (path === "/new.xml") return res.writeHead(200, { "content-type": "application/rss+xml" }).end(rss("New", ["two"]).replaceAll("HOST", host));
     if (path === "/third.xml") return res.writeHead(200, { "content-type": "application/rss+xml" }).end(rss("Third", ["three"]).replaceAll("HOST", host));
+    if (path === "/solo.xml") return res.writeHead(200, { "content-type": "application/rss+xml" }).end(rss("Solo", ["solo"]).replaceAll("HOST", host));
+    if (path === "/race.xml") {
+      // The first request is discovery, the second the probe that runs right before the move.
+      if (hits[path] === 2) duringRaceProbe?.();
+      return res.writeHead(200, { "content-type": "application/rss+xml" }).end(rss("Race", ["race"]).replaceAll("HOST", host));
+    }
     if (path === "/article") return res.writeHead(200, { "content-type": "text/html" }).end(article);
     if (path === "/walled") return res.writeHead(302, { location: "/sonstiges/zustimmung/auswahl.html" }).end();
     if (path.startsWith("/sonstiges/zustimmung/")) return res.writeHead(200, { "content-type": "text/html" }).end(consentPage);
@@ -31,7 +38,7 @@ test("feed URL changes are validated and consent walls use article-specific retr
   process.env.ALLOW_PRIVATE_FEEDS = "true";
   const { db, runMigrations } = await import("../src/db/index.js");
   const { subscribeToFeed, changeFeedUrl, updateFeedSettings } = await import("../src/feeds/service.js");
-  const { findItemById, findFeedById, bookmarkItem } = await import("../src/feeds/repository.js");
+  const { findItemById, findFeedById, bookmarkItem, subscribe } = await import("../src/feeds/repository.js");
   const { loadFullText } = await import("../src/feeds/fullText.js");
   runMigrations();
 
@@ -84,6 +91,20 @@ test("feed URL changes are validated and consent walls use article-specific retr
     // Per-subscription opt-out.
     updateFeedSettings(otherId, oldFeed.id, { fullTextMode: "never" });
     assert.deepEqual(await loadFullText(otherId, itemId("walled"), { force: true }), { ok: false, error: "full_text_disabled" });
+
+    // Another account adds the new address while it is being probed: the subscription joins that feed instead of failing.
+    const solo = await subscribeToFeed(ownerId, `${base}/solo.xml`);
+    let racedFeedId = 0;
+    duringRaceProbe = () => {
+      racedFeedId = Number(db.prepare("INSERT INTO feeds (url) VALUES (?)").run(`${base}/race.xml`).lastInsertRowid);
+      subscribe(otherId, racedFeedId);
+    };
+    const raced = await changeFeedUrl(ownerId, solo.id, `${base}/race.xml`);
+    assert.equal(hits["/race.xml"] >= 2, true);
+    assert.ok(racedFeedId);
+    assert.equal(raced.previousItemsKept, false);
+    assert.equal(raced.subscription.id, racedFeedId);
+    assert.equal(findFeedById(solo.id), undefined, "the old feed had no one left");
   } finally {
     await (await import("../src/feeds/poller.js")).stopPollingScheduler();
     server.close();

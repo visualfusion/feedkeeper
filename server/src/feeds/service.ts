@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { db } from "../db/index.js";
 import {
   createFeed,
   findFeedByUrl,
@@ -189,16 +190,20 @@ export async function changeFeedUrl(
     throw new FeedError(`feed_unreachable: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  let previousItemsKept: boolean;
-  if (!existing && countFeedSubscribers(feedId) === 1) {
-    replaceFeedUrl(feedId, url);
-    previousItemsKept = true;
-  } else {
-    const next = existing ?? createFeed(url, current.poll_interval_minutes);
+  // The probe takes a while: another account may have added this feed, or this person left the old one, in the meantime.
+  const previousItemsKept = db.transaction((): boolean => {
+    if (!isUserSubscribed(userId, feedId)) throw new FeedError("not_subscribed");
+    const added = findFeedByUrl(url);
+    if (added && isUserSubscribed(userId, added.id)) throw new FeedError("already_subscribed");
+    if (!added && countFeedSubscribers(feedId) === 1) {
+      replaceFeedUrl(feedId, url);
+      return true;
+    }
+    const next = added ?? createFeed(url, current.poll_interval_minutes);
     moveSubscription(userId, feedId, next.id);
     target = next.id;
-    previousItemsKept = false;
-  }
+    return false;
+  })();
 
   const feed = findFeedById(target);
   if (feed) await pollFeed(feed);

@@ -36,6 +36,14 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Accounts are cheap to ask for and expensive to hash; open signup must not be a way to flood the instance.
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -188,7 +196,7 @@ const signupSchema = z.object({
   displayName: z.string().min(1).max(100),
 });
 
-authRouter.post("/signup", (req, res) => {
+authRouter.post("/signup", signupLimiter, (req, res) => {
   if (!config.allowSignup) {
     res.status(403).json({ error: "signup_disabled" });
     return;

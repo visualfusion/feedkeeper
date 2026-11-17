@@ -7,6 +7,11 @@ All notable changes to FeedKeeper are documented here. The format follows [Keep 
 ### Fixed
 - Articles removed by retention no longer come back as new, unread articles (with a push notification) on the next poll while their feed still lists them. The server remembers removed articles per feed and forgets them once the feed stops listing them for 90 days or loses its last subscriber.
 - A subscriber's poll interval now applies to their own subscription only. A shared feed polls at the shortest interval any of its subscribers chose, so one account can no longer slow a feed down for everyone else on the instance.
+- Saving an article now works for every article a person may open, such as an article of their edition or one with their note from a feed they have left. Before, the save was confirmed but not stored.
+- Changing a subscription's feed URL no longer fails with a server error when another account adds the same feed while the new address is being checked.
+
+### Security
+- Account signup is limited to five attempts per address and hour on instances with open registration.
 
 ### Upgrade notes
 - Existing subscriptions keep the poll interval their feed has today. New subscriptions start at the server default.

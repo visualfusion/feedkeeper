@@ -68,6 +68,21 @@ test("feed metadata, retained articles, folder retries and account permissions",
     }
   });
 
+  await t.test("signup allows five attempts per address and hour", async () => {
+    // The signup above used the first of them; refused attempts count as well.
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const response = await fetch(`${base}/api/auth/signup`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: `flood-${attempt}@example.test`, password: "short", displayName: "Flood" }),
+      });
+      await response.arrayBuffer();
+      statuses.push(response.status);
+    }
+    assert.deepEqual(statuses, [400, 400, 400, 400, 429]);
+  });
+
   const addUser = db.prepare("INSERT INTO users (email, password_hash, display_name) VALUES (?, 'hash', 'Reader')");
   const owner = Number(addUser.run("owner@example.test").lastInsertRowid);
   const other = Number(addUser.run("other@example.test").lastInsertRowid);
