@@ -2,6 +2,17 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.38.5] - 2026-11-17
+
+### Fixed
+- Article extraction no longer mistakes a "most read" ranking block, marked by its analytics label, for the article on pages whose story is short.
+- Reader cleanup removes more page chrome at the start of a story: numeric dates (`2026-11-17`, `2026.11.17 Tue`, `2026年11月17日 17時54分`, also printed twice), relative ages (`4 minutes ago`, `vor 4 Minuten`, `4分前`), section kickers (`NEWS | Sound`), pager counts (`1 / 1`), a date followed by its category link, and a link that only repeats the headline with a label or time.
+- Reader cleanup removes the tag cloud at the foot of a page (`Tags`, `Schlagwörter`, `注目ワード`) together with the navigation below it.
+- A video link saved with a player's technical name as its label (`vimeo-player`, `YouTube video player`) now shows the platform name instead.
+
+### Upgrade notes
+- No migrations. Stored articles are cleaned when they are served; articles whose stored text is only a ranking block are corrected when they are fetched again.
+
 ## [0.38.4] - 2026-11-17
 
 ### Fixed
