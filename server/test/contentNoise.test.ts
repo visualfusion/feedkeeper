@@ -784,3 +784,44 @@ test("standalone image filenames shown as headings or links are removed in reade
   assert.doesNotMatch(cleaned, /example_photo_01\.jpg/);
   assert.match(cleaned, /ministry confirmed/);
 });
+
+test("numeric and relative datelines, section kickers and pagers near the start are removed in DE, EN and JA", () => {
+  const lines = ["2026-11-17", "2026.11.17 Tue", "2026-11-17 2026-11-17", "2026年11月17日 17時54分", "2026/11/17（火）", "17.11.2026 Di",
+    "4分前", "vor 4 Minuten", "4 minutes ago", "gerade eben", "NEWS ｜ サウンド / 展覧会", "News | Sound / Exhibition", "Nachrichten | Technik / Netz", "1 / 1"];
+  for (const line of lines) {
+    const cleaned = cleanReaderHtml(`<p>${line}</p>` + BODY);
+    assert.ok(!cleaned.includes(line), `the head line should be removed: ${line}`);
+    assert.match(cleaned, /ministry confirmed/);
+  }
+  for (const kept of ["2026 was a year of change.", "He arrived 4 minutes ago and left.", "News | the new rules apply."]) {
+    assert.ok(cleanReaderHtml(`<p>${kept}</p>` + BODY).includes(kept), `a sentence stays: ${kept}`);
+  }
+  assert.ok(cleanReaderHtml(BODY + BODY.replace(/ministry/g, "agency").replace(/Operators/g, "Providers").replace(/Critics/g, "Observers") + "<p>2026-11-17</p>").includes("2026-11-17"), "a date after the start of the text stays");
+});
+
+test("a dateline with a category link and a link to the story itself at the start are removed", () => {
+  const withChip = cleanReaderHtml('<p><time datetime="2026-11-17T17:54:00+09:00">2026年11月17日 17時54分</time> <a href="https://example.test/c/ai/">AI</a></p>' + BODY);
+  assert.doesNotMatch(withChip, /2026年11月17日|>AI</);
+  const echo = cleanReaderHtml('<ul><li><a href="https://example.test/n/1">JUST IN Mayor resigns after twelve years in office (12:21)</a></li></ul>' + BODY, "Mayor resigns after twelve years in office");
+  assert.doesNotMatch(echo, /JUST IN/);
+  const stays = cleanReaderHtml('<p><a href="https://example.test/n/1">Mayor resigns after twelve years in office and announces a long list of plans for the coming months</a></p>' + BODY, "Mayor resigns after twelve years in office");
+  assert.match(stays, /announces a long list/, "a longer line that merely contains the headline stays");
+});
+
+test("the tag cloud at the foot of a page and what follows it are removed in DE, EN and JA", () => {
+  for (const heading of ["注目ワード", "Tags", "Schlagwörter"]) {
+    const html = BODY + `<h3>${heading}</h3><p><a href="https://example.test/t/1">One</a><a href="https://example.test/t/2">Two</a></p><h2>Latest news</h2><ul><li><a href="https://example.test/n/1">Another story</a></li></ul>`;
+    const cleaned = cleanReaderHtml(html);
+    assert.doesNotMatch(cleaned, new RegExp(`${heading}|Another story|Latest news`), `tag cloud and tail go: ${heading}`);
+    assert.match(cleaned, /ministry confirmed/);
+  }
+  const early = `<h3>Tags</h3><p>${"A long opening section. ".repeat(80)}</p>`;
+  assert.match(cleanReaderHtml(early), /long opening section/, "a tag heading far from the end does not cut the story");
+});
+
+test("a saved video link labelled with the player's technical name shows the platform instead", () => {
+  const html = '<p><a href="https://vimeo.com/1244728132" data-media="video">vimeo-player</a></p>' + BODY;
+  assert.match(cleanReaderHtml(html), />Vimeo</);
+  const named = '<p><a href="https://vimeo.com/1244728132" data-media="video">Making of the film</a></p>' + BODY;
+  assert.match(cleanReaderHtml(named), /Making of the film/);
+});

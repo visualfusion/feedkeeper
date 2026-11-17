@@ -5,6 +5,8 @@ import { SNIPPET_BYLINES, SNIPPET_IMAGE_METADATA } from "./content/patterns/snip
 import { BOILERPLATE_NEWSLETTER, BOILERPLATE_ORPHAN_HEADINGS } from "./content/patterns/boilerplate/index.js";
 import { CONSENT_ANCHORS, CONSENT_COMPANIONS } from "./content/patterns/consent/index.js";
 import { SIDEBAR_HEADINGS } from "./content/patterns/sidebars/index.js";
+import { NUMERIC_DATELINE, RELATIVE_AGES, SECTION_KICKERS } from "./content/patterns/datelines/index.js";
+import { TAG_HEADINGS } from "./content/patterns/tag-headings/index.js";
 import { resolveEmbeds } from "./content/embeds/index.js";
 import { embedTarget } from "./content/embeds/video.js";
 import { socialFrameTarget } from "./content/embeds/social.js";
@@ -287,8 +289,11 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
       } else {
         if (isEmptyBylineMetadata(text)) { drop(block, "byline"); continue; }
         if (text.length <= 60) {
-          if (DATE_ONLY.test(text)) { drop(block, "dateline"); continue; }
+          if (DATE_ONLY.test(text) || NUMERIC_DATELINE.test(text) || RELATIVE_AGES.some(pattern => pattern.test(text))) { drop(block, "dateline"); continue; }
           if (READING_TIME_ONLY.test(text)) { drop(block, "reading-time"); continue; }
+          if (SECTION_KICKERS.some(pattern => pattern.test(text))) { drop(block, "section-kicker"); continue; }
+          // The page number of a one-page article ("1 / 1") belongs to the publisher's pager, not to the story.
+          if (/^\d{1,3}\s*[/／]\s*\d{1,3}$/.test(text)) { drop(block, "pager"); continue; }
           // When the feed names the author, the reader shows the name in its head: a byline that only says that goes.
           cleanByline(block, text);
           if (!root.contains(block)) continue;
@@ -297,13 +302,21 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
     }
     // A block that holds a picture is more than the repeated headline: the picture stays.
     if (headline && normalized(text) === headline && (position < 4 || (heading && position < 14)) && !block.querySelector("img, picture, video")) { drop(block, "title-repeat"); continue; }
+    // A link to the story itself at the very start ("JUST IN <headline> (12:21)"): the headline plus a short label or time.
+    if (headline.length >= 8 && position < 4 && block.querySelector("a[href]") && !block.querySelector("img, picture, video") && charsBefore(root, block) <= 300) {
+      const own = normalized(text);
+      if (own !== headline && own.includes(headline) && own.length <= headline.length + 24) { drop(block, "title-repeat"); continue; }
+    }
     if (position < 14 && /^(Audiobeitrag|Videobeitrag)\s*>/.test(text) && headline && normalized(text).endsWith(headline)) { drop(block, "title-repeat"); continue; }
     if (/^[>›»|/·•–—-]+$/.test(text)) { drop(block, "separator"); continue; }
     if (/^(Audiobeitrag|Videobeitrag|Bildbeitrag|Autoplay)$/i.test(text) || (position < 8 && /^(Bild|Photo|写真)$/i.test(text))) { drop(block, "player"); continue; }
     if (!block.querySelector("img, picture, video, audio, iframe") && /^[\w\-. ]{3,120}\.(?:jpe?g|png|webp|gif|avif)$/i.test(text)) { drop(block, "filename"); continue; }
     if (!pastStart && text.length <= 70 && block.querySelector("time") && charsBefore(root, block) <= 600) {
       const rest = flat(text.replace(flat(block.querySelector("time")?.textContent), ""));
-      if (/^(news|ニュース|nachrichten|stand|zuletzt aktualisiert|aktualisiert|ver(ö|oe)ffentlicht|updated|published|posted)?\s*[:·|•-]*\s*$/i.test(rest)) { drop(block, "dateline"); continue; }
+      // A short category link next to the date ("2026年11月17日 17時54分 AI") is the section chip of the dateline.
+      const chips = [...block.querySelectorAll("a")].map(anchor => flat(anchor.textContent));
+      const unlinked = chips.length > 0 && chips.every(chip => chip.length <= 30) ? flat(chips.reduce((left, chip) => (chip ? left.replace(chip, "") : left), rest)) : rest;
+      if (/^(news|ニュース|nachrichten|stand|zuletzt aktualisiert|aktualisiert|ver(ö|oe)ffentlicht|updated|published|posted)?\s*[:·|•-]*\s*$/i.test(unlinked)) { drop(block, "dateline"); continue; }
     }
     const anchors = block.querySelectorAll("a");
     if (text.length <= 60 && anchors.length === 1 && anchors[0].getAttribute("href")?.startsWith("#") && flat(anchors[0].textContent) === text) {
@@ -341,6 +354,19 @@ function removeReaderNoise(root: DocumentFragment, title: string | null | undefi
       node = node.parentNode;
     }
     drop(block, "consent-wall");
+    break;
+  }
+
+  // The tag cloud at the foot of a page ("Tags", "注目ワード") and the page navigation below it: heading and everything after go.
+  for (const block of [...root.querySelectorAll("h2, h3, h4, h5, h6")]) {
+    if (!block.parentNode || !TAG_HEADINGS.some(pattern => pattern.test(flat(block.textContent)))) continue;
+    if (total - charsBefore(root, block) > TAIL_CHARACTERS) continue;
+    let node: Node = block;
+    while (node.parentNode && node !== root) {
+      while (node.nextSibling) node.nextSibling.remove();
+      node = node.parentNode;
+    }
+    drop(block, "tag-cloud");
     break;
   }
 

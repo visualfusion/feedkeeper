@@ -8,7 +8,7 @@ export const SIDEBAR_SELECTORS: readonly string[] = [
   ".yarpp-related", "#jp-relatedposts", ".jp-relatedposts", ".related-posts", ".related_posts", ".relatedposts",
   ".wp-block-latest-posts", ".post-navigation", ".crp_related",
   // Sites that mark the block with an analytics label.
-  "[data-track='popular-stories']", "[data-track='related-stories']", "[data-track='related-articles']",
+  "[data-track='popular-stories']", "[data-track='related-stories']", "[data-track='related-articles']", "[data-track*='ranking' i]",
   // Broadcasters' "this topic in our programme" teasers.
   ".relatedbroadcast",
 ];

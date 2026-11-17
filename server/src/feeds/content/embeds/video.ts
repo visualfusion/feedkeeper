@@ -1,4 +1,4 @@
-import { PLAY_LABEL } from "../patterns/play-labels/index.js";
+import { PLAY_LABEL, PLAYER_TITLES } from "../patterns/play-labels/index.js";
 import { type ContentRule, type ContentRoot, type NoiseStats, flat, linkParagraph, parseAddress, pruneEmpty } from "../shared.js";
 
 const PLAY_SOURCE = /(?:^|[/_.-])play[-_]?(?:icon|button|btn)?\.(?:svg|png|webp|gif)(?:[?#]|$)/i;
@@ -31,6 +31,15 @@ export function embedTarget(source: string): { url: string; name: string } | nul
   if (host === "dailymotion.com" && segments[0] === "embed" && segments[1] === "video" && /^\w+$/.test(segments[2] ?? "")) {
     return { url: `https://www.dailymotion.com/video/${segments[2]}`, name: "Dailymotion" };
   }
+  return null;
+}
+
+/** The name of the video site a watch-page address belongs to, for the labels of links that were saved without a title. */
+function videoSiteName(source: string): string | null {
+  const host = parseAddress(source)?.hostname.replace(/^(?:www|m)\./, "") ?? "";
+  if (/^(?:youtube(?:-nocookie)?\.com|youtu\.be)$/.test(host)) return "YouTube";
+  if (/^(?:player\.)?vimeo\.com$/.test(host)) return "Vimeo";
+  if (/^dailymotion\.com$/.test(host)) return "Dailymotion";
   return null;
 }
 
@@ -83,7 +92,8 @@ function resolveVideoPlayers(root: ContentRoot, stats: NoiseStats): { changed: b
     const target = embedTarget(frame.getAttribute("src") ?? frame.getAttribute("data-src") ?? "");
     if (!target) continue;
     const parent = frame.parentNode;
-    const replacement = linkParagraph(frame.ownerDocument, target.url, flat(frame.getAttribute("title")) || target.name);
+    const title = flat(frame.getAttribute("title"));
+    const replacement = linkParagraph(frame.ownerDocument, target.url, title && !PLAYER_TITLES.some(pattern => pattern.test(title)) ? title : target.name);
     frame.replaceWith(replacement);
     pruneEmpty(parent);
     links.push(replacement.querySelector("a") as Element);
@@ -108,6 +118,13 @@ export const videoPlayers: ContentRule = {
   apply(root, stats) {
     const { changed, links } = resolveVideoPlayers(root, stats);
     links.forEach(link => link.setAttribute("data-media", "video"));
-    return changed;
+    // A video link already saved with the player's technical name as its label ("vimeo-player") shows the platform instead.
+    let renamed = false;
+    for (const link of root.querySelectorAll("a[data-media='video'][href]")) {
+      const name = videoSiteName(link.getAttribute("href") ?? "");
+      const label = flat(link.textContent);
+      if (name && label && PLAYER_TITLES.some(pattern => pattern.test(label))) { link.textContent = name; renamed = true; }
+    }
+    return changed || renamed;
   },
 };

@@ -41,7 +41,9 @@ Most contributions are a pattern in one of the files under `patterns/`:
   lines. Match whole sentences or characteristic phrases. A single word such as "privacy" would hit articles about it.
 - A social platform or audio player: `patterns/social-platforms.ts` (host, path of a single post, kind).
 - A heading or markup that introduces a list of other articles: `patterns/sidebars/`.
-- The label of a play-button picture: `patterns/play-labels/`.
+- The label of a play-button picture: `patterns/play-labels/`. Frame titles that only name the player technology (`vimeo-player`) are listed there too, so the platform name is shown instead.
+- A line at the start of the text that only repeats the page head, such as a numeric date, "4 minutes ago" or a section kicker (`NEWS | Sound`): `patterns/datelines/`.
+- The heading of the tag cloud at the foot of a page ("Tags", "注目ワード"): `patterns/tag-headings/`. Heading and the tail after it go.
 - A line a site puts into its own text ("Follow us on Google", the words of a download button, "first appeared on", related links under a story): `patterns/boilerplate/`. `ANYWHERE` holds lines that are noise wherever they stand, `TRAILING` footers that count only in the second half of the text. A block, or a run of text between two `<br>`, goes only when its whole text is one of these lines.
 - The label of a block that a script fills, such as "wird geladen …" or "Loading…", or the heading of a comment box ("What do you think so far?"): `patterns/loading/`.
 - The heading of a table of contents that a script builds, such as "Table of Contents" or "Inhaltsverzeichnis": `patterns/contents/`. The heading goes only when no list of links follows it.
