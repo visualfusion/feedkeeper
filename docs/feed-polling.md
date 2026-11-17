@@ -24,6 +24,12 @@ On a host with little memory, start with concurrency 2, host concurrency 1 and 3
 
 Keep the request timeout within the attempt timeout. The request timeout starts when a download gets its place in the shared limit, so a busy server does not use it up while the download waits. `MIN_POLL_INTERVAL_MINUTES` still controls the shortest feed interval. Raising the global limit need not raise the host limit.
 
+## Intervals and retention
+
+Every subscriber chooses their own poll interval. A feed that several accounts share is fetched at the shortest interval any of them chose, never below `MIN_POLL_INTERVAL_MINUTES`; one account's longer interval never slows the feed down for the others. A subscription without a choice of its own uses the server default of 15 minutes (or the minimum, if that is higher).
+
+Retention removes old articles from the database, but not from the publisher's feed. FeedKeeper remembers each removed article per feed, so the next poll does not add it again as a new, unread article. That record is forgotten once the feed has stopped listing the article for 90 days, or when the feed loses its last subscriber.
+
 ## Refreshes and retries
 
 Feeds someone is waiting for, such as a new subscription or a manual refresh, run first; after that the oldest eligible jobs run, skipping busy or paused hosts. Downloads follow the same rule: discovery and the first fetch of a feed that is being subscribed go ahead of scheduled polls and icons, and when the waiting list is full they take the place of the newest background download. Discovery, redirects and icons share the download limits. Each hostname has its own limit, regardless of scheme or port; subdomains count separately.
