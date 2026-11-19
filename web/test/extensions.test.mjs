@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { groupSettingsSections, pickLocalized, resolveFooterLinks, resolveLoginForm, resolveMeta, resolvePasswordCard, resolveArticlesNotice, resolveSettingsExtensions } from "../src/extensions/host.ts";
+import { groupSettingsSections, pickLocalized, resolveFooterLinks, resolveLoginForm, resolveMeta, resolvePasswordCard, resolvePageExtensions, resolveArticlesNotice, resolveSettingsExtensions } from "../src/extensions/host.ts";
 
 const builtIn = ["account", "general", "users", "database"];
 const section = (id, extra = {}) => ({ id, label: `Label ${id}`, description: "Beschreibung", group: "Kunden", mount: () => {}, ...extra });
@@ -186,4 +186,16 @@ test("a host sets the page title and description by language, and only usable va
   for (const broken of [undefined, null, "text", 5, [], {}, { meta: "x" }, { meta: [] }, { meta: { title: {} } }]) {
     assert.deepEqual(resolveMeta(broken, "en"), { title: null, description: null });
   }
+});
+
+test("main navigation pages resolve only valid distinct registrations", () => {
+  const mount = () => {};
+  const page = (id, extra = {}) => ({ id, label: { en: "Overview", ja: "概要" }, icon: ["M4 6h16"], mount, ...extra });
+  assert.deepEqual(resolvePageExtensions({}, "ja"), []);
+  const pages = resolvePageExtensions({ pages: [
+    page("start"), page("start"), page("../other"), page("empty", { icon: [] }),
+    page("broken", { mount: null }), page("other"), page("third"), page("fourth"),
+  ] }, "ja-JP");
+  assert.deepEqual(pages.map(({ id, label }) => [id, label]), [["start", "概要"], ["other", "概要"], ["third", "概要"]]);
+  assert.equal(pages[0].mount, mount);
 });

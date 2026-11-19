@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.40.0] - 2026-11-19
+
+### Added
+- Web hosts can register signed-in pages in the desktop navigation and mobile tab bar. Pages can open articles in the built-in reader and use the web app's Japanese line breaking.
+
+### Upgrade notes
+- No database migrations. The new navigation entries appear when a host registers them.
+
 ## [0.39.0] - 2026-11-19
 
 ### Added

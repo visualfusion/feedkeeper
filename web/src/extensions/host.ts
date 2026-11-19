@@ -1,3 +1,5 @@
+import type { Item } from "../api/client.ts";
+
 // Extension points of the web app. A script that runs on the page can add pages to the settings, links to the
 // footers, and replace the sign-in form, for example to brand an installation, add the legal pages an operator
 // is required to link, or sign in through a company's single sign-on. The app reads one plain object:
@@ -286,4 +288,35 @@ export function resolveMeta(extensions: unknown, language: string): ResolvedMeta
     title: title && isText(title, 80) ? title : null,
     description: description && isText(description, 300) ? description : null,
   };
+}
+
+export interface PageExtensionContext {
+  userId: number;
+  language: string;
+  appendText: (element: HTMLElement, text: string) => void;
+  openArticle: (item: Item, onChange: (item: Item) => void) => void;
+}
+
+export interface PageExtension {
+  id: string;
+  label: string;
+  icon: string[];
+  mount: (container: HTMLElement, context: PageExtensionContext) => void | (() => void);
+}
+
+export function resolvePageExtensions(extensions: unknown, language: string): PageExtension[] {
+  if (!isObject(extensions) || !Array.isArray(extensions.pages)) return [];
+  const pages: PageExtension[] = [];
+  const seen = new Set<string>();
+  for (const page of extensions.pages) {
+    if (!isObject(page) || typeof page.id !== "string" || !ID_PATTERN.test(page.id) || seen.has(page.id)) continue;
+    const label = pickLocalized(page.label, language);
+    if (!isText(label, 40) || typeof page.mount !== "function") continue;
+    if (!Array.isArray(page.icon) || !page.icon.length || page.icon.length > 8 ||
+        !page.icon.every((path) => isText(path, 400))) continue;
+    pages.push({ id: page.id, label, icon: page.icon, mount: page.mount as PageExtension["mount"] });
+    seen.add(page.id);
+    if (pages.length === 3) break;
+  }
+  return pages;
 }

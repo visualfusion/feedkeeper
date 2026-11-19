@@ -139,3 +139,25 @@ A host can show one card above the list of articles, for example what a plan inc
 ## Where it lives
 
 `web/src/extensions/host.ts` validates and resolves everything, `useExtensions.ts` re-reads it on every announced change, and the components `SettingsPage.tsx`, `FooterLinks.tsx`, `LoginPage.tsx` and `ProfileMenu.tsx` use it. The unit tests are in `web/test/extensions.test.mjs`.
+
+## Main navigation pages
+
+```js
+extensions.pages = [{
+  id: "example",
+  label: { de: "Beispiel", en: "Example" },
+  icon: ["M4 4h16v16H4z"],
+  mount(container, { userId, language, appendText, openArticle }) {
+    const heading = document.createElement("h1");
+    appendText(heading, language === "de" ? "Beispiel" : "Example");
+    container.append(heading);
+    return () => { /* cancel outstanding requests or listeners */ };
+  },
+}];
+```
+
+Pages are shown in the main desktop navigation and mobile tab bar after sign-in. A page's address is
+`/extensions/<id>`. The host must serve the app shell at that address and enforce access on its own server.
+Up to three valid entries are accepted. `appendText` renders plain text with the app's Japanese line breaking.
+`openArticle(item, onChange)` opens the built-in reader with the web API's item shape and reports changes to
+the item. The mount is cleaned up on navigation, language changes and account changes.

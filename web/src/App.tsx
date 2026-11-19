@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AuthProvider, useAuth } from "./auth/AuthContext.tsx";
+import { ExtensionPage } from "./extensions/ExtensionPage.tsx";
 import { Layout } from "./components/Layout.tsx";
 import { OnboardingPage } from "./pages/OnboardingPage.tsx";
 import { LoginPage } from "./pages/LoginPage.tsx";
@@ -90,6 +91,7 @@ export default function App() {
               <Route path="/items" element={<ItemsPage />} />
               <Route path="/feeds" element={<FeedsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/extensions/:pageId" element={<ExtensionPage />} />
               <Route path="*" element={<Navigate to="/items" replace />} />
             </Route>
           </Routes>

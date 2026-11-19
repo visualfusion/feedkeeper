@@ -10,8 +10,12 @@ import { resetItemsScrollY } from "../utils/scrollState.ts";
 import { onItemsChanged, refreshBadge } from "../utils/badge.ts";
 import { syncNow } from "../utils/offlineSync.ts";
 
+import { resolvePageExtensions } from "../extensions/host.ts";
+import { useExtensions } from "../extensions/useExtensions.ts";
+
 export function Layout() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const pages = resolvePageExtensions(useExtensions(), i18n.resolvedLanguage || "en");
   const location = useLocation();
 
   // Send changes made offline and keep articles available offline: on start, when the app returns to the foreground and when the connection comes back.
@@ -66,12 +70,9 @@ export function Layout() {
     }
   };
 
-  const getActiveTabIndex = () => {
-    if (location.pathname.startsWith("/feeds")) return 1;
-    if (location.pathname.startsWith("/settings")) return 2;
-    return 0; // /items or default
-  };
-  const activeTabIndex = getActiveTabIndex();
+  const extensionIndex = pages.findIndex(({ id }) => location.pathname === `/extensions/${id}`);
+  const activeTabIndex = extensionIndex >= 0 ? extensionIndex : pages.length +
+    (location.pathname.startsWith("/feeds") ? 1 : location.pathname.startsWith("/settings") ? 2 : 0);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -94,7 +95,7 @@ export function Layout() {
           </NavLink>
 
           <div className="flex items-center gap-3">
-            <DesktopNav onItemsClick={handleItemsClick} />
+            <DesktopNav onItemsClick={handleItemsClick} pages={pages} />
             <ProfileMenu />
           </div>
         </div>
@@ -132,10 +133,25 @@ export function Layout() {
             aria-hidden="true"
             className="absolute top-1.5 bottom-1.5 left-1.5 rounded-full bg-[var(--c-mobile-nav-active)] border border-[var(--c-mobile-nav-active-border)] shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] pointer-events-none no-drag"
             style={{
-              width: "calc((100% - 0.75rem) / 3)",
+              width: `calc((100% - 0.75rem) / ${3 + pages.length})`,
               transform: `translateX(calc(${activeTabIndex} * 100%))`,
             }}
           />
+
+          {pages.map(({ id, label, icon }) => (
+            <NavLink key={id} to={`/extensions/${id}`} draggable={false}
+              className="relative z-10 flex-1 min-w-0 no-drag select-none">
+              {({ isActive }) => (
+                <span className={`h-[54px] w-full rounded-full flex flex-col items-center justify-center gap-0.5 ${isActive
+                  ? "text-[var(--c-text)] font-semibold" : "text-[var(--c-text-muted)] font-medium"}`}>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    {icon.map((path) => <path key={path} d={path} />)}
+                  </svg>
+                  <span className="text-[11px] leading-tight tracking-tight text-center">{label}</span>
+                </span>
+              )}
+            </NavLink>
+          ))}
 
           {/* Tab: Articles */}
           <NavLink
