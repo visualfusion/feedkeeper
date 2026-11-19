@@ -2,6 +2,15 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.41.0] - 2026-11-19
+
+### Added
+- Per-feed notification and app icon count settings stay visible in browsers without Web Push or Badging API support. Notification preferences can be managed from any browser.
+- Hosted integrations can add native devices to the same feed notification queue used by Web Push.
+
+### Upgrade notes
+- Migration `0045_native_push.sql` preserves existing Web Push registrations and pending delivery cursors.
+
 ## [0.40.0] - 2026-11-19
 
 ### Added

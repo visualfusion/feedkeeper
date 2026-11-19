@@ -93,7 +93,7 @@ export function saveDevice(userId: number, target: PushTarget): void {
     ).run(userId, target.endpoint, target.keys.p256dh, target.keys.auth);
     // Keep the newest devices only.
     db.prepare(
-      `DELETE FROM push_devices WHERE user_id = ? AND id NOT IN (SELECT id FROM push_devices WHERE user_id = ? ORDER BY id DESC LIMIT ?)`,
+      `DELETE FROM push_devices WHERE user_id = ? AND endpoint IS NOT NULL AND id NOT IN (SELECT id FROM push_devices WHERE user_id = ? AND endpoint IS NOT NULL ORDER BY id DESC LIMIT ?)`,
     ).run(userId, userId, MAX_DEVICES_PER_USER);
   })();
 }
@@ -108,7 +108,7 @@ export function hasDevice(userId: number, endpoint: string): boolean {
 
 function devicesOf(userId: number): PushTarget[] {
   return db
-    .prepare<[number], { endpoint: string; p256dh: string; auth: string }>("SELECT endpoint, p256dh, auth FROM push_devices WHERE user_id = ?")
+    .prepare<[number], { endpoint: string; p256dh: string; auth: string }>("SELECT endpoint, p256dh, auth FROM push_devices WHERE user_id = ? AND endpoint IS NOT NULL")
     .all(userId)
     .map((row) => ({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }));
 }

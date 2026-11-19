@@ -1,6 +1,5 @@
 import { useState, type DragEvent } from "react";
 import { announceItemsChanged } from "../../utils/badge.ts";
-import { pushSupported } from "../../utils/push.ts";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -40,8 +39,8 @@ function FeedEditor({ feed, folderOptions, intervalOptions, onClose, onSaved }: 
   const [folderId, setFolderId] = useState<number | null>(feed.folder_id ?? null);
   const [pollInterval, setPollInterval] = useState(feed.poll_interval_minutes);
   const [fullText, setFullText] = useState(feed.full_text_mode !== "never");
-  const [notify, setNotify] = useState(feed.notify !== 0);
-  const [badge, setBadge] = useState(feed.badge !== 0);
+  const [notify, setNotify] = useState<boolean>();
+  const [badge, setBadge] = useState<boolean>();
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -52,8 +51,8 @@ function FeedEditor({ feed, folderOptions, intervalOptions, onClose, onSaved }: 
         folderId,
         pollIntervalMinutes: pollInterval,
         fullTextMode: fullText ? "auto" : "never",
-        notify,
-        badge,
+        ...(notify !== undefined ? { notify } : {}),
+        ...(badge !== undefined ? { badge } : {}),
       });
       announceItemsChanged();
       toast.success(t("feeds.changesSaved"));
@@ -102,25 +101,21 @@ function FeedEditor({ feed, folderOptions, intervalOptions, onClose, onSaved }: 
         </span>
       </label>
 
-      {pushSupported() && (
-        <label className="flex cursor-pointer select-none items-start gap-2.5 text-sm">
-          <input type="checkbox" className="mt-0.5 rounded" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
-          <span>
-            {t("feeds.notify")}
-            <span className="mt-0.5 block text-xs text-[var(--c-text-muted)]">{t("feeds.notifyHint")}</span>
-          </span>
-        </label>
-      )}
+      <label className="flex cursor-pointer select-none items-start gap-2.5 text-sm">
+        <input type="checkbox" className="mt-0.5 rounded" checked={notify ?? (feed.notify !== 0)} onChange={(e) => setNotify(e.target.checked)} />
+        <span>
+          {t("feeds.notify")}
+          <span className="mt-0.5 block text-xs text-[var(--c-text-muted)]">{t("feeds.notifyHint")}</span>
+        </span>
+      </label>
 
-      {"setAppBadge" in navigator && (
-        <label className="flex cursor-pointer select-none items-start gap-2.5 text-sm">
-          <input type="checkbox" className="mt-0.5 rounded" checked={badge} onChange={(e) => setBadge(e.target.checked)} />
-          <span>
-            {t("feeds.badge")}
-            <span className="mt-0.5 block text-xs text-[var(--c-text-muted)]">{t("feeds.badgeHint")}</span>
-          </span>
-        </label>
-      )}
+      <label className="flex cursor-pointer select-none items-start gap-2.5 text-sm">
+        <input type="checkbox" className="mt-0.5 rounded" checked={badge ?? (feed.badge !== 0)} onChange={(e) => setBadge(e.target.checked)} />
+        <span>
+          {t("feeds.badge")}
+          <span className="mt-0.5 block text-xs text-[var(--c-text-muted)]">{t("feeds.badgeHint")}</span>
+        </span>
+      </label>
 
       <p className="truncate font-mono text-xs text-[var(--c-text-muted)]" title={feed.url}>{feed.url}</p>
 
@@ -201,7 +196,7 @@ export function FeedRow({ feed, editing, refreshing, highlighted = false, folder
             <Link to={`/items?feed=${feed.id}`} draggable={false} className="truncate font-semibold text-[var(--c-text)] hover:underline">
               {name}
             </Link>
-            {feed.notify !== 0 && pushSupported() && (
+            {feed.notify !== 0 && (
               <span
                 className="inline-flex shrink-0 items-center text-[var(--c-text-muted)]"
                 title={t("feeds.notifyActive")}

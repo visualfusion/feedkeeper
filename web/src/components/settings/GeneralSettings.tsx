@@ -67,7 +67,7 @@ function NotificationsRow() {
     void pushStatus().then(setStatus).catch(() => setStatus("unsupported"));
   }, []);
 
-  if (status === null) return null;
+  if (status === null) return <SettingRow label={t("settings.notifications")} />;
   if (status === "unsupported") {
     // iPhones and iPads only deliver notifications to apps on the home screen.
     const hint = installMode === "ios" ? t("settings.notificationsIos") : t("settings.notificationsUnsupported");

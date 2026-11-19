@@ -13,7 +13,7 @@ process.env.POLL_ATTEMPT_TIMEOUT_MS = "300";
 const { db, runMigrations } = await import("../src/db/index.js");
 const repo = await import("../src/feeds/repository.js");
 const { setPushSender, saveDevice } = await import("../src/push.js");
-const { PushOutbox, enqueueNewItemNotifications } = await import("../src/pushOutbox.js");
+const { PushOutbox, enqueueNewItemNotifications, setNativePushSender } = await import("../src/pushOutbox.js");
 runMigrations();
 
 async function until(condition: () => boolean) {
@@ -124,6 +124,37 @@ test("queued notifications recheck opt-out, muted keywords and account capabilit
   const worker = new PushOutbox(); worker.start();
   try { await until(() => pending() === 0); assert.equal(sent, 0); }
   finally { await worker.stop(); capabilities.setCapabilitiesProvider(previous); }
+});
+
+test("native and web devices share the feed outbox and native opt-outs are independent", async () => {
+  const { feed, users: [user] } = fixture();
+  const { createPersonalAccessToken, deleteDevice } = await import("../src/auth/tokens.js");
+  const native = createPersonalAccessToken(user, "Phone", "write", { platform: "ios", appVersion: null });
+  const optedOut = createPersonalAccessToken(user, "iPad", "write", { platform: "ios", appVersion: null });
+  const register = db.prepare(`INSERT INTO push_devices
+    (user_id,native_device_id,native_token,native_environment,native_language,native_feeds,native_editions)
+    VALUES (?,?,'token','development','en',?,1)`);
+  register.run(user, native.id, 1);
+  register.run(user, optedOut.id, 0);
+  const delivered: string[] = [];
+  setPushSender(async () => { delivered.push("web"); });
+  setNativePushSender(async (target, payload) => { delivered.push(`${target.native_device_id}:${payload.body}`); });
+  enqueueNewItemNotifications(feed.id, 1);
+  const worker = new PushOutbox();
+  worker.start();
+  try {
+    await until(() => pending() === 0);
+    assert.deepEqual(delivered, ["web", `${native.id}:First story`]);
+    deleteDevice(user, native.id);
+    enqueueNewItemNotifications(feed.id, 1);
+    worker.kick();
+    await until(() => pending() === 0);
+    assert.deepEqual(delivered, ["web", `${native.id}:First story`, "web"]);
+  } finally {
+    await worker.stop();
+    setNativePushSender(undefined);
+    setPushSender(null);
+  }
 });
 
 test("background push dispatch does not inherit the triggering HTTP request context", async () => {

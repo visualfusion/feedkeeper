@@ -1,7 +1,7 @@
 import { AsyncResource } from "node:async_hooks";
 import { db } from "./db/index.js";
 import { hasUserCapability } from "./auth/capabilities.js";
-import { newItemsPushPayload, sendPushTarget } from "./push.js";
+import { newItemsPushPayload, sendPushTarget, type PushPayload } from "./push.js";
 import { parseRetryAfter } from "./feeds/fetcher.js";
 
 // Initialized during startup, so background work never retains an HTTP capability cache.
@@ -11,6 +11,24 @@ interface Event {
   subscription_ceiling: number; subscription_cursor: number; current_subscription: number;
   device_cursor: number; device_ceiling: number; target_device: number; attempts: number;
 }
+
+export interface NativePushTarget {
+  native_device_id: number;
+  native_token: string;
+  native_environment: "development" | "production";
+  native_language: string;
+}
+type NativeSender = (target: NativePushTarget, payload: PushPayload) => Promise<void>;
+let nativeSender: NativeSender | undefined;
+
+export function setNativePushSender(sender: NativeSender | undefined): void {
+  nativeSender = sender;
+}
+
+type Device = { id: number } & (
+  | ({ endpoint: null } & NativePushTarget)
+  | { endpoint: string; p256dh: string; auth: string }
+);
 
 /** Call inside the article/job-completion transaction. No network or recipient-sized array. */
 export function enqueueNewItemNotifications(feedId: number, newItems: number): void {
@@ -101,9 +119,10 @@ export class PushOutbox {
       db.prepare(`UPDATE push_outbox SET current_subscription = ?, device_cursor = 0, device_ceiling = ?, target_device = 0, attempts = 0 WHERE id = ?`)
         .run(subscription.id, event.device_ceiling, event.id);
     }
-    const device = db.prepare<[number, number, number], { id: number; endpoint: string; p256dh: string; auth: string }>(`
-      SELECT id,endpoint,p256dh,auth FROM push_devices WHERE user_id = ? AND id > ? AND id <= ? ORDER BY id LIMIT 1`)
-      .get(subscription.user_id, event.device_cursor, event.device_ceiling);
+    const device = db.prepare<[number, number, number, number], Device>(`
+      SELECT id,endpoint,p256dh,auth,native_device_id,native_token,native_environment,native_language FROM push_devices
+      WHERE user_id = ? AND id > ? AND id <= ? AND (endpoint IS NOT NULL OR (native_feeds = 1 AND ?)) ORDER BY id LIMIT 1`)
+      .get(subscription.user_id, event.device_cursor, event.device_ceiling, nativeSender ? 1 : 0);
     if (!device) { this.advanceSubscription(event, subscription.id); return; }
     // A removed/reassigned retry target must not consume the next device's retry budget.
     if (device.id !== event.target_device) {
@@ -118,14 +137,18 @@ export class PushOutbox {
     const payload = newItemsPushPayload(feed, subscription.user_id, subscription.label, latest);
     if (!payload) { this.advanceSubscription(event, subscription.id); return; }
     try {
-      await sendPushTarget({ endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } }, payload);
+      if (device.endpoint === null) await nativeSender?.(device, payload);
+      else await sendPushTarget({ endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } }, payload);
       this.counters.delivered++;
     } catch (error) {
       this.counters.errors++;
       const status = (error as { statusCode?: number }).statusCode;
       if (status === 404 || status === 410) {
         // Do not remove a device if its ownership changed during I/O.
-        db.prepare("DELETE FROM push_devices WHERE id = ? AND user_id = ?").run(device.id, subscription.user_id);
+        if (device.endpoint === null) {
+          db.prepare("DELETE FROM push_devices WHERE id = ? AND native_token = ? AND native_environment = ?")
+            .run(device.id, device.native_token, device.native_environment);
+        } else db.prepare("DELETE FROM push_devices WHERE id = ? AND user_id = ?").run(device.id, subscription.user_id);
       } else if ((status === undefined || [408, 425, 429, 500, 502, 503, 504].includes(status)) && event.attempts < 2) {
         const headers = (error as { headers?: Record<string, string> }).headers;
         const retryAt = [429, 503].includes(status ?? 0) ? parseRetryAfter(headers?.["retry-after"] ?? null) ?? 0 : 0;
