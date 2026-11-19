@@ -32,7 +32,7 @@ export function canonicalArticleUrl(value: string | null): string | null {
   } catch { return null; }
 }
 
-function normalizedTitle(value: string | null): string {
+export function normalizedTitle(value: string | null): string {
   return (value ?? "").normalize("NFKD").replace(/\p{M}/gu, "").toLocaleLowerCase("en")
     .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
@@ -50,7 +50,7 @@ const TITLE_STOPWORDS = new Set([
   "uns", "unter", "vom", "von", "vor", "war", "was", "werden", "wie", "will", "wird", "wurde", "zu", "zum", "zur",
 ]);
 
-function significantTitleWords(normalized: string): Set<string> {
+export function significantTitleWords(normalized: string): Set<string> {
   if (!normalized) return new Set();
   const tokens = normalized.split(" ").filter((word) => word.length >= 2 && !TITLE_STOPWORDS.has(word));
   return new Set(tokens);

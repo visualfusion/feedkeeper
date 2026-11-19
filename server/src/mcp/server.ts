@@ -35,6 +35,7 @@ import { pollFeed } from "../feeds/poller.js";
 import { discoverFeeds } from "../feeds/discovery.js";
 import { APP_VERSION } from "../version.js";
 import { dismissEdition, editionCandidates, getEditionState, publishCuratedEdition, publishEditionFields } from "../native/editions.js";
+import { getFeedbackProfile } from "../native/editionFeedback.js";
 import { getNativePreferences } from "../native/preferences.js";
 import { NativeError } from "../native/requests.js";
 import { capabilityDenial, hasUserCapability } from "../auth/capabilities.js";
@@ -728,12 +729,17 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
 
   server.registerTool("get_edition_candidates", {
     title: "Get candidate articles for newspaper curation",
-    description: "Use this tool ONLY when preparing to curate a newspaper edition with publish_edition. Returns a bounded shortlist of unread articles from the last 7 days scored for editorial curation, user reading preferences, and current revision. Do NOT use for general reading or browsing (use get_digest or get_new_items instead).",
+    description: "Use this tool ONLY when preparing to curate a newspaper edition with publish_edition. Returns a bounded shortlist of unread articles from the last 7 days scored for editorial curation, user reading preferences, learned reader feedback signals (liked/disliked sources and topics), and current revision. Do NOT use for general reading or browsing (use get_digest or get_new_items instead).",
     annotations: readOnlyAnnotations,
     inputSchema: {
       limit: z.number().int().min(1).max(200).default(100).describe("Maximum number of candidate articles to evaluate (1 to 200, default: 100)"),
     },
-  }, async ({ limit }) => capabilityAction("editions", () => ({ preferences: getNativePreferences(userId), current: getEditionState(userId), candidates: editionCandidates(userId, new Date(), limit) })));
+  }, async ({ limit }) => capabilityAction("editions", () => ({
+    preferences: getNativePreferences(userId),
+    readerPreferences: getFeedbackProfile(userId),
+    current: getEditionState(userId),
+    candidates: editionCandidates(userId, new Date(), limit),
+  })));
 
   if (scope === "write") server.registerTool("publish_edition", {
     title: "Publish curated newspaper edition",

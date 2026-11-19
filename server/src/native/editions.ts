@@ -8,6 +8,7 @@ import { getNativePreferences } from "./preferences.js";
 import { checkEditionLayout, editionLayoutSchema, type EditionLayout } from "./editionLayout.js";
 import { NativeError, nativeRequest } from "./requests.js";
 import { hasEditionText, type EditionContent } from "./editionContent.js";
+import { createEditionFeedbackScorer } from "./editionFeedback.js";
 
 export const overviewSchema = z.array(z.object({
   heading: z.string().trim().min(1).max(160),
@@ -285,6 +286,7 @@ export function editionCandidates(userId: number, now = new Date(), limit = 200)
       JOIN items full_item ON full_item.id = r.id
       WHERE r.source_rank <= 40 ORDER BY r.source_rank, r.published DESC, r.id DESC LIMIT 4000`)
     .all(userId, userId, userId, new Date(now.getTime() - 7 * 86_400_000).toISOString(), now.toISOString());
+  const feedbackScore = createEditionFeedbackScorer(userId, now);
   const scored: EditionCandidate[] = rows.filter((row) =>
     (row.folder_id === null ? prefs.showUnfiled : !prefs.hiddenFolderIds.includes(row.folder_id)) && hasEditionText(row))
     .map((row) => ({
@@ -292,7 +294,8 @@ export function editionCandidates(userId: number, now = new Date(), limit = 200)
       title: row.title, url: row.link, publishedAt: row.published, snippet: decodeEntities(row.content_snippet) ?? null, imageUrl: row.image_url,
       readingMinutes: Math.max(1, Math.ceil(row.content_chars / 1400)), previouslySelected: previous.has(row.id),
       score: Math.pow(0.5, Math.max(0, now.getTime() - Date.parse(row.published)) / (18 * 3_600_000)) *
-        (row.folder_id !== null && prefs.preferredFolderIds.includes(row.folder_id) ? 1.4 : 1),
+        (row.folder_id !== null && prefs.preferredFolderIds.includes(row.folder_id) ? 1.4 : 1) *
+        feedbackScore(row.feed_id, row.title),
     }));
   // Candidate requests expose a shortlist in which every source has a fair chance, not only the busiest one.
   if (limit < AUTOMATIC_EDITION_LIMIT) {

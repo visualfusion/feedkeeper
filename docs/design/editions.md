@@ -88,7 +88,7 @@ Read tools:
 
 - `get_native_preferences`: the same shared preferences as the native API.
 - `get_edition`: current state and revision, including absence or dismissal.
-- `get_edition_candidates`: compact bounded candidates, current state and preferences. Follow up with `get_item` when the original text matters.
+- `get_edition_candidates`: compact bounded candidates, current state, `preferences`, and learned `readerPreferences` (`likedSources`, `dislikedSources`, `likedTopics`, `dislikedTopics` from edition feedback). Follow up with `get_item` when the original text matters.
 
 Write tools:
 

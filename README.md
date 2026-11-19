@@ -272,7 +272,7 @@ To have an AI assistant configure the MCP connection for you, create a Personal 
 | `export_opml` | Export all subscribed feeds as an OPML 2.0 XML string |
 | `import_opml` | Import feeds from an OPML 2.0 XML string |
 | `get_edition` | Read the current issue, source and revision, including expired or dismissed state |
-| `get_edition_candidates` | Get compact candidates respecting app section preferences and muted keywords |
+| `get_edition_candidates` | Get compact candidates respecting app section preferences, muted keywords, and learned reader feedback (`readerPreferences`) |
 | `publish_edition` | Publish an ordered curated issue with optional structured topic overviews and a presentation layout, expiry, revision checks and safe retries |
 | `dismiss_edition` | Dismiss the shared issue with revision and replay protection |
 

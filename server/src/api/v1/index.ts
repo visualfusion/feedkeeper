@@ -48,6 +48,7 @@ const FEATURES = [
   "native-preferences.client-settings",
   "edition.overview",
   "edition.layout",
+  "edition.feedback",
   "search.fts",
   "account-capabilities",
   "account-profile",

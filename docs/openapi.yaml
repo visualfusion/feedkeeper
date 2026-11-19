@@ -812,6 +812,59 @@ paths:
         "400": { $ref: "#/components/responses/Invalid" }
         "404": { description: "no_edition, with current EditionState", content: { application/json: { schema: { $ref: "#/components/schemas/EditionError" } } } }
         "409": { description: "revision_conflict with current EditionState", content: { application/json: { schema: { $ref: "#/components/schemas/EditionError" } } } }
+  /edition/feedback:
+    get:
+      tags: [Edition]
+      summary: Reader feedback votes on the active issue and total rating count
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [votes, totalCount]
+                properties:
+                  votes:
+                    type: object
+                    additionalProperties: { type: integer, enum: [-1, 1] }
+                  totalCount: { type: integer, minimum: 0 }
+    post:
+      tags: [Edition]
+      summary: Save or clear a reader vote for an edition article
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [itemId, vote]
+              properties:
+                itemId: { type: integer, minimum: 1 }
+                vote: { type: integer, enum: [-1, 0, 1] }
+      responses:
+        "403": { $ref: "#/components/responses/CapabilityDenied" }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, itemId, vote, totalCount]
+                properties:
+                  ok: { type: boolean }
+                  itemId: { type: integer, minimum: 1 }
+                  vote: { type: integer, enum: [-1, 0, 1] }
+                  totalCount: { type: integer, minimum: 0 }
+        "400": { $ref: "#/components/responses/Invalid" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Edition]
+      summary: Reset all stored edition feedback for the current user
+      responses:
+        "403": { $ref: "#/components/responses/CapabilityDenied" }
+        "204": { description: Done }
   /native-preferences:
     get:
       tags: [NativePreferences]

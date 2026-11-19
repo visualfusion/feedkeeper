@@ -48,6 +48,7 @@ import { buildOverview } from "../../mcp/digest.js";
 import { decodeCursor, encodeCursor } from "../../mcp/items.js";
 import { readingPositions, serializeItem, serializeSubscriptionDetail } from "./serialize.js";
 import { dismissEdition, editionCandidates, ensureEditionSchema, getEdition, getEditionState, type ServerEdition } from "../../native/editions.js";
+import { getEditionFeedback, resetEditionFeedback, setEditionFeedback } from "../../native/editionFeedback.js";
 import { getNativePreferences, patchNativePreferences } from "../../native/preferences.js";
 import { NativeError } from "../../native/requests.js";
 import { capabilityDenial, hasUserCapability, requireCapability } from "../../auth/capabilities.js";
@@ -662,6 +663,34 @@ resourcesRouter.delete("/edition", (req, res) => {
   if (!parsed.success) return invalid(res);
   nativeAction(res, () => {
     dismissEdition(req.user!.id, parsed.data);
+    res.status(204).end();
+  });
+});
+
+resourcesRouter.get("/edition/feedback", (req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  const edition = getEdition(req.user!.id);
+  const itemIds = edition ? edition.itemIds : undefined;
+  res.json(getEditionFeedback(req.user!.id, itemIds));
+});
+
+const editionFeedbackSchema = z.object({
+  itemId: z.number().int().positive(),
+  vote: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+}).strict();
+
+resourcesRouter.post("/edition/feedback", requireCapability("editions"), (req, res) => {
+  const parsed = editionFeedbackSchema.safeParse(req.body);
+  if (!parsed.success) return invalid(res, parsed.error.flatten());
+  nativeAction(res, () => {
+    const result = setEditionFeedback(req.user!.id, parsed.data.itemId, parsed.data.vote);
+    res.json({ ok: true, ...result });
+  });
+});
+
+resourcesRouter.delete("/edition/feedback", requireCapability("editions"), (req, res) => {
+  nativeAction(res, () => {
+    resetEditionFeedback(req.user!.id);
     res.status(204).end();
   });
 });
