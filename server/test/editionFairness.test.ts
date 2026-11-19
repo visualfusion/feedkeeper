@@ -4,6 +4,8 @@ import { test } from "node:test";
 process.env.DATABASE_PATH = ":memory:";
 process.env.SESSION_SECRET = "edition-fairness-test-secret-at-least-32-characters";
 const { fairShortlist, takeFairly } = await import("../src/native/editions.js");
+const { selectEdition } = await import("../src/native/editionSelection.js");
+const { DEFAULT_NATIVE_SETTINGS } = await import("../src/native/preferences.js");
 type Candidate = Parameters<typeof takeFairly>[0][number];
 
 let nextId = 1;
@@ -79,4 +81,26 @@ test("a source shown often lately waits behind the others within a round", () =>
   const candidates = [...source(1, 2, 1), ...source(2, 2, 2), ...source(3, 2, 3)];
   const first = takeFairly(candidates, [], new Map([[1, 5], [2, 0], [3, 1]])).slice(0, 3).map((item) => item.subscriptionId);
   assert.deepEqual(first, [2, 3, 1]);
+});
+
+test("selectEdition drops rephrased articles on the same developing story while keeping distinct topics from the same source", () => {
+  const baseTime = Date.UTC(2026, 10, 19, 4, 0);
+  const make = (id: number, subscriptionId: number, title: string, offsetMinutes: number, score: number): Candidate => ({
+    id, subscriptionId, folderId: 1, sourceName: `Source ${subscriptionId}`, folderName: "World",
+    title, url: `https://example.com/${id}`,
+    publishedAt: new Date(baseTime - offsetMinutes * 60_000).toISOString(),
+    snippet: null, imageUrl: null, readingMinutes: 3, previouslySelected: false, score,
+  });
+  const candidates = [
+    make(101, 1, "Trump to meet with Russia's Putin and China's Xi for historic joint meeting", 0, 1.0),
+    make(102, 1, "Trump lands in China with key meetings with Xi and Putin on the agenda", 85, 0.95),
+    make(103, 1, "Putin to meet with Trump and Xi after Ukrainian attack on Russian bridge", 130, 0.9),
+    make(104, 1, "Trump is in Asia ahead of Xi, Putin summit. And, tech leaders want Huang back at Nvidia", 240, 0.85),
+    make(105, 2, "Putin, Xi and Trump prepare for historic summit in Shenzhen", 50, 0.92),
+    make(106, 1, "Trump signs new tariff order on European electric vehicles", 180, 0.8),
+    make(107, 1, "Can the US and Iran sustain a fragile diplomatic truce", 200, 0.78),
+  ];
+  const chosen = selectEdition(candidates, { ...DEFAULT_NATIVE_SETTINGS, editionSize: 10, readingMinutes: null });
+  const ids = chosen.map((item) => item.id);
+  assert.deepEqual(ids, [101, 106, 107], "keeps only one article on the summit story and preserves distinct stories from the same source");
 });

@@ -37,11 +37,31 @@ function normalizedTitle(value: string | null): string {
     .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
+const TITLE_STOPWORDS = new Set([
+  // English
+  "a", "an", "and", "are", "as", "at", "be", "been", "before", "after", "ahead", "about", "amid", "by", "for",
+  "from", "has", "have", "had", "he", "her", "his", "in", "into", "is", "it", "its", "more", "new", "not", "of",
+  "on", "or", "out", "over", "report", "reports", "said", "says", "she", "that", "the", "their", "them", "they",
+  "this", "to", "up", "was", "were", "what", "when", "where", "which", "who", "why", "will", "with", "would",
+  // German
+  "aber", "als", "am", "an", "auch", "auf", "aus", "bei", "beim", "bis", "das", "dass", "dem", "den", "der", "des",
+  "die", "ein", "eine", "einem", "einen", "einer", "eines", "er", "es", "für", "fur", "hat", "haben", "im", "in",
+  "ist", "mit", "nach", "nicht", "noch", "nur", "oder", "sich", "sie", "sind", "so", "über", "uber", "um", "und",
+  "uns", "unter", "vom", "von", "vor", "war", "was", "werden", "wie", "will", "wird", "wurde", "zu", "zum", "zur",
+]);
+
+function significantTitleWords(normalized: string): Set<string> {
+  if (!normalized) return new Set();
+  const tokens = normalized.split(" ").filter((word) => word.length >= 2 && !TITLE_STOPWORDS.has(word));
+  return new Set(tokens);
+}
+
 interface PreparedCandidate {
   article: EditionCandidate;
   url: string | null;
   title: string;
   words: Set<string>;
+  significant: Set<string>;
   published: number;
 }
 
@@ -50,10 +70,21 @@ function duplicate(a: PreparedCandidate, b: PreparedCandidate): boolean {
   if (a.title.length >= 25 && a.title === b.title) return true;
   if (Math.abs(a.published - b.published) > 48 * 3_600_000) return false;
   const words = a.words, otherWords = b.words;
-  if (words.size < 6 || otherWords.size < 6) return false;
-  if (Math.min(words.size, otherWords.size) / Math.max(words.size, otherWords.size) < 0.9) return false;
-  const shared = [...words].filter((word) => otherWords.has(word)).length;
-  return shared / (words.size + otherWords.size - shared) >= 0.9;
+  if (words.size >= 6 && otherWords.size >= 6) {
+    const shared = [...words].filter((word) => otherWords.has(word)).length;
+    if (shared / (words.size + otherWords.size - shared) >= 0.75) return true;
+  }
+  const sigA = a.significant, sigB = b.significant;
+  const minSig = Math.min(sigA.size, sigB.size);
+  const sameSource = a.article.subscriptionId === b.article.subscriptionId;
+  if (sameSource && minSig >= 3) {
+    const sharedSig = [...sigA].filter((word) => sigB.has(word)).length;
+    if (sharedSig >= 3 || (sharedSig >= 2 && sharedSig / minSig >= 0.4)) return true;
+  } else if (!sameSource && minSig >= 4) {
+    const sharedSig = [...sigA].filter((word) => sigB.has(word)).length;
+    if (sharedSig >= 4 || (sharedSig >= 3 && sharedSig / minSig >= 0.5)) return true;
+  }
+  return false;
 }
 
 /** Selection is deterministic and independent of images and device opening counters.
@@ -65,7 +96,14 @@ export function selectEdition(candidates: EditionCandidate[], settings: NativeSe
   // Normalize URLs and Unicode once, not for every pair on every selection pass.
   const prepared = candidates.map((article): PreparedCandidate => {
     const title = normalizedTitle(article.title);
-    return { article, title, words: new Set(title.split(" ")), url: canonicalArticleUrl(article.url), published: Date.parse(article.publishedAt) };
+    return {
+      article,
+      title,
+      words: new Set(title.split(" ")),
+      significant: significantTitleWords(title),
+      url: canonicalArticleUrl(article.url),
+      published: Date.parse(article.publishedAt),
+    };
   });
   const feeds = new Map<number, number>();
   const folders = new Map<number | null, number>();
