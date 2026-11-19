@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.38.6] - 2026-11-19
+
+### Fixed
+- Edition selection now filters out rephrased follow-ups and duplicate coverage of the same developing story using significant title-word overlap, with stricter matching within the same source.
+
+### Upgrade notes
+- No migrations. The next edition selection uses the stricter deduplication rules automatically.
+
 ## [0.38.5] - 2026-11-17
 
 ### Fixed
