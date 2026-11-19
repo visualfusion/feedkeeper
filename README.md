@@ -175,11 +175,14 @@ npm run db:restore -- /safe/location/feedkeeper.sqlite --force
 
 Restoring replaces the configured database. Start FeedKeeper again after the command succeeds. Existing backups may need a database migration on startup if they were created with an older version.
 
-For Docker Compose, stop the service and run the restore command in a one-off container with the backup mounted read-only:
+For Docker Compose, stop the service and run the restore command in a one-off container with the backup mounted read-only (include the second `-v` flag only if `feedkeeper-backup.sqlite.archive` exists):
 
 ```bash
 docker compose stop feedkeeper
-docker compose run --rm --no-deps -v "$PWD/feedkeeper-backup.sqlite:/restore.sqlite:ro" feedkeeper node server/dist/feedkeeper.js restore /restore.sqlite --force
+docker compose run --rm --no-deps \
+  -v "$PWD/feedkeeper-backup.sqlite:/restore.sqlite:ro" \
+  -v "$PWD/feedkeeper-backup.sqlite.archive:/restore.sqlite.archive:ro" \
+  feedkeeper node server/dist/feedkeeper.js restore /restore.sqlite --force
 docker compose up -d feedkeeper
 ```
 
