@@ -2,6 +2,15 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.39.0] - 2026-11-19
+
+### Added
+- Reader feedback for curated editions: `GET`, `POST`, and `DELETE /api/v1/edition/feedback` (feature `edition.feedback`) store per-article up/down votes (`+1`, `-1`, `0`) with denormalized feed and title-keyword signals that survive retention cleanups and decay with a 30-day half-life.
+- MCP curation enrichment: `get_edition_candidates` now returns `readerPreferences` (`likedSources`, `dislikedSources`, `likedTopics`, `dislikedTopics`), and candidate scoring applies bounded feedback multipliers without modifying chronological feed timelines.
+
+### Upgrade notes
+- One database migration (`0044_edition_feedback.sql`) runs automatically on start.
+
 ## [0.38.6] - 2026-11-19
 
 ### Fixed
