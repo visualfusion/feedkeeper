@@ -15,7 +15,7 @@
 
 <br />
 
-FeedKeeper is an independent RSS and Atom feed manager built for people who want full ownership over their subscriptions. It runs quietly on your own server or Raspberry Pi, stores everything in a local SQLite database, and requires zero cloud accounts.
+FeedKeeper is an independent RSS, Atom, and JSON Feed manager built for people who want full ownership over their subscriptions. It runs quietly on your own server or Raspberry Pi, stores everything in a local SQLite database, and requires zero cloud accounts.
 
 Beyond a clean web reader, FeedKeeper includes a native, authenticated **[Model Context Protocol (MCP)](https://modelcontextprotocol.io)** endpoint. Listed in the official MCP Registry (`io.github.visualfusion/feedkeeper`) and verified for the Anthropic Claude Directory, it lets MCP clients read, search, bookmark, and organize your feeds over a remote connection. Your subscriptions and reading history stay in your own SQLite database.
 
@@ -83,7 +83,7 @@ If you use an AI coding assistant on your server or local machine, you can paste
 ## Features
 
 - **Categories and feed ordering** — group subscriptions into categories, search and filter the feed list, rename categories in place, and reorder feeds by dragging.
-- **Smart feed discovery** — paste a direct feed link or a website address (like `example.com/blog`); FeedKeeper finds RSS and Atom feeds, including ones listed on a site's feed overview page, and checks each one before subscribing.
+- **Smart feed discovery** — paste a direct feed link or a website address (like `example.com/blog`); FeedKeeper finds RSS, Atom, and JSON Feeds (including YouTube channels, Bluesky, Mastodon, GitHub, Substack, Reddit, and Medium), including ones listed on a site's feed overview page, and checks each one before subscribing.
 - **Reliable feed updates** — fetch several feeds at once with limits per source. Slow feeds and temporary failures do not hold up other updates, and unfinished work resumes after a restart.
 - **Automatic character encoding** — parses standard UTF-8 as well as legacy ISO-8859-1/Windows-1252 feeds without garbled umlauts or broken symbols.
 - **Saved articles as a lasting archive** — star an article to save it: FeedKeeper keeps its full text and stores its images next to the database, so it stays readable even if the source changes. Saved articles survive cleanups and unsubscribing, ignore the word filter, and their full text is searchable.
@@ -244,7 +244,7 @@ To have an AI assistant configure the MCP connection for you, create a Personal 
 | `list_feeds` | List subscribed feeds with unread counts and health status, optionally only feeds with errors |
 | `get_feed` | Inspect a single subscribed feed's metadata, subscription settings, unread count and health status |
 | `subscribe_feed` | Subscribe to a feed URL or website URL (auto-discovering the feed) |
-| `discover_feeds` | Discover available RSS/Atom feeds on a website URL |
+| `discover_feeds` | Discover available RSS, Atom, and JSON feeds on a website URL |
 | `save_to_inbox` | Save a web clipping, URL, or personal note to your inbox with automatic full-text and image archiving |
 | `unsubscribe_feed` | Remove a subscription |
 | `update_feed` | Change a subscription's feed URL, name, poll interval, full-text setting, push notifications or app icon count; a new URL is validated before it replaces the old one |

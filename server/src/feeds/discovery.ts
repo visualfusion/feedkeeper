@@ -1,10 +1,8 @@
-import Parser from "rss-parser";
 import { fetchFeed } from "./fetcher.js";
 import { assertPublicFeedUrl } from "./blockedHosts.js";
-import { decodeEntities, plainTitle } from "./text.js";
-import { applePodcastId, feedUrlFromAppleLookup, platformFeedCandidates } from "./platformFeeds.js";
-
-const rssParser = new Parser();
+import { decodeEntities } from "./text.js";
+import { applePodcastId, fediverseFeedCandidate, feedUrlFromAppleLookup, platformFeedCandidates, youtubeChannelFeedFromHtml } from "./platformFeeds.js";
+import { parseFeedBody } from "./feedParser.js";
 
 export interface DiscoveredFeed {
   url: string;
@@ -16,14 +14,19 @@ export interface DiscoveredFeed {
 const FEED_MIME_TYPES = [
   "application/rss+xml",
   "application/atom+xml",
+  "application/feed+json",
+  "application/json",
   "text/xml",
   "application/xml",
 ];
 
 const MAX_PROBES = 15;
-const COMMON_PATHS = ["/feed/", "/feed", "/rss.xml", "/atom.xml", "/feed.xml", "/index.xml", "/rss/", "/rss", "/rss.php?feed=RSS2.0", "/rss.php?feed=ATOM1.0"];
+const COMMON_PATHS = [
+  "/feed/", "/feed", "/rss.xml", "/atom.xml", "/feed.xml", "/feed.json",
+  "/index.xml", "/index.json", "/rss/", "/rss", "/rss.php?feed=RSS2.0", "/rss.php?feed=ATOM1.0",
+];
 // Feed-looking URLs anywhere in a page, including JSON embedded in attributes.
-const FEED_URL_IN_TEXT = /https?:\/\/[^\s"'<>\\]+?(?:\.rss|\.atom|\/feed\/?|\/(?:rss|atom|feed)\.xml)(?=["'\s<>\\]|$)/gi;
+const FEED_URL_IN_TEXT = /https?:\/\/[^\s"'<>\\]+?(?:\.rss|\.atom|\/feed\/?|\/(?:rss|atom|feed)\.xml|\/feed\.json)(?=["'\s<>\\]|$)/gi;
 
 function sameUrl(a: string, b: string): boolean {
   const normalize = (value: string) => {
@@ -43,9 +46,9 @@ async function parseFeedAt(url: string): Promise<{ feed: DiscoveredFeed | null; 
     const fetched = await fetchFeed(url, { priority: "interactive" });
     const finalUrl = fetched.finalUrl || url;
     try {
-      const parsed = await rssParser.parseString(fetched.body);
-      if (parsed.items && (parsed.title || parsed.description || parsed.items.length > 0)) {
-        return { feed: { url: finalUrl, title: plainTitle(parsed.title) ?? null, type: "application/rss+xml" }, html: null, finalUrl };
+      const parsed = await parseFeedBody(fetched.body);
+      if (parsed.title || parsed.description || parsed.items.length > 0) {
+        return { feed: { url: finalUrl, title: parsed.title ?? null, type: parsed.mimeType }, html: null, finalUrl };
       }
     } catch {
       // Not a feed; the caller may look for feed links in the HTML instead.
@@ -126,6 +129,19 @@ export async function discoverFeeds(inputUrl: string): Promise<DiscoveredFeed[]>
   if (page.html) {
     const fromPage = await keepRealFeeds(extractFeedsFromHtml(page.html, page.finalUrl), page.finalUrl);
     if (fromPage.length > 0) return fromPage;
+
+    const ytChannelFeed = youtubeChannelFeedFromHtml(page.html, validated);
+    if (ytChannelFeed) {
+      const candidate = await parseFeedAt(ytChannelFeed);
+      if (candidate.feed) return [candidate.feed];
+    }
+  }
+
+  // 2b. Fediverse / Mastodon profile handles (`/@user` -> `/@user.rss`).
+  const fediverse = fediverseFeedCandidate(validated);
+  if (fediverse && !sameUrl(fediverse, targetUrl)) {
+    const candidate = await parseFeedAt(fediverse);
+    if (candidate.feed) return [candidate.feed];
   }
 
   // 3. Common feed paths; some lead to an overview page that lists the site's feeds.
@@ -182,6 +198,8 @@ export function extractFeedsFromHtml(html: string, baseUrl: string): DiscoveredF
     const href = match[2];
     if (href.endsWith("/feed") || href.endsWith(".rss") || href.endsWith(".xml") || href.includes("/rss/")) {
       add(href, decodeEntities(stripHtmlTags(match[3]).trim()) || null, "application/rss+xml");
+    } else if (href.endsWith("/feed.json") || href.endsWith("/index.json")) {
+      add(href, decodeEntities(stripHtmlTags(match[3]).trim()) || null, "application/feed+json");
     }
   }
 

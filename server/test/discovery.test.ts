@@ -17,11 +17,25 @@ test("discovery ignores self-referencing feed links and finds feeds on overview 
       case "/rss-overview.html": return html(`<div data-json="{&quot;pathRss&quot;:&quot;${host}/news.rss&quot;}"></div><div data-json="{&quot;pathRss&quot;:&quot;${host}/broken.rss&quot;}"></div>`);
       case "/news.rss": return res.writeHead(200, { "content-type": "application/rss+xml" }).end(rss("News"));
       case "/broken.rss": return html("not a feed");
+      case "/json-site": return html(`<link rel="alternate" type="application/feed+json" href="${host}/sub/feed.json">`);
+      case "/sub/feed.json": return res.writeHead(200, { "content-type": "application/feed+json" }).end(JSON.stringify({
+        version: "https://jsonfeed.org/version/1.1",
+        title: "JSON News",
+        items: [{ id: "j1", title: "Hello JSON", url: `${host}/post-1` }],
+      }));
+      case "/@alice": return html("<div>Mastodon SPA shell</div>");
+      case "/@alice.rss": return res.writeHead(200, { "content-type": "application/rss+xml" }).end(rss("Alice"));
       default: return res.writeHead(404).end();
     }
   });
   // A second site without any feed, to check that nothing is subscribed there.
-  const plainSite = createServer((_req, res) => res.writeHead(200, { "content-type": "text/html" }).end("<html><body><p>No feeds here</p></body></html>"));
+  const plainSite = createServer((req, res) => {
+    if (req.url === "/api.json") {
+      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true, items: [] }));
+      return;
+    }
+    res.writeHead(200, { "content-type": "text/html" }).end("<html><body><p>No feeds here</p></body></html>");
+  });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   await new Promise<void>((resolve) => plainSite.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -37,6 +51,11 @@ test("discovery ignores self-referencing feed links and finds feeds on overview 
 
   try {
     assert.deepEqual(await discoverFeeds(`${base}/`), [{ url: `${base}/news.rss`, title: "News", type: "application/rss+xml" }]);
+    assert.deepEqual(await discoverFeeds(`${base}/json-site`), [{ url: `${base}/sub/feed.json`, title: "JSON News", type: "application/feed+json" }]);
+    assert.deepEqual(await discoverFeeds(`${base}/sub/feed.json`), [{ url: `${base}/sub/feed.json`, title: "JSON News", type: "application/feed+json" }]);
+    assert.deepEqual(await discoverFeeds(`${base}/@alice`), [{ url: `${base}/@alice.rss`, title: "Alice", type: "application/rss+xml" }]);
+    // Arbitrary JSON without a JSON Feed version must not be treated as a feed.
+    assert.deepEqual(await discoverFeeds(`${plainBase}/api.json`), []);
 
     const userId = Number(db.prepare("INSERT INTO users (email, password_hash, display_name) VALUES ('d@example.test', 'hash', 'D')").run().lastInsertRowid);
     // A page that is not a feed and links to none must not leave a subscription behind.

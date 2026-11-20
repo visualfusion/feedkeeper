@@ -162,7 +162,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
     "subscribe_feed",
     {
       title: "Subscribe to a feed",
-      description: "Subscribes the current user to an RSS/Atom feed URL or website URL (auto-discovering the feed link if a website URL is provided). Requires write scope. Idempotent: subscribing to an already subscribed feed returns the existing subscription. Returns the subscription record. For API documentation, see https://github.com/visualfusion/feedkeeper.",
+      description: "Subscribes the current user to an RSS, Atom, or JSON feed URL or website URL (auto-discovering the feed link if a website URL is provided). Requires write scope. Idempotent: subscribing to an already subscribed feed returns the existing subscription. Returns the subscription record. For API documentation, see https://github.com/visualfusion/feedkeeper.",
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -170,7 +170,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
         openWorldHint: true,
       },
       inputSchema: {
-        url: mcpUrlSchema.describe("The RSS/Atom feed URL or website URL to subscribe to"),
+        url: mcpUrlSchema.describe("The RSS, Atom, or JSON feed URL or website URL to subscribe to"),
         label: z.string().max(200).optional().describe("Optional custom display name for this feed subscription"),
         folderId: z.number().int().positive().optional().describe("Optional folder/category ID to place the new subscription in"),
       },
@@ -202,7 +202,7 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
       description: "Inspects a website URL and discovers available RSS, Atom, and JSON feed links from HTML link tags. Safe read-only operation: does NOT subscribe to any feed. Returns a list of discovered candidate feed URLs and titles. Use subscribe_feed to subscribe to one of the discovered URLs. For API documentation, see https://github.com/visualfusion/feedkeeper.",
       annotations: readOnlyOpenWorldAnnotations,
       inputSchema: {
-        url: mcpUrlSchema.describe("The website URL to scan for available RSS/Atom feed links"),
+        url: mcpUrlSchema.describe("The website URL to scan for available RSS, Atom, or JSON feed links"),
       },
     },
     async ({ url }) => {

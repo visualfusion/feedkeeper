@@ -1,162 +1,25 @@
-import Parser from "rss-parser";
 import type { Server } from "node:http";
 import { fetchFeed } from "./fetcher.js";
 import { discoverIconUrls, iconCheckDue } from "./icon.js";
 import { refreshFeedIcon } from "./feedIcon.js";
-import { decodeEntities, plainTitle } from "./text.js";
-import { unwrapRedirectLink } from "./redirectLinks.js";
 import { enqueueNewItemNotifications, startPushOutbox, stopPushOutbox } from "../pushOutbox.js";
 import { hasUserCapability } from "../auth/capabilities.js";
 import { findFeedById, listSubscriberIds, updateFeedAfterPoll, updateFeedIcon, upsertItems, type Feed } from "./repository.js";
 import { db } from "../db/index.js";
 import { configurePollHostCooldowns, PollQueue, type PollResult } from "./pollQueue.js";
 import { feedRequests, PollDeferredError, sourceHost } from "./requestGate.js";
-import { normalizePublishedAt } from "./dates.js";
-import { authorLine } from "./author.js";
 import { readPollSettings } from "./pollSettings.js";
+import { formatFeedAuthor, itemGuid, itemLink, parseFeedBody, resolveFeedIconUrls, type ParsedFeed } from "./feedParser.js";
+
+export { itemGuid, itemLink };
 
 configurePollHostCooldowns();
-
-type CustomItem = Parser.Item & {
-  mediaContent?: unknown;
-  mediaThumbnail?: unknown;
-  contentEncoded?: string;
-  author?: string;
-  "media:content"?: unknown;
-  "media:thumbnail"?: unknown;
-  "content:encoded"?: string;
-};
-
-function mediaAttribute(value: unknown, key: "url" | "medium" | "type"): unknown {
-  if (typeof value !== "object" || value === null) return undefined;
-  const record = value as Record<string, unknown>;
-  const attributes = record.$;
-  if (typeof attributes === "object" && attributes !== null) {
-    const nested = (attributes as Record<string, unknown>)[key];
-    if (nested !== undefined) return nested;
-  }
-  return record[key];
-}
-
-type CustomFeed = Record<string, unknown> & {
-  icon?: unknown;
-  image?: { url?: unknown };
-};
-
-const parser = new Parser<CustomFeed, CustomItem>({
-  customFields: {
-    feed: ["icon"],
-    item: [
-      ["media:content", "mediaContent", { keepArray: false }],
-      ["media:thumbnail", "mediaThumbnail", { keepArray: false }],
-      ["content:encoded", "contentEncoded", { keepArray: false }],
-    ],
-  },
-});
-
-/** The feed's own addresses: `icon` is meant as an icon, the `image` of an RSS channel is its logo and ranks below the site's icon files. */
-function extractFeedIconUrls(parsed: CustomFeed | null, baseUrl: string): { icons: string[]; logos: string[] } {
-  const result = { icons: [] as string[], logos: [] as string[] };
-  if (!parsed) return result;
-  const read = (raw: unknown, into: string[]) => {
-    if (typeof raw !== "string" || !raw.trim()) return;
-    try {
-      const resolved = new URL(raw.trim(), baseUrl);
-      if (resolved.protocol === "https:" || resolved.protocol === "http:") into.push(resolved.toString());
-    } catch {
-      // Ignore malformed feed icon URLs.
-    }
-  };
-  read(parsed.icon, result.icons);
-  read(parsed.image?.url, result.logos);
-  return result;
-}
-
-function cleanImageUrl(url: string): string {
-  return url.trim().replace(/&(?:#038|amp);/g, "&");
-}
-
-function isValidImageUrl(url: unknown): url is string {
-  if (typeof url !== "string") return false;
-  const trimmed = url.trim();
-  let parsed: URL;
-  try {
-    parsed = new URL(trimmed);
-  } catch {
-    return false;
-  }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
-  const host = parsed.hostname.toLowerCase();
-  if (host === "pixel.wp.com" || host.endsWith(".pixel.wp.com")) return false;
-  const pathAndQuery = (parsed.pathname + parsed.search).toLowerCase();
-  if (pathAndQuery.includes("/1x1") || pathAndQuery.includes("pixel") || pathAndQuery.includes("tracking") || pathAndQuery.includes("beacon")) {
-    return false;
-  }
-  return true;
-}
-
-function extractImageUrl(item: CustomItem): string | null {
-  // 1. media:content (Media RSS)
-  const mediaContent = item.mediaContent ?? item["media:content"];
-  if (mediaContent) {
-    if (isValidImageUrl(mediaContent)) return cleanImageUrl(mediaContent);
-    const url = mediaAttribute(mediaContent, "url");
-    const medium = mediaAttribute(mediaContent, "medium");
-    const type = mediaAttribute(mediaContent, "type");
-    if (isValidImageUrl(url) && (medium === "image" || !medium || (typeof type === "string" && type.startsWith("image/")))) {
-      return cleanImageUrl(url);
-    }
-  }
-
-  // 2. media:thumbnail
-  const mediaThumbnail = item.mediaThumbnail ?? item["media:thumbnail"];
-  if (mediaThumbnail) {
-    if (isValidImageUrl(mediaThumbnail)) return cleanImageUrl(mediaThumbnail);
-    const url = mediaAttribute(mediaThumbnail, "url");
-    if (isValidImageUrl(url)) return cleanImageUrl(url);
-  }
-
-  // 3. enclosure
-  if (item.enclosure?.url) {
-    const url = item.enclosure.url;
-    const type = item.enclosure.type ?? "";
-    if (type.startsWith("image/") || /\.(jpe?g|png|webp|gif|avif|svg)(\?.*)?$/i.test(url)) {
-      if (isValidImageUrl(url)) return cleanImageUrl(url);
-    }
-  }
-
-  // 4. First <img> tag in HTML content or summary
-  const htmlContent = item.contentEncoded ?? item["content:encoded"] ?? item.content ?? item.summary ?? "";
-  if (typeof htmlContent === "string" && htmlContent.includes("<img")) {
-    const match = htmlContent.match(/<img[^>]+src=["'](https?:\/\/[^"'\s>]+)["']/i);
-    if (match && isValidImageUrl(match[1])) {
-      return cleanImageUrl(match[1]);
-    }
-  }
-
-  return null;
-}
-
-/**
- * What identifies an item: its guid, or else its link or title. A guid element without text (`<guid isPermaLink="false"/>`) is read as an
- * object, and one such entry must not make the whole feed unreadable.
- */
-export function itemGuid(item: { guid?: unknown; link?: string; title?: string }): string {
-  if (typeof item.guid === "string" && item.guid !== "") return item.guid;
-  return item.link || item.title || crypto.randomUUID();
-}
-
-/** The article address: its link, or its guid when the feed gives only that and the guid is a web address. */
-export function itemLink(item: { link?: string; guid?: string }): string | undefined {
-  if (item.link) return unwrapRedirectLink(item.link);
-  return item.guid && /^https?:\/\//i.test(item.guid) ? unwrapRedirectLink(item.guid) : undefined;
-}
 
 /**
  * Checks the feed's icon when it is due. The check starts right away but is not awaited, has its own deadline, and cannot retry or
  * fail a committed feed; downloads join the shared request limit as background work.
  */
-function scheduleIconMaintenance(feed: Feed, parsed: Awaited<ReturnType<typeof parser.parseString>> | null): void {
+function scheduleIconMaintenance(feed: Feed, parsed: ParsedFeed | null): void {
   if (!iconCheckDue(feed.icon_checked_at)) return;
   updateFeedIcon(feed.id, feed.icon_url);
   const signal = AbortSignal.timeout(readPollSettings().attemptTimeoutMs);
@@ -164,7 +27,7 @@ function scheduleIconMaintenance(feed: Feed, parsed: Awaited<ReturnType<typeof p
     try {
       const siteUrl = parsed?.link || feed.site_url;
       const htmlUrls = siteUrl ? await discoverIconUrls(siteUrl, signal) : [];
-      const feedUrls = extractFeedIconUrls(parsed, siteUrl || feed.url);
+      const feedUrls = parsed ? resolveFeedIconUrls(parsed, siteUrl || feed.url) : { icons: [], logos: [] };
       signal.throwIfAborted();
       await refreshFeedIcon(feed.id, siteUrl, [...htmlUrls, ...feedUrls.icons], signal, feedUrls.logos);
     } catch { /* Keep the successful poll; icon failures are best effort. */ }
@@ -188,25 +51,27 @@ async function pollAttempt(feed: Feed, signal: AbortSignal, interactive: boolean
     signal,
     priority: interactive ? "interactive" : "background",
   });
-  const parsed = fetched.notModified ? null : await parser.parseString(fetched.body);
+  const parsed = fetched.notModified ? null : await parseFeedBody(fetched.body);
   signal.throwIfAborted();
   const current = findFeedById(feed.id);
   if (!current || current.url !== feed.url) throw new PollDeferredError(Date.now(), current ? sourceHost(current.url) : sourceHost(feed.url));
   // Recheck hosted capabilities after network I/O, before committing or sending notifications.
   if (!feedHasActiveSubscriber(feed.id)) return { newItems: 0, error: "feed_poll_not_allowed" };
   const items = parsed?.items.map(item => ({
-    guid: itemGuid(item),
-    title: plainTitle(item.title), link: itemLink(item),
-    contentSnippet: decodeEntities(item.contentSnippet ?? item.content) ?? undefined,
-    contentHtml: item.contentEncoded ?? item["content:encoded"] ?? item.content ?? null,
-    publishedAt: normalizePublishedAt(item.isoDate ?? item.pubDate) ?? undefined, imageUrl: extractImageUrl(item),
-    author: authorLine([item.creator, item.author], { title: current.title, url: current.site_url ?? current.url }),
+    guid: item.guid,
+    title: item.title,
+    link: item.link,
+    contentSnippet: item.contentSnippet,
+    contentHtml: item.contentHtml,
+    publishedAt: item.publishedAt,
+    imageUrl: item.imageUrl,
+    author: formatFeedAuthor(item.authors, current.title, current.site_url ?? current.url),
   }));
   // No await in this transaction. Items, health/validators and job completion become visible together.
   const newItems = db.transaction(() => {
     const count = items ? upsertItems(feed.id, items) : 0;
     updateFeedAfterPoll(feed.id, {
-      ...(parsed ? { title: plainTitle(parsed.title), siteUrl: parsed.link, etag: fetched.etag, lastModified: fetched.lastModified } : {}),
+      ...(parsed ? { title: parsed.title, siteUrl: parsed.link, etag: fetched.etag, lastModified: fetched.lastModified } : {}),
       error: null,
     });
     if (count > 0 && feed.last_success_at) enqueueNewItemNotifications(feed.id, count);
@@ -261,7 +126,7 @@ export function pollingMetrics() { return pollingQueue().metrics(); }
 /** Fetch and parse a feed without storing anything, to validate a URL before switching to it. */
 export async function probeFeed(url: string): Promise<{ title: string | null; itemCount: number }> {
   const fetched = await fetchFeed(url, { priority: "interactive" });
-  const parsed = await parser.parseString(fetched.body);
+  const parsed = await parseFeedBody(fetched.body);
   return { title: parsed.title ?? null, itemCount: parsed.items.length };
 }
 
