@@ -83,9 +83,9 @@ export function Welcome({ onSubscribed }: { onSubscribed: () => void | Promise<v
   }
 
   async function subscribeChosen() {
-    const jobs: Array<{ url: string; folderName: string }> = [];
+    const jobs: Array<{ url: string; label: string; folderName: string }> = [];
     for (const entry of packs) {
-      for (const feed of entry.feeds) if (selected.has(feed.url)) jobs.push({ url: feed.url, folderName: entry.title });
+      for (const feed of entry.feeds) if (selected.has(feed.url)) jobs.push({ url: feed.url, label: feed.title, folderName: entry.title });
     }
     if (jobs.length === 0) return;
     setProgress({ done: 0, total: jobs.length });
@@ -100,7 +100,7 @@ export function Welcome({ onSubscribed }: { onSubscribed: () => void | Promise<v
     const worker = async () => {
       for (let job = queue.shift(); job; job = queue.shift()) {
         try {
-          await api.subscribeFeed(job.url, null, folderIds.get(job.folderName) ?? null);
+          await api.subscribeFeed(job.url, job.label || null, folderIds.get(job.folderName) ?? null);
           added++;
           done.add(job.url);
         } catch (error) {
