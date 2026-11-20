@@ -1,7 +1,7 @@
 import { cleanVideoPage } from "./content/noise/videoPages.js";
 import { lazyImages } from "./content/noise/lazyImages.js";
 import { JSDOM } from "jsdom";
-import { SNIPPET_BYLINES, SNIPPET_IMAGE_METADATA } from "./content/patterns/snippet-metadata/index.js";
+import { SNIPPET_BYLINES, SNIPPET_IMAGE_CREDIT, SNIPPET_IMAGE_FILENAME, SNIPPET_IMAGE_METADATA, SNIPPET_MARKERS } from "./content/patterns/snippet-metadata/index.js";
 import { BOILERPLATE_NEWSLETTER, BOILERPLATE_ORPHAN_HEADINGS } from "./content/patterns/boilerplate/index.js";
 import { CONSENT_ANCHORS, CONSENT_COMPANIONS } from "./content/patterns/consent/index.js";
 import { SIDEBAR_HEADINGS } from "./content/patterns/sidebars/index.js";
@@ -871,11 +871,16 @@ export function cleanSnippet(snippet: string | null | undefined, title?: string 
   for (const pattern of SNIPPET_INLINE_PATTERNS) text = text.replace(pattern, "");
   const headline = normalized(title ?? "");
   let inMetadata = true;
+  let afterImageFilename = false;
   text = text.split("\n").filter(line => {
     const value = line.trim();
     if (!value) return false;
+    if (inMetadata && SNIPPET_IMAGE_FILENAME.test(value)) { afterImageFilename = true; return false; }
+    if (inMetadata && afterImageFilename && SNIPPET_IMAGE_CREDIT.test(value)) { afterImageFilename = false; return false; }
+    afterImageFilename = false;
     if (inMetadata && (matchesAny(value, SNIPPET_BYLINES) || matchesAny(value, SNIPPET_IMAGE_METADATA) ||
         (headline && normalized(value) === headline))) return false;
+    if (inMetadata && matchesAny(value, SNIPPET_MARKERS)) return true;
     inMetadata = false;
     return true;
   }).join("\n");
@@ -886,7 +891,7 @@ export function cleanSnippet(snippet: string | null | undefined, title?: string 
 }
 
 /** Raised whenever the rules above change what they remove, so stored leads are derived again. */
-export const LEAD_VERSION = 4;
+export const LEAD_VERSION = 5;
 const LEAD_LENGTH = 600;
 
 function shorten(text: string, max: number): string {

@@ -605,6 +605,17 @@ test("plain feed summaries lose leading bylines, filenames and credits before le
     assert.equal(cleanSnippet(snippet), body);
     assert.equal(leadText({ html: "<p>" + body + "</p>", snippet }), body);
   }
+  for (const marker of ["AKTUALISIERT", "UPDATE", "更新"]) {
+    const snippet = `By Jane Doe | October 28, 2026 - 10:50\n\n${marker}\n\n3 body problem series_example.jpg\n\n© Studio\n\n${body}`;
+    assert.equal(cleanSnippet(snippet), `${marker}\n${body}`);
+    assert.equal(cleanSnippet(cleanSnippet(snippet)), `${marker}\n${body}`);
+  }
+  assert.equal(cleanSnippet("UPDATE\nThe file photo.jpg was released today.\nphoto.jpg\n© Studio"), "UPDATE\nThe file photo.jpg was released today.\nphoto.jpg\n© Studio");
+  for (const credit of ["© Example Bros.", "(c) Example Co., Ltd.", "© 株式会社サンプル."]) {
+    assert.equal(cleanSnippet(`photo.jpg\n${credit}\n${body}`), body);
+  }
+  assert.equal(cleanSnippet(`© copyright is discussed in this article.\n${body}`), `© copyright is discussed in this article.\n${body}`);
+  assert.equal(cleanSnippet(`${body}\nphoto.jpg\n© Example Bros.`), `${body}\nphoto.jpg\n© Example Bros.`);
   assert.equal(cleanSnippet("A report about image metadata.\nphoto.jpg\n©Photo agency"), "A report about image metadata.\nphoto.jpg\n©Photo agency");
   assert.equal(cleanSnippet("By Michael Bartl, the discussion had changed."), "By Michael Bartl, the discussion had changed.");
   assert.equal(cleanSnippet("© copyright is discussed in this article."), "© copyright is discussed in this article.");
