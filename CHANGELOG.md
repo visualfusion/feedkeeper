@@ -2,6 +2,18 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.42.4] - 2026-11-22
+
+### Added
+- **Clearer feed error display in the web reader:** Shows feed fetch errors directly inside empty or failing feed views (`ItemsPage`) and clarifies Reddit `429` blocks in English, German, and Japanese instead of claiming automatic retries will succeed soon.
+
+### Fixed
+- **Security hardening:** Bounded batch subscription array iteration to `MAX_SUBSCRIPTION_BATCH` and replaced a dynamic `console.warn` format string in `archive.ts` with a fixed format string.
+- **Lint:** Removed a redundant variable initialization in `extractorParser.ts`.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.42.3] - 2026-11-21
 
 ### Changed
