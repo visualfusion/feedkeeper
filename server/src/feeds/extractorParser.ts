@@ -141,23 +141,21 @@ function paywallNotice(pageUrl: string): string {
 export function parseArticleHtml(html: string, url: string): WorkerExtractionResult {
   const dom = new JSDOM(html, { url });
   let parsed;
-  let paywalled = false;
+  const paywalled = /"isAccessibleForFree"\s*:\s*(?:false|"false")/i.test(html);
   try {
     // The content rules run first: players and consent plugins keep the address of an embed in the very tags removed next.
     cleanPage(dom.window.document);
     dom.window.document.querySelectorAll("script, style, svg, iframe, noscript").forEach(element => element.remove());
-    const paywall = /"isAccessibleForFree"\s*:\s*(?:false|"false")/i.test(html);
     cleanConsentDom(dom.window.document);
     resolveLazyImages(dom.window.document);
 
     parsed = new Readability(dom.window.document, { charThreshold: 60 }).parse();
-    paywalled = paywall;
     if (isConsentContent(url, parsed?.content ?? html, parsed?.title, parsed?.textContent)) {
       return { status: "consent_wall" };
     }
     // Publishers flag a whole article as not free although the page carries its text; enough of it is the article.
     if (
-      (paywall && (parsed?.textContent?.length ?? 0) < PAYWALL_TEXT_MIN) ||
+      (paywalled && (parsed?.textContent?.length ?? 0) < PAYWALL_TEXT_MIN) ||
       ((parsed?.textContent?.length ?? 0) < PAYWALL_TEXT_MIN &&
         /(?:subscribe to (?:continue|read)|sign in to (?:continue|read)|abonnieren und weiterlesen|nur für abonnenten|jetzt abonnieren.{0,40}weiterlesen)/i.test(
           parsed?.textContent ?? "",
