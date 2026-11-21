@@ -2,6 +2,16 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.42.3] - 2026-11-21
+
+### Changed
+- **Offloaded full-text HTML extraction:** Runs JSDOM, content cleanup rules, and Readability parsing in a dedicated worker-thread pool (`EXTRACTOR_WORKERS`, default `2`, 15s parse watchdog) so heavy pages and bulk imports no longer stall the HTTP event loop.
+- **Bounded initial subscribe wait:** `subscribeToFeed` waits up to `POLL_SUBSCRIBE_WAIT_MS` (default `8000`ms) for the initial feed poll and returns immediately while slow publishers finish in the background queue.
+- **Reader HTML cache:** Increases the in-memory cleaned reader HTML cache from 300 to 600 entries.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.42.2] - 2026-11-21
 
 ### Added
