@@ -33,7 +33,7 @@ export function setFeedListsProvider(provider: FeedListsProvider): void {
   activeProvider = provider;
 }
 
-const SUPPORTED_LANGUAGES = ["en", "de", "ja"] as const;
+const SUPPORTED_LANGUAGES = ["en", "de", "ja", "ru"] as const;
 
 /** The language to answer in: the first supported one in `?lang=` or `Accept-Language`, English otherwise. */
 export function pickFeedListLanguage(requested: string | undefined): (typeof SUPPORTED_LANGUAGES)[number] {
@@ -59,7 +59,7 @@ export function resolveFeedLists(language: keyof Localized): FeedList[] {
       title: text(list.title, language),
       description: text(list.description, language),
       feeds: list.feeds.map((feed) => ({
-        title: feed.title,
+        title: text(feed.title, language),
         url: feed.url,
         lang: feed.lang,
         description: text(feed.description, language),
