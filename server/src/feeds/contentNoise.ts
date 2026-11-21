@@ -1,4 +1,5 @@
 import { cleanVideoPage } from "./content/noise/videoPages.js";
+import { cleanRedditPost } from "./content/noise/redditPosts.js";
 import { lazyImages } from "./content/noise/lazyImages.js";
 import { JSDOM } from "jsdom";
 import { SNIPPET_BYLINES, SNIPPET_IMAGE_CREDIT, SNIPPET_IMAGE_FILENAME, SNIPPET_IMAGE_METADATA, SNIPPET_MARKERS } from "./content/patterns/snippet-metadata/index.js";
@@ -566,6 +567,7 @@ export function cleanReaderHtml(html: string, title?: string | null, stats: Nois
   if (!html) return html;
   const root = JSDOM.fragment(html);
   const videoPage = cleanVideoPage(root, url, title, stats);
+  const redditPost = cleanRedditPost(root, stats);
   const lazy = lazyImages.apply(root, stats);
   const images = resolveCustomImages(root, stats);
   const duplicates = collapseAdjacentImages(root, stats);
@@ -573,7 +575,7 @@ export function cleanReaderHtml(html: string, title?: string | null, stats: Nois
   const embeds = resolveEmbeds(root, stats);
   const noise = removeReaderNoise(root, title, stats, author);
   const typography = removeTypography(root, stats);
-  return videoPage || lazy || images || duplicates || variants || embeds || noise || typography ? serialize(root) : html;
+  return videoPage || redditPost || lazy || images || duplicates || variants || embeds || noise || typography ? serialize(root) : html;
 }
 
 /**

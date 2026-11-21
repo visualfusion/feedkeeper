@@ -836,3 +836,36 @@ test("a saved video link labelled with the player's technical name shows the pla
   const named = '<p><a href="https://vimeo.com/1244728132" data-media="video">Making of the film</a></p>' + BODY;
   assert.match(cleanReaderHtml(named), /Making of the film/);
 });
+
+test("reddit atom feed layout tables unwrap prose and thumbnails while dropping forum footer chrome", () => {
+  const stats: NoiseStats = {};
+  const selfPost =
+    '<table><tr>' +
+    '<td><a href="https://www.reddit.com/r/swift/comments/abc123/test/"><img src="https://b.thumbs.redditmedia.com/thumb.jpg" alt="Post thumbnail"></a></td>' +
+    '<td><!-- SC_OFF --><div class="md"><p>Here is a detailed write-up about Swift concurrency.</p><p>Second paragraph with details.</p></div><!-- SC_ON -->' +
+    '<br> submitted by <a href="https://www.reddit.com/user/developer">/u/developer</a> <br>' +
+    '<span><a href="https://www.reddit.com/r/swift/comments/abc123/test/">[link]</a></span> ' +
+    '<span><a href="https://www.reddit.com/r/swift/comments/abc123/test/">[comments]</a></span></td>' +
+    "</tr></table>";
+  const cleanedSelf = cleanReaderHtml(selfPost, "Test", stats);
+  assert.doesNotMatch(cleanedSelf, /<table|submitted by|\[link\]|\[comments\]|SC_OFF/);
+  assert.match(cleanedSelf, /<img src="https:\/\/b\.thumbs\.redditmedia\.com\/thumb\.jpg"/);
+  assert.match(cleanedSelf, /detailed write-up about Swift concurrency/);
+  assert.equal(stats["reddit-post"], 1);
+  assert.equal(cleanReaderHtml(cleanedSelf, "Test"), cleanedSelf, "second pass is idempotent");
+
+  const linkPost =
+    '<table><tr>' +
+    '<td><!-- SC_OFF --><div class="md"></div><!-- SC_ON -->' +
+    ' submitted by <a href="https://www.reddit.com/u/reader">/u/reader</a> ' +
+    '<span><a href="https://www.example.com/articles/release-notes">[link]</a></span> ' +
+    '<span><a href="https://www.reddit.com/r/swift/comments/def456/release/">[comments]</a></span></td>' +
+    "</tr></table>";
+  const cleanedLink = cleanReaderHtml(linkPost, "Release");
+  assert.doesNotMatch(cleanedLink, /<table|submitted by|\[comments\]|\[link\]/);
+  assert.match(cleanedLink, /↗ <a href="https:\/\/www\.example\.com\/articles\/release-notes">example\.com<\/a>/);
+  assert.equal(cleanReaderHtml(cleanedLink, "Release"), cleanedLink, "link post second pass is idempotent");
+
+  const normalTable = "<table><tr><td>Metric</td><td>42</td></tr></table>" + BODY;
+  assert.match(cleanReaderHtml(normalTable, "Report"), /<table/);
+});
