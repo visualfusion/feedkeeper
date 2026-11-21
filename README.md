@@ -19,7 +19,7 @@ FeedKeeper is an independent RSS, Atom, and JSON Feed manager built for people w
 
 Beyond a clean web reader, FeedKeeper includes a native, authenticated **[Model Context Protocol (MCP)](https://modelcontextprotocol.io)** endpoint. Listed in the official MCP Registry (`io.github.visualfusion/feedkeeper`) and verified for the Anthropic Claude Directory, it lets MCP clients read, search, bookmark, and organize your feeds over a remote connection. Your subscriptions and reading history stay in your own SQLite database.
 
-It is multi-user by default, with isolated accounts, personal access tokens, and a trilingual interface (English, German, and Japanese).
+It is multi-user by default, with isolated accounts, personal access tokens, and a multilingual interface (English, German, Japanese, and Russian).
 
 <p align="center">
   <img src="docs/screenshots/iphone.png" alt="FeedKeeper on iPhone: newspaper view with category filter and tab bar" width="170" />
