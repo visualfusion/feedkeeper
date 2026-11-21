@@ -76,6 +76,24 @@ export function parseRetryAfter(value: string | null, now = Date.now()): number 
   return Math.max(now, date);
 }
 
+const MAX_RATELIMIT_RESET_MS = 24 * 60 * 60 * 1000;
+
+/** Reads `X-RateLimit-Remaining` / `X-RateLimit-Reset` (relative seconds or epoch seconds) for proactive host pacing. */
+export function parseRateLimitReset(headers: { get(name: string): string | null }, now = Date.now(), force = false): number | undefined {
+  const remainingRaw = headers.get("x-ratelimit-remaining") ?? headers.get("ratelimit-remaining");
+  if (!force) {
+    if (remainingRaw === null) return undefined;
+    const remaining = Number(remainingRaw.trim());
+    if (!Number.isFinite(remaining) || remaining >= 1) return undefined;
+  }
+  const resetRaw = headers.get("x-ratelimit-reset") ?? headers.get("ratelimit-reset");
+  if (resetRaw === null) return undefined;
+  const reset = Number(resetRaw.trim());
+  if (!Number.isFinite(reset) || reset < 0) return undefined;
+  const target = reset > 1_000_000_000 ? reset * 1000 : now + Math.ceil(reset) * 1000 + 1000;
+  return Math.min(now + MAX_RATELIMIT_RESET_MS, Math.max(now, target));
+}
+
 /** DNS preflight cannot be cancelled, but must not hold the caller past its deadline. */
 async function validateUrl(url: string, signal: AbortSignal): Promise<URL> {
   signal.throwIfAborted();
@@ -115,6 +133,8 @@ async function downloadPublic(
         if (redirects === 0 && opts.etag) headers["If-None-Match"] = opts.etag;
         if (redirects === 0 && opts.lastModified) headers["If-Modified-Since"] = opts.lastModified;
         const response = await undiciFetch(validated, { headers, redirect: "manual", signal, dispatcher });
+        const rateLimitUntil = parseRateLimitReset(response.headers, Date.now(), response.status === 429);
+        if (rateLimitUntil) feedRequests.defer(host, rateLimitUntil);
         if (response.status === 304) {
           await response.body?.cancel();
           return { notModified: true, buffer: Buffer.alloc(0), finalUrl: currentUrl, contentType: response.headers.get("content-type") ?? undefined };
@@ -129,7 +149,7 @@ async function downloadPublic(
         if (!response.ok) {
           let retryAt = parseRetryAfter(response.headers.get("retry-after"));
           if (response.status === 429 || response.status === 503) {
-            retryAt = Math.max(retryAt ?? 0, Date.now() + readPollSettings().retryBaseMs * (0.5 + Math.random() * 0.5));
+            retryAt = Math.max(retryAt ?? 0, rateLimitUntil ?? 0, Date.now() + readPollSettings().retryBaseMs * (0.5 + Math.random() * 0.5));
             feedRequests.defer(host, retryAt);
           }
           await response.body?.cancel();

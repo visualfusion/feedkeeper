@@ -14,7 +14,7 @@ process.env.POLL_ATTEMPT_TIMEOUT_MS = "500";
 process.env.POLL_RETRY_BASE_MS = "50";
 process.env.POLL_TICK_MS = "20";
 const { db, runMigrations } = await import("../src/db/index.js");
-const { fetchFeed, fetchImage, parseRetryAfter, FeedHttpError } = await import("../src/feeds/fetcher.js");
+const { fetchFeed, fetchImage, parseRetryAfter, parseRateLimitReset, FeedHttpError } = await import("../src/feeds/fetcher.js");
 const { feedRequests, RequestGate, sourceHost } = await import("../src/feeds/requestGate.js");
 const { readPollSettings } = await import("../src/feeds/pollSettings.js");
 const repo = await import("../src/feeds/repository.js");
@@ -34,6 +34,28 @@ test("Retry-After accepts seconds and HTTP dates, rejecting invalid/negative/fra
   assert.equal(parseRetryAfter("Friday, 09-Oct-26 12:01:00 GMT", now), now + 60000);
   assert.equal(parseRetryAfter("Fri Oct  9 12:01:00 2026", now), now + 60000);
   for (const value of [null, "", "-5", "1.5", "tomorrow", "Mon nonsense", "Monday October 9 2026"]) assert.equal(parseRetryAfter(value, now), undefined);
+});
+
+test("X-RateLimit-Remaining/Reset defers host proactively when quota hits zero", async () => {
+  const now = Date.parse("2026-10-09T12:00:00Z");
+  const hdrs = (map: Record<string, string>) => ({ get: (k: string) => map[k.toLowerCase()] ?? null });
+  assert.equal(parseRateLimitReset(hdrs({ "x-ratelimit-remaining": "0.0", "x-ratelimit-reset": "52" }), now), now + 53000);
+  assert.equal(parseRateLimitReset(hdrs({ "x-ratelimit-remaining": "1", "x-ratelimit-reset": "52" }), now), undefined);
+  assert.equal(parseRateLimitReset(hdrs({ "x-ratelimit-reset": "30" }), now, true), now + 31000);
+
+  const server = createServer((_req, res) => {
+    res.writeHead(200, { "x-ratelimit-remaining": "0.0", "x-ratelimit-reset": "30" }).end("<rss><channel><title>OK</title></channel></rss>");
+  });
+  const baseUrl = await listen(server);
+  try {
+    db.exec("DELETE FROM feed_poll_hosts");
+    const first = await fetchFeed(`${baseUrl}/r/test.rss`);
+    assert.equal(first.notModified, false);
+    const row = db.prepare("SELECT retry_at FROM feed_poll_hosts").get() as { retry_at: number } | undefined;
+    assert.ok(row && row.retry_at >= Date.now() + 25_000, "200 OK with remaining=0 defers the host");
+    await assert.rejects(fetchFeed(`${baseUrl}/r/other.rss`), /poll_deferred/);
+    db.exec("DELETE FROM feed_poll_hosts");
+  } finally { await close(server); }
 });
 
 test("shared HTTP gate: hosts ignore ports, later hosts pass a blocked host, bounded waiters cancel cleanly", async () => {
