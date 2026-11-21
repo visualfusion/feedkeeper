@@ -3,6 +3,7 @@ import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import en from "./locales/en.json";
 import de from "./locales/de.json";
+import ru from "./locales/ru.json";
 import ja from "./locales/ja.json";
 import { LANGUAGE_KEY } from "./remember.ts";
 
@@ -13,10 +14,11 @@ i18n
     resources: {
       en: { translation: en },
       de: { translation: de },
+  ru: { translation: ru },
       ja: { translation: ja },
     },
     fallbackLng: "en",
-    supportedLngs: ["en", "de", "ja"],
+    supportedLngs: ["en", "de", "ja", "ru"],
     interpolation: { escapeValue: false },
     // An explicit choice (stored by rememberLanguage) comes first, then the system's language. What the detector finds
     // is not stored, so that only a real choice overrides the system.
