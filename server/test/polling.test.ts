@@ -208,6 +208,36 @@ test("new subscriptions join a known shared feed poll; OPML admits durable work 
   } finally { await close(source); }
 });
 
+test("subscribeToFeed returns within its response budget while a slow initial poll finishes in background", async () => {
+  const { subscribeToFeed } = await import("../src/feeds/service.js");
+  const prevWait = process.env.POLL_SUBSCRIBE_WAIT_MS;
+  process.env.POLL_SUBSCRIBE_WAIT_MS = "50";
+  let hits = 0;
+  let pollFinished = false;
+  const body = "<rss version=\"2.0\"><channel><title>Slow Feed</title><item><guid>s1</guid><title>Delayed Item</title></item></channel></rss>";
+  const slowSource = createServer((_req, res) => {
+    hits++;
+    res.setHeader("content-type", "application/rss+xml");
+    if (hits === 1) { res.end(body); return; } // fast discovery
+    setTimeout(() => { pollFinished = true; res.end(body); }, 110);
+  });
+  const baseUrl = await listen(slowSource);
+  try {
+    const userId = Number(db.prepare("INSERT INTO users(email,password_hash,display_name) VALUES ('slow@example.test','x','Slow')").run().lastInsertRowid);
+    const sub = await subscribeToFeed(userId, `${baseUrl}/slow.xml`);
+    assert.ok(sub.id > 0);
+    assert.equal(pollFinished, false, "subscribe returned before the slow initial poll completed");
+    for (let i = 0; i < 40 && !pollFinished; i++) await sleep(15);
+    await sleep(60);
+    const items = db.prepare("SELECT title FROM items WHERE feed_id = ?").all(sub.id) as Array<{ title: string }>;
+    assert.equal(items.length, 1);
+    assert.equal(items[0].title, "Delayed Item");
+  } finally {
+    if (prevWait === undefined) delete process.env.POLL_SUBSCRIBE_WAIT_MS; else process.env.POLL_SUBSCRIBE_WAIT_MS = prevWait;
+    await close(slowSource);
+  }
+});
+
 test("a poll returns once the feed is stored; the icon check runs afterwards", async () => {
   let origin = ""; let siteDone = 0;
   const source = createServer((req, res) => {

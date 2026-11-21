@@ -86,3 +86,29 @@ test("an article its publisher flags as not free keeps its text and ends with a 
   const teaser = await extractArticleFromUrl("https://93.184.216.34/article", mockFetch(page("<p>Nur ein kurzer Anriss, der lang genug ist, um als Inhalt zu gelten, aber weit unter der Grenze für einen ganzen Artikel liegt und deshalb als Paywall gilt.</p>")));
   assert.equal(teaser, null, "a teaser stays a paywall");
 });
+
+test("worker pool keeps the main event loop responsive across large HTML documents and stops cleanly", async () => {
+  const { stopExtractorPool } = await import("../src/feeds/extractorPool.js");
+  const paragraph = "<p>Ein langer Absatz mit genug Text für die Readability-Erkennung im Worker-Thread. ".repeat(30) + "</p>";
+  const largeHtml = `<html><head><title>Worker Test</title></head><body><article><h1>Worker Test</h1>${paragraph.repeat(40)}</article></body></html>`;
+  const mockFetch: typeof fetch = async () => new Response(largeHtml, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
+
+  let maxGap = 0;
+  let last = performance.now();
+  const ticker = setInterval(() => {
+    const now = performance.now();
+    maxGap = Math.max(maxGap, now - last);
+    last = now;
+  }, 5);
+  try {
+    const results = await Promise.all([
+      extractArticleFromUrl("https://93.184.216.34/one", mockFetch),
+      extractArticleFromUrl("https://93.184.216.35/two", mockFetch),
+    ]);
+    assert.ok(results.every(r => r && r.title === "Worker Test"));
+    assert.ok(maxGap < 250, `main event loop stayed responsive (max timer gap ${Math.round(maxGap)}ms)`);
+  } finally {
+    clearInterval(ticker);
+    await stopExtractorPool();
+  }
+});

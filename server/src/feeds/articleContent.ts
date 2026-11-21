@@ -17,7 +17,7 @@ export function articleText(html: string | null | undefined): string {
   return (fragment.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
-const READER_CACHE_LIMIT = 300;
+const READER_CACHE_LIMIT = 600;
 const readerCache = new Map<string, string>();
 
 /**

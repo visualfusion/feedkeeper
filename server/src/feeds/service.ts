@@ -62,6 +62,11 @@ async function resolveFeedUrl(inputUrl: string): Promise<{ url: string }> {
   return { url: targetUrl };
 }
 
+function subscribePollWaitMs(): number {
+  const raw = Number(process.env.POLL_SUBSCRIBE_WAIT_MS);
+  return Number.isSafeInteger(raw) && raw >= 50 && raw <= 60_000 ? raw : 8_000;
+}
+
 export async function subscribeToFeed(
   userId: number,
   inputUrl: string,
@@ -84,13 +89,20 @@ export async function subscribeToFeed(
 
   subscribe(userId, feed.id, label, folderId);
 
-  // Fetch immediately so the user sees items right away instead of waiting
-  // for the next scheduler tick.
-  const pollResult = await pollFeed(feed);
+  // Fetch immediately up to a short response budget so slow publishers complete in background
+  // instead of tripping client request timeouts.
+  const pollResult = await new Promise<Awaited<ReturnType<typeof pollFeed>> | null>((resolve, reject) => {
+    const timer = setTimeout(() => resolve(null), subscribePollWaitMs());
+    timer.unref?.();
+    pollFeed(feed!).then(
+      result => { clearTimeout(timer); resolve(result); },
+      error => { clearTimeout(timer); reject(error); },
+    );
+  });
 
   // A feed that has never been read successfully and fails right away is not a feed
   // (e.g. a homepage that announces itself as RSS); don't keep the subscription.
-  if (pollResult.error && !pollResult.deferred && !findFeedById(feed.id)?.last_success_at) {
+  if (pollResult && pollResult.error && !pollResult.deferred && !findFeedById(feed.id)?.last_success_at) {
     unsubscribeRepo(userId, feed.id);
     if (pollResult.error === "feed_invalid_or_unavailable") {
       throw new NoFeedsFoundError();
