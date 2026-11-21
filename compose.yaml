@@ -10,11 +10,13 @@ services:
       - PORT=3000
       - PUBLIC_URL=${PUBLIC_URL:-http://localhost:3000}
       - DATABASE_PATH=/app/data/feedkeeper.sqlite
+      - ARCHIVE_PATH=${ARCHIVE_PATH:-/app/data/archive}
       - SESSION_SECRET=${SESSION_SECRET:?Set SESSION_SECRET in .env before starting}
       - ALLOW_SIGNUP=${ALLOW_SIGNUP:-false}
       - ALLOW_PRIVATE_FEEDS=${ALLOW_PRIVATE_FEEDS:-false}
       - BLOCKED_FEED_HOSTS=${BLOCKED_FEED_HOSTS:-}
       - TRUST_PROXY=${TRUST_PROXY:-false}
+      - CLIENT_IP_HEADER=${CLIENT_IP_HEADER:-}
       - MIN_POLL_INTERVAL_MINUTES=${MIN_POLL_INTERVAL_MINUTES:-5}
       - IMAGE_CACHE_PATH=${IMAGE_CACHE_PATH:-/app/data/image-cache}
       - IMAGE_CACHE_MAX_BYTES=${IMAGE_CACHE_MAX_BYTES:-268435456}
@@ -43,6 +45,7 @@ services:
       - AUTO_CLEANUP_ENABLED=${AUTO_CLEANUP_ENABLED:-true}
       - SHOW_GITHUB_LINK=${SHOW_GITHUB_LINK:-true}
       - GITHUB_URL=${GITHUB_URL:-https://github.com/visualfusion/feedkeeper}
+      - OAUTH_ALLOWED_REDIRECT_HOSTS=${OAUTH_ALLOWED_REDIRECT_HOSTS:-}
     volumes:
       - feedkeeper_data:/app/data
 
