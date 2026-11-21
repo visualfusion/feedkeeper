@@ -2,6 +2,18 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.42.2] - 2026-11-21
+
+### Added
+- **Clean Reddit RSS posts:** Unwraps Reddit Atom feed layout tables into standard reader paragraphs and thumbnails while removing the forum footer chrome (`submitted by /u/…`, `[link]`, `[comments]`), preserving external link targets for link posts.
+- **Proactive rate-limit pacing:** Evaluates `X-RateLimit-Remaining` and `X-RateLimit-Reset` headers across feed responses (including `200 OK` and `304`) to defer hosts before hitting `429` limits.
+
+### Fixed
+- Passes the feed list label when subscribing during onboarding.
+
+### Upgrade notes
+- No database migrations. Existing stored articles are refreshed on re-poll or re-clean.
+
 ## [0.42.1] - 2026-11-20
 
 ### Fixed
