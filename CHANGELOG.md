@@ -2,6 +2,20 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.42.1] - 2026-11-20
+
+### Fixed
+- Feed summaries no longer show leading image filenames or copyright credits after update labels, including credits with abbreviated names.
+
+### Upgrade notes
+- No database migrations. Stored leads are refreshed with the updated cleanup rules.
+
+## [0.42.0] - 2026-11-20
+
+### Added
+- **JSON Feed support:** FeedKeeper now discovers, validates, and polls JSON Feed v1 and v1.1 (`application/feed+json`), including feed icons, authors, HTML/text content, summaries, and cover/attachment images.
+- **Extended platform discovery:** Paste links to YouTube channels (`/channel/UC...` and `/@handle`), Bluesky profiles, Mastodon/Fediverse handles (`/@user`), GitHub repositories/releases/commits, Substack profiles/publications, and Codeberg repositories to subscribe directly.
+
 ## [0.41.0] - 2026-11-19
 
 ### Added
