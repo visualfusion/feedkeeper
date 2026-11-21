@@ -216,7 +216,7 @@ export function FeedRow({ feed, editing, refreshing, highlighted = false, folder
           {failing && (
             <p className="mt-1.5 flex items-start gap-1.5 text-xs text-[var(--c-danger)]" title={feed.last_error ?? undefined}>
               <AlertIcon />
-              <span className="line-clamp-2">{feedErrorMessage(t, feed.last_error ?? "")}</span>
+              <span className="line-clamp-2">{feedErrorMessage(t, feed.last_error ?? "", feed.url)}</span>
             </p>
           )}
         </div>

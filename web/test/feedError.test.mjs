@@ -34,4 +34,6 @@ test("a missing status 5xx or timeout is reported as unavailable, a missing page
   assert.equal(feedErrorMessage(t, "feed_http_408"), t("feeds.errors.unavailable", { status: 408 }));
   assert.equal(feedErrorMessage(t, "feed_http_404"), t("feeds.errors.notFound", { status: 404 }));
   assert.equal(feedErrorMessage(t, "feed_http_451"), t("feeds.errors.rejected", { status: 451 }));
+  assert.equal(feedErrorMessage(t, "feed_http_429", "https://www.reddit.com/r/swift/.rss"), t("feeds.errors.redditLimited"));
+  assert.equal(feedErrorMessage(t, "feed_http_429", "https://example.com/feed.xml"), t("feeds.errors.limited"));
 });

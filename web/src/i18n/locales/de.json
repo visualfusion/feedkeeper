@@ -101,6 +101,7 @@
       "refused": "Die Quelle verweigert den Zugriff (Fehler {{status}}).",
       "rejected": "Die Quelle hat die Anfrage abgelehnt (Fehler {{status}}).",
       "limited": "Die Quelle begrenzt die Abrufe. FeedKeeper versucht es später erneut.",
+      "redditLimited": "Reddit blockiert derzeit automatische Serverabrufe für diesen Feed.",
       "timeout": "Die Quelle hat nicht rechtzeitig geantwortet. FeedKeeper versucht es automatisch erneut.",
       "network": "Die Quelle war nicht erreichbar. FeedKeeper versucht es automatisch erneut.",
       "invalidFeed": "Die Antwort ist kein gültiger Feed."
@@ -149,6 +150,7 @@
     "unbookmark": "Nicht mehr merken",
     "allFeeds": "Alle Feeds",
     "noItems": "Keine Artikel vorhanden.",
+    "feedUnavailableTitle": "Feed derzeit nicht verfügbar",
     "refresh": "Artikel aktualisieren",
     "refreshing": "Feeds werden aktualisiert…",
     "refreshFailed": "Aktualisierung fehlgeschlagen. Bitte erneut versuchen.",

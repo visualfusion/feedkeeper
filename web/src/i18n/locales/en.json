@@ -101,6 +101,7 @@
       "refused": "The source refuses access (error {{status}}).",
       "rejected": "The source rejected the request (error {{status}}).",
       "limited": "The source limits requests. FeedKeeper tries again later.",
+      "redditLimited": "Reddit currently blocks automatic server requests for this feed.",
       "timeout": "The source did not answer in time. FeedKeeper tries again automatically.",
       "network": "The source could not be reached. FeedKeeper tries again automatically.",
       "invalidFeed": "The answer is not a valid feed."
@@ -149,6 +150,7 @@
     "unbookmark": "Remove from saved",
     "allFeeds": "All feeds",
     "noItems": "No items to show.",
+    "feedUnavailableTitle": "Feed unavailable",
     "refresh": "Refresh articles",
     "refreshing": "Refreshing feeds…",
     "refreshFailed": "Refresh failed. Please try again.",

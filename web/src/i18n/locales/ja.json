@@ -101,6 +101,7 @@
       "refused": "ソースがアクセスを拒否しています（エラー{{status}}）。",
       "rejected": "ソースがリクエストを拒否しました（エラー{{status}}）。",
       "limited": "ソースがリクエストを制限しています。FeedKeeperが後で再試行します。",
+      "redditLimited": "現在、Redditはこのフィードへのサーバーからの自動取得をブロックしています。",
       "timeout": "ソースが時間内に応答しませんでした。FeedKeeperが自動的に再試行します。",
       "network": "ソースに接続できませんでした。FeedKeeperが自動的に再試行します。",
       "invalidFeed": "応答が有効なフィードではありません。"
@@ -149,6 +150,7 @@
     "unbookmark": "保存を解除",
     "allFeeds": "すべてのフィード",
     "noItems": "表示する記事がありません。",
+    "feedUnavailableTitle": "フィードを取得できません",
     "refresh": "記事を更新",
     "refreshing": "フィードを更新中…",
     "refreshFailed": "更新に失敗しました。もう一度お試しください。",

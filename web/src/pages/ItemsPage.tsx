@@ -17,7 +17,8 @@ import { toast } from "../utils/toast.ts";
 import { reportAllRefresh } from "../utils/refreshFeedback.ts";
 import { announceItemsChanged } from "../utils/badge.ts";
 import { syncOfflineCopy } from "../utils/offlineSync.ts";
-import { RefreshIcon } from "../components/feeds/icons.tsx";
+import { RefreshIcon, AlertIcon } from "../components/feeds/icons.tsx";
+import { feedErrorMessage } from "../utils/feedError.ts";
 import { HostNotice } from "../components/onboarding/HostNotice.tsx";
 import { Intro } from "../components/onboarding/Intro.tsx";
 import { PlanNotice } from "../components/PlanNotice.tsx";
@@ -336,6 +337,7 @@ export function ItemsPage() {
   }, [feedsLoaded, foldersLoaded, feeds, folders, filterScope]);
 
   const currentFeedId = filterScope.startsWith("feed:") ? Number(filterScope.slice(5)) : undefined;
+  const currentFeed = currentFeedId !== undefined ? feeds.find((feed) => feed.id === currentFeedId) : undefined;
   const currentFolderId = filterScope.startsWith("folder:") ? Number(filterScope.slice(7)) : undefined;
 
   /** No search, saved view or feed/folder scope: an empty list then says something about the library as a whole. */
@@ -830,6 +832,12 @@ export function ItemsPage() {
       {feedsLoaded && feeds.length > 0 && !syncAllowed && <PlanNotice />}
       {feedsLoaded && feeds.length > 0 && !loadError && <Intro />}
       {feedsLoaded && feeds.length > 0 && !loadError && <HostNotice />}
+      {items.length > 0 && currentFeed?.last_error && (
+        <div role="status" className="mb-4 flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm text-[var(--c-danger)]" style={{ borderColor: "var(--c-border)", background: "var(--c-surface)" }}>
+          <AlertIcon />
+          <span>{feedErrorMessage(t, currentFeed.last_error, currentFeed.url)}</span>
+        </div>
+      )}
 
       {loadError ? (
         <div role="alert" className="flex flex-col items-start gap-3">
@@ -845,6 +853,14 @@ export function ItemsPage() {
           <LoadingSpinner size="lg" />
           <h2 className="text-lg font-semibold">{t("welcome.fetchingTitle")}</h2>
           <p className="max-w-sm text-sm text-[var(--c-text-muted)]">{t("welcome.fetchingHint")}</p>
+        </div>
+      ) : items.length === 0 && !search && !bookmarkedOnly && currentFeed?.last_error ? (
+        <div role="status" className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--c-danger)]/10 text-[var(--c-danger)]">
+            <AlertIcon />
+          </div>
+          <h2 className="text-lg font-semibold">{t("items.feedUnavailableTitle")}</h2>
+          <p className="max-w-md text-sm text-[var(--c-text-muted)]">{feedErrorMessage(t, currentFeed.last_error, currentFeed.url)}</p>
         </div>
       ) : items.length === 0 && plainView && effectiveUnreadOnly && feeds.length > 0 ? (
         <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
