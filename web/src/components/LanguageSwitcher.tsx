@@ -5,8 +5,8 @@ import { CustomSelect } from "./CustomSelect.tsx";
 const LANGUAGES = [
   { value: "de", label: "Deutsch" },
   { value: "en", label: "English" },
-  { value: "ja", label: "日本語",
-    { value: "ru", label: "Русский" } },
+  { value: "ja", label: "日本語" },
+  { value: "ru", label: "Русский" },
 ];
 
 export function LanguageSwitcher() {
@@ -14,7 +14,7 @@ export function LanguageSwitcher() {
 
   return (
     <CustomSelect
-      value={i18n.resolvedLanguage ?? "de"}
+      value={i18n.language ?? i18n.resolvedLanguage ?? "de"}
       onChange={(lang) => { rememberLanguage(lang); void i18n.changeLanguage(lang); }}
       options={LANGUAGES}
       className="w-44"

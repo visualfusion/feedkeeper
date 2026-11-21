@@ -23,8 +23,8 @@ i18n
     // An explicit choice (stored by rememberLanguage) comes first, then the system's language. What the detector finds
     // is not stored, so that only a real choice overrides the system.
     detection: {
-      order: ["cookie", "localStorage", "navigator"],
-      caches: [],
+      order: ["localStorage", "cookie", "navigator"],
+      caches: ["localStorage"],
       lookupCookie: LANGUAGE_KEY,
       lookupLocalStorage: LANGUAGE_KEY,
     },
