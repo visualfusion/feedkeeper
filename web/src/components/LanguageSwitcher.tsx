@@ -5,7 +5,8 @@ import { CustomSelect } from "./CustomSelect.tsx";
 const LANGUAGES = [
   { value: "de", label: "Deutsch" },
   { value: "en", label: "English" },
-  { value: "ja", label: "日本語" },
+  { value: "ja", label: "日本語",
+    { value: "ru", label: "Русский" } },
 ];
 
 export function LanguageSwitcher() {
