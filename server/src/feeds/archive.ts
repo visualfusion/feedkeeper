@@ -195,7 +195,7 @@ async function drain(): Promise<void> {
   try {
     while (queue.length > 0) {
       const itemId = queue.shift()!;
-      await archiveItem(itemId).catch((error) => console.warn(`[archive] item ${itemId}:`, error));
+      await archiveItem(itemId).catch((error) => console.warn("[archive] item %d:", Number(itemId), error));
     }
   } finally {
     draining = false;

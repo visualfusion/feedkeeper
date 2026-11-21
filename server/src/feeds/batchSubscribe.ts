@@ -47,10 +47,11 @@ async function checkAddress(raw: string): Promise<{ url: string } | { reason: st
 }
 
 async function checkAll(items: BatchSubscriptionItem[]): Promise<Array<{ url: string } | { reason: string }>> {
-  const checked: Array<{ url: string } | { reason: string }> = new Array(items.length);
+  const total = Math.min(items.length, MAX_SUBSCRIPTION_BATCH);
+  const checked: Array<{ url: string } | { reason: string }> = new Array(total);
   let next = 0;
-  await Promise.all(Array.from({ length: Math.min(CHECK_CONCURRENCY, items.length) }, async () => {
-    while (next < items.length) {
+  await Promise.all(Array.from({ length: Math.min(CHECK_CONCURRENCY, total) }, async () => {
+    while (next < total) {
       const index = next++;
       checked[index] = await checkAddress(items[index].url);
     }
@@ -65,11 +66,12 @@ async function checkAll(items: BatchSubscriptionItem[]): Promise<Array<{ url: st
  * usual schedule. Sending the same list again changes nothing (`exists`).
  */
 export async function subscribeBatch(userId: number, items: BatchSubscriptionItem[]): Promise<BatchSubscriptionResult[]> {
-  const checked = await checkAll(items);
+  const bounded = items.slice(0, MAX_SUBSCRIPTION_BATCH);
+  const checked = await checkAll(bounded);
   const created: Feed[] = [];
   const results = db.transaction(() => {
     const folders = new Map<string, number>();
-    return items.map((item, index): BatchSubscriptionResult => {
+    return bounded.map((item, index): BatchSubscriptionResult => {
       const check = checked[index];
       if ("reason" in check) return { url: item.url, status: "invalid", reason: check.reason };
       let feed = findFeedByUrl(check.url);
