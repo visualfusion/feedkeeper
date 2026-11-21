@@ -14,7 +14,7 @@ export function LanguageSwitcher() {
 
   return (
     <CustomSelect
-      value={i18n.language ?? i18n.resolvedLanguage ?? "de"}
+      value={i18n.resolvedLanguage ?? "de"}
       onChange={(lang) => { rememberLanguage(lang); void i18n.changeLanguage(lang); }}
       options={LANGUAGES}
       className="w-44"
