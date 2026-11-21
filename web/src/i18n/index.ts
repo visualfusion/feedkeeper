@@ -14,7 +14,7 @@ i18n
     resources: {
       en: { translation: en },
       de: { translation: de },
-  ru: { translation: ru },
+      ru: { translation: ru },
       ja: { translation: ja },
     },
     fallbackLng: "en",
@@ -23,8 +23,8 @@ i18n
     // An explicit choice (stored by rememberLanguage) comes first, then the system's language. What the detector finds
     // is not stored, so that only a real choice overrides the system.
     detection: {
-      order: ["localStorage", "cookie", "navigator"],
-      caches: ["localStorage"],
+      order: ["cookie", "localStorage", "navigator"],
+      caches: [],
       lookupCookie: LANGUAGE_KEY,
       lookupLocalStorage: LANGUAGE_KEY,
     },
