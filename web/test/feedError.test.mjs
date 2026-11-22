@@ -4,11 +4,11 @@ import test from "node:test";
 import i18next from "i18next";
 import { feedErrorMessage } from "../src/utils/feedError.ts";
 
-const resources = Object.fromEntries(["en", "de", "ja"].map(code => [code, {
+const resources = Object.fromEntries(["en", "de", "ja", "ru"].map(code => [code, {
   translation: JSON.parse(readFileSync(new URL(`../src/i18n/locales/${code}.json`, import.meta.url), "utf8")),
 }]));
 
-for (const language of ["en", "de", "ja"]) {
+for (const language of ["en", "de", "ja", "ru"]) {
   test(`${language}: stored feed error codes read as sentences`, async () => {
     const i18n = i18next.createInstance();
     await i18n.init({ lng: language, resources });

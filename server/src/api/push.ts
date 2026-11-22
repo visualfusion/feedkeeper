@@ -47,6 +47,7 @@ const TEST_TEXT: Record<string, string> = {
   en: "Notifications work.",
   de: "Benachrichtigungen funktionieren.",
   ja: "通知は正常に動作しています。",
+  ru: "Уведомления работают.",
 };
 
 pushRouter.post("/test", async (req, res) => {

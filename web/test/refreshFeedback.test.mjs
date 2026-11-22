@@ -7,11 +7,11 @@ import { getToasts, dismissToast } from "../src/utils/toast.ts";
 
 // No real timers or DOM required for the feedback store.
 globalThis.window = { setTimeout: () => 0 };
-const resources = Object.fromEntries(["en", "de", "ja"].map(code => [code, {
+const resources = Object.fromEntries(["en", "de", "ja", "ru"].map(code => [code, {
   translation: JSON.parse(readFileSync(new URL(`../src/i18n/locales/${code}.json`, import.meta.url), "utf8")),
 }]));
 
-for (const language of ["en", "de", "ja"]) {
+for (const language of ["en", "de", "ja", "ru"]) {
   test(`${language}: deferred single and bulk refreshes never announce completion`, async () => {
     const i18n = i18next.createInstance();
     await i18n.init({ lng: language, resources });

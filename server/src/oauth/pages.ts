@@ -1,6 +1,6 @@
 import type { Request } from "express";
 
-type Lang = "en" | "de" | "ja";
+type Lang = "en" | "de" | "ja" | "ru";
 
 const strings = {
   en: {
@@ -78,6 +78,31 @@ const strings = {
     manage: "プランを管理",
     forbidden: "別のサイトからのリクエストのためブロックしました。",
   },
+  ru: {
+    passkey: "Войти с помощью пароля",
+    loginTitle: "Вход в FeedKeeper",
+    loginIntro: "{client} хочет подключиться к вашему аккаунту FeedKeeper. Войдите, чтобы продолжить.",
+    email: "Электронная почта",
+    password: "Пароль",
+    signIn: "Войти",
+    badLogin: "Неверная электронная почта или пароль.",
+    consentTitle: "Разрешить доступ?",
+    consentIntro: "{client} хочет получить доступ к вашему аккаунту FeedKeeper через MCP.",
+    returnsTo: "После вашего выбора вы вернётесь на {host}.",
+    readOnly: "Только чтение",
+    readOnlyHint: "Просмотр лент и статей. Без изменений.",
+    readWrite: "Чтение и запись",
+    readWriteHint: "Отмечать статьи прочитанными, добавлять в избранное, управлять лентами и папками.",
+    allow: "Разрешить",
+    deny: "Отклонить",
+    signedInAs: "Вход выполнен как {user}",
+    errorTitle: "Этот запрос невозможно выполнить",
+    unknownClient: "Приложение не зарегистрировано на этом сервере.",
+    badRedirect: "Адрес возврата не совпадает с регистрацией приложения.",
+    noAccess: "Ваш аккаунт не включает доступ MCP.",
+    manage: "Управление планом",
+    forbidden: "Запрос пришёл с другого сайта и был заблокирован.",
+  },
 } as const;
 
 export type MessageKey = keyof (typeof strings)["en"];
@@ -86,7 +111,7 @@ function languageOf(req: Request): Lang {
   const header = String(req.headers["accept-language"] ?? "").toLowerCase();
   for (const part of header.split(",")) {
     const tag = part.trim().slice(0, 2);
-    if (tag === "de" || tag === "ja" || tag === "en") return tag;
+    if (tag === "de" || tag === "ja" || tag === "en" || tag === "ru") return tag;
   }
   return "en";
 }

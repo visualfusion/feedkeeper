@@ -9,7 +9,7 @@
   <a href="https://github.com/visualfusion/feedkeeper/releases"><img src="https://img.shields.io/github/v/release/visualfusion/feedkeeper?style=for-the-badge&logo=github&color=blue" alt="Latest Release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License: MIT" /></a>
   <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-Streamable_HTTP-8A2BE2?style=for-the-badge" alt="MCP" /></a>
-  <a href="#features"><img src="https://img.shields.io/badge/UI-EN_%7C_DE_%7C_JA-informational?style=for-the-badge" alt="Languages" /></a>
+  <a href="#features"><img src="https://img.shields.io/badge/UI-EN_%7C_DE_%7C_JA_%7C_RU-informational?style=for-the-badge" alt="Languages" /></a>
   <a href="#contributing"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=for-the-badge" alt="PRs Welcome" /></a>
 </p>
 
@@ -19,7 +19,7 @@ FeedKeeper is an independent RSS, Atom, and JSON Feed manager built for people w
 
 Beyond a clean web reader, FeedKeeper includes a native, authenticated **[Model Context Protocol (MCP)](https://modelcontextprotocol.io)** endpoint. Listed in the official MCP Registry (`io.github.visualfusion/feedkeeper`) and verified for the Anthropic Claude Directory, it lets MCP clients read, search, bookmark, and organize your feeds over a remote connection. Your subscriptions and reading history stay in your own SQLite database.
 
-It is multi-user by default, with isolated accounts, personal access tokens, and a trilingual interface (English, German, and Japanese).
+It is multi-user by default, with isolated accounts, personal access tokens, and a multilingual interface (English, German, Japanese, and Russian).
 
 <p align="center">
   <img src="docs/screenshots/iphone.png" alt="FeedKeeper on iPhone: newspaper view with category filter and tab bar" width="170" />
@@ -282,7 +282,7 @@ Read-only tokens expose only the tools that leave FeedKeeper data unchanged. `ge
 
 ## Native apps
 
-For reading on the go and offline, the official **FeedKeeper app** is available on the [App Store](https://analytics.visualfusion.de/q/feedkeeper-app) for **iOS, iPadOS, and macOS**. It pairs directly with your self-hosted instance in seconds — just scan the pairing QR code under **Settings → Devices** in your web reader.
+The official **FeedKeeper app** is available on the [App Store](https://analytics.visualfusion.de/q/feedkeeper-app) for **iOS, iPadOS, and macOS**. It currently ships in English, German, and Japanese (Russian is available in the web interface only). The app pairs directly with your self-hosted instance in seconds — just scan the pairing QR code under **Settings → Devices** in your web reader.
 
 The app builds on FeedKeeper's open native API (`/api/v1`) to provide:
 - Incremental delta-sync and offline article caching

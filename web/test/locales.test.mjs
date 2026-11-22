@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const locales = ["en", "de", "ja"];
+const locales = ["en", "de", "ja", "ru"];
 const load = (code) => JSON.parse(readFileSync(new URL(`../src/i18n/locales/${code}.json`, import.meta.url), "utf8"));
 
 function keysOf(value, prefix = "") {
@@ -19,11 +19,23 @@ function entriesOf(value, prefix = "") {
 
 const reference = new Set(keysOf(load("en")));
 
+// Plural suffixes allowed for languages with complex plural rules (like Russian)
+const pluralSuffixes = { ru: ["_one", "_few", "_many", "_other"] };
+
 for (const code of locales.filter((code) => code !== "en")) {
   test(`${code} has the same text keys as en`, () => {
     const keys = new Set(keysOf(load(code)));
-    assert.deepEqual([...reference].filter((key) => !keys.has(key)), [], `missing in ${code}.json`);
-    assert.deepEqual([...keys].filter((key) => !reference.has(key)), [], `unknown in ${code}.json`);
+    // For languages with plural suffixes, strip them before comparing
+    const suffixes = pluralSuffixes[code] || [];
+    // Strip plural suffixes to get base keys for comparison
+    const baseKeysInEn = new Set([...reference].map((k) => suffixes.length > 0 && suffixes.some((s) => k.endsWith(s)) ? k.replace(/_(one|few|many|other)$/, "") : k));
+    const baseKeysInCode = new Set([...keys].map((k) => suffixes.length > 0 && suffixes.some((s) => k.endsWith(s)) ? k.replace(/_(one|few|many|other)$/, "") : k));
+
+    // Check missing keys (base keys in en not present in code, ignoring plural variants)
+    assert.deepEqual([...baseKeysInEn].filter((key) => !baseKeysInCode.has(key)), [], `missing base keys in ${code}.json`);
+    // Check unknown/stale keys (base keys in code not present in en)
+    assert.deepEqual([...baseKeysInCode].filter((key) => !baseKeysInEn.has(key)), [], `unknown base keys in ${code}.json`);
+    // Allow extra plural variants in code
   });
 }
 

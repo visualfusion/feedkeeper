@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { BUILT_IN_FEED_LISTS } from "../src/feeds/feedListsData.js";
 import { pickFeedListLanguage, resolveFeedLists } from "../src/feeds/feedLists.js";
 
-const LANGUAGES = ["en", "de", "ja"] as const;
+const LANGUAGES = ["en", "de", "ja", "ru"] as const;
 
 test("the built-in feed lists are complete, short and free of duplicates", () => {
   const ids = new Set<string>();
@@ -46,6 +46,12 @@ test("the lists are answered in the language asked for, English as the fallback"
   const verge = german.flatMap((list) => list.feeds).find((feed) => feed.title === "The Verge")!;
   assert.match(verge.description, /Geräte/);
   assert.equal(verge.lang, "en");
+
+  const japanese = resolveFeedLists("ja");
+  assert.equal(japanese.find((list) => list.id === "news")!.title, "ニュース");
+
+  const russian = resolveFeedLists("ru");
+  assert.equal(russian.find((list) => list.id === "news")!.title, "Новости");
 });
 
 test("the native API serves the lists to signed-in clients and advertises the feature", async () => {
