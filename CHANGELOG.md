@@ -2,6 +2,12 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.43.0] - 2026-11-22
+
+### Added
+- **Russian web interface:** Full Russian localization (`ru`) for the web reader, settings, onboarding, OAuth sign-in and consent screens, and push test notifications, contributed by [@SadmL](https://github.com/SadmL) in [#69](https://github.com/visualfusion/feedkeeper/pull/69).
+- **Localized starter lists:** Built-in feed list titles, list descriptions, and feed descriptions now support `ru` alongside English, German, and Japanese, and `GET /api/v1/feed-lists` accepts `ru` (including `N+1` in Science).
+
 ## [0.42.6] - 2026-11-22
 
 ### Added
