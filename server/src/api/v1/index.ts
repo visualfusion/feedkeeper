@@ -77,6 +77,7 @@ v1Router.get("/meta", (_req, res) => {
         readDays: retention.retentionReadDays,
         maxDays: retention.retentionMaxDays,
         maxItemsPerFeed: retention.retentionMaxItemsPerFeed,
+        minItemsPerFeed: retention.retentionMinItemsPerFeed,
         protectActiveEdition: true,
       },
     },

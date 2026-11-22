@@ -92,3 +92,22 @@ test("migration 0046 clears stored GitHub avatar hero URLs and bumps content rev
   assert.equal(g2.image_url, "https://user-images.githubusercontent.com/1937591/screenshot.png");
   assert.equal(g2.content_revision, 1);
 });
+
+test("extracts media:thumbnail from media:group in YouTube Atom feeds", async () => {
+  const youtubeAtom = `<?xml version="1.0" encoding="UTF-8"?>
+  <feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom">
+    <title>Abroad in Japan</title>
+    <entry>
+      <id>yt:video:abc123def45</id>
+      <title>We Drove to Japan's 1960's Hot Spring Town</title>
+      <link rel="alternate" href="https://www.youtube.com/watch?v=abc123def45"/>
+      <published>2026-11-05T17:17:00+00:00</published>
+      <media:group>
+        <media:thumbnail url="https://i1.ytimg.com/vi/abc123def45/hqdefault.jpg" width="480" height="360"/>
+      </media:group>
+    </entry>
+  </feed>`;
+  const parsed = await parseFeedBody(youtubeAtom);
+  assert.equal(parsed.items.length, 1);
+  assert.equal(parsed.items[0]!.imageUrl, "https://i1.ytimg.com/vi/abc123def45/hqdefault.jpg");
+});

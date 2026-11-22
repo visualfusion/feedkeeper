@@ -51,7 +51,7 @@ test("a native app pairs with a one-time code and gets its own revocable token",
     updateRetentionSettings({ retentionReadDays: 14, retentionMaxDays: 60, retentionMaxItemsPerFeed: 500, autoCleanupEnabled: false });
     const rules = await call("/meta");
     assert.ok(rules.body.features.includes("retention"));
-    assert.deepEqual(rules.body.limits.retention, { enabled: false, readDays: 14, maxDays: 60, maxItemsPerFeed: 500, protectActiveEdition: true });
+    assert.deepEqual(rules.body.limits.retention, { enabled: false, readDays: 14, maxDays: 60, maxItemsPerFeed: 500, minItemsPerFeed: 30, protectActiveEdition: true });
     assert.equal(rules.body.limits.retentionDays, 60);
     assert.equal((await call("/me")).status, 401);
     assert.equal((await call("/pairing-codes", { method: "POST" })).status, 401);

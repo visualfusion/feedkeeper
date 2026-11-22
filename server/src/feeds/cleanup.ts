@@ -10,6 +10,7 @@ export interface RetentionSettings {
   retentionReadDays: number;
   retentionMaxDays: number;
   retentionMaxItemsPerFeed: number;
+  retentionMinItemsPerFeed: number;
   autoCleanupEnabled: boolean;
 }
 
@@ -68,6 +69,7 @@ export function getRetentionSettings(): RetentionSettings {
       retentionReadDays: Number(map.get("retention_read_days") ?? config.retentionReadDays),
       retentionMaxDays: Number(map.get("retention_max_days") ?? config.retentionMaxDays),
       retentionMaxItemsPerFeed: Number(map.get("retention_max_items_per_feed") ?? config.retentionMaxItemsPerFeed),
+      retentionMinItemsPerFeed: Number(map.get("retention_min_items_per_feed") ?? config.retentionMinItemsPerFeed),
       autoCleanupEnabled: (map.get("auto_cleanup_enabled") ?? String(config.autoCleanupEnabled)) === "true",
     };
   } catch {
@@ -75,6 +77,7 @@ export function getRetentionSettings(): RetentionSettings {
       retentionReadDays: config.retentionReadDays,
       retentionMaxDays: config.retentionMaxDays,
       retentionMaxItemsPerFeed: config.retentionMaxItemsPerFeed,
+      retentionMinItemsPerFeed: config.retentionMinItemsPerFeed,
       autoCleanupEnabled: config.autoCleanupEnabled,
     };
   }
@@ -96,6 +99,9 @@ export function updateRetentionSettings(settings: Partial<RetentionSettings>): R
     }
     if (settings.retentionMaxItemsPerFeed !== undefined) {
       updateStmt.run("retention_max_items_per_feed", String(Math.max(0, settings.retentionMaxItemsPerFeed)));
+    }
+    if (settings.retentionMinItemsPerFeed !== undefined) {
+      updateStmt.run("retention_min_items_per_feed", String(Math.max(0, settings.retentionMinItemsPerFeed)));
     }
     if (settings.autoCleanupEnabled !== undefined) {
       updateStmt.run("auto_cleanup_enabled", String(settings.autoCleanupEnabled));
@@ -140,7 +146,23 @@ export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
   let deletedOldItems = 0;
   let deletedPerFeedExcess = 0;
 
-  // 1. Delete read items older than retentionReadDays (excluding bookmarked items and items with notes)
+  const minKeep = settings.retentionMinItemsPerFeed > 0 ? settings.retentionMinItemsPerFeed : null;
+  const minKeepClause = (idCol: string) =>
+    minKeep !== null
+      ? `AND ${idCol} NOT IN (
+           SELECT id FROM (
+             SELECT id, ROW_NUMBER() OVER (
+               PARTITION BY feed_id
+               ORDER BY COALESCE(julianday(published_at), julianday(created_at)) DESC, id DESC
+             ) AS rn
+             FROM items
+           )
+           WHERE rn <= ?
+         )`
+      : "";
+  const minKeepParams = minKeep !== null ? [minKeep] : [];
+
+  // 1. Delete read items older than retentionReadDays (excluding bookmarked items, notes, and the newest minKeep per feed)
   if (settings.retentionReadDays > 0) {
     deletedReadItems = retireItems(
       `id IN (
@@ -158,12 +180,14 @@ export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
                AND NOT EXISTS (SELECT 1 FROM item_reads r WHERE r.item_id = i.id AND r.user_id = s.user_id)
            )
            AND COALESCE(julianday(i.published_at), julianday(i.created_at)) <= julianday('now', '-' || ? || ' days')
+           ${minKeepClause("i.id")}
        )`,
       settings.retentionReadDays,
+      ...minKeepParams,
     );
   }
 
-  // 2. Delete all items older than retentionMaxDays (excluding bookmarked items and items with notes)
+  // 2. Delete all items older than retentionMaxDays (excluding bookmarked items, notes, and the newest minKeep per feed)
   if (settings.retentionMaxDays > 0) {
     deletedOldItems = retireItems(
       `id NOT IN (SELECT item_id FROM item_bookmarks)
@@ -171,8 +195,10 @@ export function runCleanup(custom?: Partial<RetentionSettings>): CleanupResult {
          AND feed_id NOT IN (SELECT id FROM feeds WHERE is_system_inbox = 1)
          AND id NOT IN (SELECT CAST(selected.value AS INTEGER) FROM editions e, json_each(e.item_ids) selected
            WHERE e.source = 'curated' AND e.status <> 'dismissed')
-         AND COALESCE(julianday(published_at), julianday(created_at)) <= julianday('now', '-' || ? || ' days')`,
+         AND COALESCE(julianday(published_at), julianday(created_at)) <= julianday('now', '-' || ? || ' days')
+         ${minKeepClause("id")}`,
       settings.retentionMaxDays,
+      ...minKeepParams,
     );
   }
 

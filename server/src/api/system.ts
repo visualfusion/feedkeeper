@@ -22,6 +22,7 @@ const updateRetentionSchema = z.object({
   retentionReadDays: z.number().int().min(0).max(3650).optional(),
   retentionMaxDays: z.number().int().min(0).max(3650).optional(),
   retentionMaxItemsPerFeed: z.number().int().min(0).max(100000).optional(),
+  retentionMinItemsPerFeed: z.number().int().min(0).max(10000).optional(),
   autoCleanupEnabled: z.boolean().optional(),
 });
 

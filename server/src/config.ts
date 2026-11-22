@@ -36,6 +36,7 @@ export const config = {
   retentionReadDays: Number(process.env.RETENTION_READ_DAYS ?? 30),
   retentionMaxDays: Number(process.env.RETENTION_MAX_DAYS ?? 90),
   retentionMaxItemsPerFeed: Number(process.env.RETENTION_MAX_ITEMS_PER_FEED ?? 1000),
+  retentionMinItemsPerFeed: Number(process.env.RETENTION_MIN_ITEMS_PER_FEED ?? 30),
   autoCleanupEnabled: process.env.AUTO_CLEANUP_ENABLED !== "false",
   // Optional: only these hosts may register OAuth redirect URIs (comma-separated). Loopback addresses are always allowed.
   oauthAllowedRedirectHosts: (process.env.OAUTH_ALLOWED_REDIRECT_HOSTS ?? "")

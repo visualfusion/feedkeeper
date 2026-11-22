@@ -307,8 +307,8 @@ test("native extensions: feed icons, folder icons, notes, editions, and retentio
     );
     db.prepare("INSERT INTO item_reads (user_id, item_id, read_at) VALUES (?, ?, ?)").run(user1, itemId2, "2020-01-01T00:00:00Z");
 
-    // Run cleanup with aggressive retention (readDays: 1, maxDays: 1)
-    runCleanup({ retentionReadDays: 1, retentionMaxDays: 1 });
+    // Run cleanup with aggressive retention (readDays: 1, maxDays: 1, minItemsPerFeed: 0)
+    runCleanup({ retentionReadDays: 1, retentionMaxDays: 1, retentionMinItemsPerFeed: 0 });
 
     // itemId2 without note was deleted by cleanup
     assert.equal(db.prepare("SELECT 1 FROM items WHERE id = ?").get(itemId2), undefined);

@@ -30,10 +30,12 @@ export interface ParsedFeed {
 type CustomItem = Parser.Item & {
   mediaContent?: unknown;
   mediaThumbnail?: unknown;
+  mediaGroup?: unknown;
   contentEncoded?: string;
   author?: string;
   "media:content"?: unknown;
   "media:thumbnail"?: unknown;
+  "media:group"?: unknown;
   "content:encoded"?: string;
 };
 
@@ -48,6 +50,7 @@ const xmlParser = new Parser<CustomFeed, CustomItem>({
     item: [
       ["media:content", "mediaContent", { keepArray: false }],
       ["media:thumbnail", "mediaThumbnail", { keepArray: false }],
+      ["media:group", "mediaGroup", { keepArray: false }],
       ["content:encoded", "contentEncoded", { keepArray: false }],
     ],
   },
@@ -140,9 +143,16 @@ function firstHtmlImageUrl(html: unknown): string | null {
   return null;
 }
 
-function extractXmlImageUrl(item: CustomItem): string | null {
+type MediaSource = {
+  mediaContent?: unknown;
+  mediaThumbnail?: unknown;
+  "media:content"?: unknown;
+  "media:thumbnail"?: unknown;
+};
+
+function extractMediaImageUrl(source: MediaSource): string | null {
   // 1. media:content (Media RSS)
-  const mediaContent = item.mediaContent ?? item["media:content"];
+  const mediaContent = source.mediaContent ?? source["media:content"];
   if (mediaContent) {
     for (const entry of asMediaEntries(mediaContent)) {
       if (isValidImageUrl(entry)) return cleanImageUrl(entry);
@@ -157,13 +167,29 @@ function extractXmlImageUrl(item: CustomItem): string | null {
   }
 
   // 2. media:thumbnail
-  const mediaThumbnail = item.mediaThumbnail ?? item["media:thumbnail"];
+  const mediaThumbnail = source.mediaThumbnail ?? source["media:thumbnail"];
   if (mediaThumbnail) {
     for (const entry of asMediaEntries(mediaThumbnail)) {
       if (isValidImageUrl(entry)) return cleanImageUrl(entry);
       if (isTooSmallMedia(mediaAttribute(entry, "width"), mediaAttribute(entry, "height"))) continue;
       const url = mediaAttribute(entry, "url");
       if (isValidImageUrl(url)) return cleanImageUrl(url);
+    }
+  }
+
+  return null;
+}
+
+function extractXmlImageUrl(item: CustomItem): string | null {
+  const direct = extractMediaImageUrl(item);
+  if (direct) return direct;
+
+  const mediaGroup = item.mediaGroup ?? item["media:group"];
+  if (mediaGroup) {
+    for (const group of asMediaEntries(mediaGroup)) {
+      if (!isRecord(group)) continue;
+      const grouped = extractMediaImageUrl(group as MediaSource);
+      if (grouped) return grouped;
     }
   }
 

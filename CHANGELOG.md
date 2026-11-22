@@ -2,6 +2,17 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.42.6] - 2026-11-22
+
+### Added
+- **Minimum items per feed in retention:** Keeps at least the newest `30` entries per feed (`RETENTION_MIN_ITEMS_PER_FEED` / `retentionMinItemsPerFeed`) exempt from age-based cleanup (`retentionReadDays` and `retentionMaxDays`), and exposes `minItemsPerFeed` in `/api/v1/meta` so apps apply the same rule.
+
+### Fixed
+- **YouTube feed thumbnails:** Extracts `<media:thumbnail>` and `<media:content>` from `<media:group>` in Atom feeds so YouTube channels and similar Media RSS feeds keep their preview images.
+
+### Upgrade notes
+- Migration `0047_retention_min_items.sql` adds the default `retention_min_items_per_feed = '30'` setting.
+
 ## [0.42.5] - 2026-11-22
 
 ### Fixed

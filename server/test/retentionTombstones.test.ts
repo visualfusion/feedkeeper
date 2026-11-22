@@ -25,14 +25,14 @@ test("articles removed by retention do not come back on the next poll", async ()
   markItemRead(userId, idOf("old-read")!);
 
   // Read articles past the read limit go; unread ones stay.
-  runCleanup({ retentionReadDays: 30, retentionMaxDays: 0, retentionMaxItemsPerFeed: 0 });
+  runCleanup({ retentionReadDays: 30, retentionMaxDays: 0, retentionMaxItemsPerFeed: 0, retentionMinItemsPerFeed: 0 });
   assert.equal(idOf("old-read"), undefined);
   assert.ok(idOf("old-unread"));
   assert.equal(upsertItems(feedId, listed), 0, "the feed still lists the removed article");
   assert.equal(idOf("old-read"), undefined);
 
   // The age limit and the per-feed cap remember what they removed as well.
-  runCleanup({ retentionReadDays: 0, retentionMaxDays: 90, retentionMaxItemsPerFeed: 0 });
+  runCleanup({ retentionReadDays: 0, retentionMaxDays: 90, retentionMaxItemsPerFeed: 0, retentionMinItemsPerFeed: 0 });
   assert.equal(idOf("old-unread"), undefined);
   assert.equal(upsertItems(feedId, [...listed, { guid: "newer", title: "Newer", publishedAt: recent }]), 1);
   runCleanup({ retentionReadDays: 0, retentionMaxDays: 0, retentionMaxItemsPerFeed: 1 });
@@ -55,4 +55,19 @@ test("articles removed by retention do not come back on the next poll", async ()
   unsubscribe(userId, feedId);
   assert.ok(db.prepare("SELECT 1 FROM feeds WHERE id = ?").get(feedId), "the saved article keeps its feed");
   assert.deepEqual(tombstones(), []);
+
+  // Minimum items per feed protects the newest entries from age-based cleanup.
+  const sparseFeedId = Number(db.prepare("INSERT INTO feeds (url) VALUES (?)").run("https://example.com/youtube.xml").lastInsertRowid);
+  subscribe(userId, sparseFeedId);
+  assert.equal(upsertItems(sparseFeedId, [
+    { guid: "v1", title: "Newest old", publishedAt: "2020-03-01T00:00:00.000Z" },
+    { guid: "v2", title: "Middle old", publishedAt: "2020-02-01T00:00:00.000Z" },
+    { guid: "v3", title: "Oldest", publishedAt: "2020-01-01T00:00:00.000Z" },
+  ]), 3);
+  const sparseIdOf = (guid: string) => db.prepare<[number, string], { id: number }>("SELECT id FROM items WHERE feed_id = ? AND guid = ?").get(sparseFeedId, guid)?.id;
+  markItemRead(userId, sparseIdOf("v1")!);
+  runCleanup({ retentionReadDays: 30, retentionMaxDays: 90, retentionMaxItemsPerFeed: 1000, retentionMinItemsPerFeed: 2 });
+  assert.ok(sparseIdOf("v1"), "newest 2 entries stay despite being read and older than 90 days");
+  assert.ok(sparseIdOf("v2"), "second newest stays");
+  assert.equal(sparseIdOf("v3"), undefined, "entries beyond the minimum per feed are still retired by age");
 });
