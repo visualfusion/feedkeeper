@@ -51,7 +51,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "technology",
     iconSymbol: "desktopcomputer",
-    title: { en: "Technology", de: "Technologie", ja: "テクノロジー", ru: "Технологии" },
+    title: { en: "Technology", de: "Technik", ja: "テクノロジー", ru: "Технологии" },
     description: { en: "News and background on software, hardware and the web.", de: "Nachrichten und Hintergründe zu Software, Hardware und Netz.", ja: "ソフトウェア、ハードウェア、ウェブのニュースと解説。", ru: "Новости и аналитика о ПО, железе и вебе." },
     feeds: [
       { title: "heise online", url: "https://www.heise.de/rss/heise-atom.xml", lang: "de", description: { en: "IT news and tests from Germany's best-known tech publisher.", de: "IT-Nachrichten und Tests des bekannten Technikverlags.", ja: "ドイツを代表するIT媒体のニュースとレビュー。", ru: "IT-новости и тесты от известного немецкого издателя." } },
@@ -147,7 +147,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "business",
     iconSymbol: "chart.line.uptrend.xyaxis",
-    title: { en: "Business", de: "Wirtschaft", ja: "ビジネス", ru: "Бизнес" },
+    title: { en: "Business", de: "Wirtschaft", ja: "経済", ru: "Бизнес" },
     description: { en: "Markets, companies and the economy.", de: "Märkte, Unternehmen und Konjunktur.", ja: "市場、企業、経済。", ru: "Рынки, компании и экономика." },
     feeds: [
       { title: "Tagesschau Wirtschaft", url: "https://www.tagesschau.de/wirtschaft/index~rss2.xml", lang: "de", description: { en: "Economy news from public television.", de: "Wirtschaftsnachrichten des öffentlich-rechtlichen Fernsehens.", ja: "公共放送による経済ニュース。", ru: "Экономические новости от государственного ТВ." } },
