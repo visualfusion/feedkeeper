@@ -2,6 +2,17 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.42.5] - 2026-11-22
+
+### Fixed
+- **Skip avatars and tiny icons as article hero images:** Ignores `media:content`, `media:thumbnail`, and inline feed `<img>` tags smaller than `100 px`, `avatars.githubusercontent.com` URLs, and avatar/icon/emoji classes so GitHub release, commit, and activity feeds no longer show stretched profile avatars instead of clean text cards or embedded screenshots.
+
+### Changed
+- **Docker Compose & translation guide:** Passes `ARCHIVE_PATH`, `CLIENT_IP_HEADER`, and `OAUTH_ALLOWED_REDIRECT_HOSTS` through `compose.yaml`, and expands `docs/translating.md` with plural rules and server localization touchpoints.
+
+### Upgrade notes
+- Migration `0046_drop_avatar_hero_images.sql` clears stored `avatars.githubusercontent.com` hero URLs from existing items and bumps `content_revision` so synced clients update automatically.
+
 ## [0.42.4] - 2026-11-22
 
 ### Added
