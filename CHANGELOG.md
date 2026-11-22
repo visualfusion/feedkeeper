@@ -2,6 +2,51 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.42.5] - 2026-11-22
+
+### Fixed
+- **Skip avatars and tiny icons as article hero images:** Ignores `media:content`, `media:thumbnail`, and inline feed `<img>` tags smaller than `100 px`, `avatars.githubusercontent.com` URLs, and avatar/icon/emoji classes so GitHub release, commit, and activity feeds no longer show stretched profile avatars instead of clean text cards or embedded screenshots.
+
+### Changed
+- **Docker Compose & translation guide:** Passes `ARCHIVE_PATH`, `CLIENT_IP_HEADER`, and `OAUTH_ALLOWED_REDIRECT_HOSTS` through `compose.yaml`, and expands `docs/translating.md` with plural rules and server localization touchpoints.
+
+### Upgrade notes
+- Migration `0046_drop_avatar_hero_images.sql` clears stored `avatars.githubusercontent.com` hero URLs from existing items and bumps `content_revision` so synced clients update automatically.
+
+## [0.42.4] - 2026-11-22
+
+### Added
+- **Clearer feed error display in the web reader:** Shows feed fetch errors directly inside empty or failing feed views (`ItemsPage`) and clarifies Reddit `429` blocks in English, German, and Japanese instead of claiming automatic retries will succeed soon.
+
+### Fixed
+- **Security hardening:** Bounded batch subscription array iteration to `MAX_SUBSCRIPTION_BATCH` and replaced a dynamic `console.warn` format string in `archive.ts` with a fixed format string.
+- **Lint:** Removed a redundant variable initialization in `extractorParser.ts`.
+
+### Upgrade notes
+- No database migrations.
+
+## [0.42.3] - 2026-11-21
+
+### Changed
+- **Offloaded full-text HTML extraction:** Runs JSDOM, content cleanup rules, and Readability parsing in a dedicated worker-thread pool (`EXTRACTOR_WORKERS`, default `2`, 15s parse watchdog) so heavy pages and bulk imports no longer stall the HTTP event loop.
+- **Bounded initial subscribe wait:** `subscribeToFeed` waits up to `POLL_SUBSCRIBE_WAIT_MS` (default `8000`ms) for the initial feed poll and returns immediately while slow publishers finish in the background queue.
+- **Reader HTML cache:** Increases the in-memory cleaned reader HTML cache from 300 to 600 entries.
+
+### Upgrade notes
+- No database migrations.
+
+## [0.42.2] - 2026-11-21
+
+### Added
+- **Clean Reddit RSS posts:** Unwraps Reddit Atom feed layout tables into standard reader paragraphs and thumbnails while removing the forum footer chrome (`submitted by /u/…`, `[link]`, `[comments]`), preserving external link targets for link posts.
+- **Proactive rate-limit pacing:** Evaluates `X-RateLimit-Remaining` and `X-RateLimit-Reset` headers across feed responses (including `200 OK` and `304`) to defer hosts before hitting `429` limits.
+
+### Fixed
+- Passes the feed list label when subscribing during onboarding.
+
+### Upgrade notes
+- No database migrations. Existing stored articles are refreshed on re-poll or re-clean.
+
 ## [0.42.1] - 2026-11-20
 
 ### Fixed

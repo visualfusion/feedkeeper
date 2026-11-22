@@ -56,10 +56,10 @@ export function resolveFeedLists(language: keyof Localized): FeedList[] {
     .map((list) => ({
       id: list.id,
       iconSymbol: list.iconSymbol,
-      title: text(list.title, language),
+      title: list.title,
       description: text(list.description, language),
       feeds: list.feeds.map((feed) => ({
-        title: text(feed.title, language),
+        title: feed.title,
         url: feed.url,
         lang: feed.lang,
         description: text(feed.description, language),

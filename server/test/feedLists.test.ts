@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { BUILT_IN_FEED_LISTS } from "../src/feeds/feedListsData.js";
 import { pickFeedListLanguage, resolveFeedLists } from "../src/feeds/feedLists.js";
 
-const LANGUAGES = ["en", "de", "ja"] as const;
+const LANGUAGES = ["en", "de", "ja", "ru"] as const;
 
 test("the built-in feed lists are complete, short and free of duplicates", () => {
   const ids = new Set<string>();
@@ -15,7 +15,7 @@ test("the built-in feed lists are complete, short and free of duplicates", () =>
     assert.ok(/^[a-z0-9.]+$/.test(list.iconSymbol), `symbol of ${list.id}`);
     assert.ok(list.feeds.length >= 3, `${list.id} has too few feeds`);
     for (const language of LANGUAGES) {
-      assert.ok(list.title[language].trim() && list.title[language].length <= 30, `${list.id} title ${language}`);
+      assert.ok(list.title.trim() && list.title.length <= 30, `${list.id} title ${language}`);
       assert.ok(list.description[language].trim() && list.description[language].length <= 120, `${list.id} description ${language}`);
     }
     for (const feed of list.feeds) {
@@ -42,7 +42,7 @@ test("the lists are answered in the language asked for, English as the fallback"
 
   const german = resolveFeedLists("de");
   assert.equal(german.length, BUILT_IN_FEED_LISTS.length);
-  assert.equal(german.find((list) => list.id === "news")!.title, "Nachrichten");
+  assert.equal(german.find((list) => list.id === "news")!.title, "News");
   const verge = german.flatMap((list) => list.feeds).find((feed) => feed.title === "The Verge")!;
   assert.match(verge.description, /Geräte/);
   assert.equal(verge.lang, "en");
@@ -70,9 +70,9 @@ test("the native API serves the lists to signed-in clients and advertises the fe
     assert.ok(meta.features.includes("feed-lists"));
 
     const japanese = await (await get("/feed-lists?lang=ja")).json() as { lists: Array<{ id: string; title: string; feeds: unknown[] }> };
-    assert.equal(japanese.lists.find((list) => list.id === "news")!.title, "ニュース");
+    assert.equal(japanese.lists.find((list) => list.id === "news")!.title, "News");
     const header = await (await get("/feed-lists", { "accept-language": "de-DE,de;q=0.9" })).json() as { lists: Array<{ id: string; title: string }> };
-    assert.equal(header.lists.find((list) => list.id === "news")!.title, "Nachrichten");
+    assert.equal(header.lists.find((list) => list.id === "news")!.title, "News");
   } finally {
     server.close();
   }

@@ -9,7 +9,7 @@
   <a href="https://github.com/visualfusion/feedkeeper/releases"><img src="https://img.shields.io/github/v/release/visualfusion/feedkeeper?style=for-the-badge&logo=github&color=blue" alt="Latest Release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License: MIT" /></a>
   <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-Streamable_HTTP-8A2BE2?style=for-the-badge" alt="MCP" /></a>
-  <a href="#features"><img src="https://img.shields.io/badge/UI-EN_%7C_DE_%7C_JA-informational?style=for-the-badge" alt="Languages" /></a>
+  <a href="#features"><img src="https://img.shields.io/badge/UI-EN_%7C_DE_%7C_JA_%7C_RU-informational?style=for-the-badge" alt="Languages" /></a>
   <a href="#contributing"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=for-the-badge" alt="PRs Welcome" /></a>
 </p>
 
