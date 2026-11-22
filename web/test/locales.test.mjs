@@ -27,14 +27,14 @@ for (const code of locales.filter((code) => code !== "en")) {
     const keys = new Set(keysOf(load(code)));
     // For languages with plural suffixes, strip them before comparing
     const suffixes = pluralSuffixes[code] || [];
-    const normalizedReference = new Set([...reference].map((k) => suffixes.length > 0 && suffixes.some((s) => k.endsWith(s)) ? k.replace(/_(one|few|many|other)$/, "") : k));
-    const normalizedKeys = new Set([...keys].map((k) => suffixes.length > 0 && suffixes.some((s) => k.endsWith(s)) ? k.replace(/_(one|few|many|other)$/, "") : k));
-
-    // Check missing keys (base keys in en not present in code, ignoring plural variants)
+    // Strip plural suffixes to get base keys for comparison
     const baseKeysInEn = new Set([...reference].map((k) => suffixes.length > 0 && suffixes.some((s) => k.endsWith(s)) ? k.replace(/_(one|few|many|other)$/, "") : k));
     const baseKeysInCode = new Set([...keys].map((k) => suffixes.length > 0 && suffixes.some((s) => k.endsWith(s)) ? k.replace(/_(one|few|many|other)$/, "") : k));
 
+    // Check missing keys (base keys in en not present in code, ignoring plural variants)
     assert.deepEqual([...baseKeysInEn].filter((key) => !baseKeysInCode.has(key)), [], `missing base keys in ${code}.json`);
+    // Check unknown/stale keys (base keys in code not present in en)
+    assert.deepEqual([...baseKeysInCode].filter((key) => !baseKeysInEn.has(key)), [], `unknown base keys in ${code}.json`);
     // Allow extra plural variants in code
   });
 }

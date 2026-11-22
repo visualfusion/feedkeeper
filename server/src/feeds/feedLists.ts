@@ -56,7 +56,7 @@ export function resolveFeedLists(language: keyof Localized): FeedList[] {
     .map((list) => ({
       id: list.id,
       iconSymbol: list.iconSymbol,
-      title: list.title,
+      title: text(list.title, language),
       description: text(list.description, language),
       feeds: list.feeds.map((feed) => ({
         title: feed.title,

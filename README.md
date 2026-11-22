@@ -282,7 +282,7 @@ Read-only tokens expose only the tools that leave FeedKeeper data unchanged. `ge
 
 ## Native apps
 
-For reading on the go and offline, the official **FeedKeeper app** is available on the [App Store](https://analytics.visualfusion.de/q/feedkeeper-app) for **iOS, iPadOS, and macOS**. It pairs directly with your self-hosted instance in seconds — just scan the pairing QR code under **Settings → Devices** in your web reader.
+The official **FeedKeeper app** is available on the [App Store](https://analytics.visualfusion.de/q/feedkeeper-app) for **iOS, iPadOS, and macOS**. It currently ships in English, German, and Japanese (Russian is available in the web interface only). The app pairs directly with your self-hosted instance in seconds — just scan the pairing QR code under **Settings → Devices** in your web reader.
 
 The app builds on FeedKeeper's open native API (`/api/v1`) to provide:
 - Incremental delta-sync and offline article caching

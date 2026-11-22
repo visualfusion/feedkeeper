@@ -26,7 +26,7 @@ export interface FeedListData {
   id: string;
   /** Name of an SF Symbol; shown next to the list and used as the icon of the folder it creates. */
   iconSymbol: string;
-  title: string;
+  title: Localized;
   description: Localized;
   feeds: FeedListFeedData[];
 }
@@ -35,7 +35,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "news",
     iconSymbol: "newspaper",
-    title: "News",
+    title: { en: "News", de: "Nachrichten", ja: "ニュース", ru: "Новости" },
     description: { en: "Headlines from public broadcasters and newspapers.", de: "Schlagzeilen von öffentlich-rechtlichen Sendern und Zeitungen.", ja: "放送局や新聞社の主要ニュース。", ru: "Заголовки от государственных СМИ и газет." },
     feeds: [
       { title: "Tagesschau", url: "https://www.tagesschau.de/index~rss2.xml", lang: "de", description: { en: "Germany's main evening news and its latest reports.", de: "Die aktuellen Meldungen der Tagesschau.", ja: "ドイツの公共放送ARDの最新ニュース。", ru: "Главные вечерние новости и последние репортажи Германии." } },
@@ -44,8 +44,6 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
       { title: "DER SPIEGEL", url: "https://www.spiegel.de/schlagzeilen/index.rss", lang: "de", description: { en: "Headlines from the news magazine.", de: "Schlagzeilen des Nachrichtenmagazins.", ja: "ニュース雑誌の最新ヘッドライン。", ru: "Заголовки из новостного журнала." } },
       { title: "BBC News", url: "https://feeds.bbci.co.uk/news/rss.xml", lang: "en", description: { en: "Top stories from around the world.", de: "Die wichtigsten Meldungen aus aller Welt.", ja: "世界各地の主要ニュース。", ru: "Главное со всего мира." } },
       { title: "The Guardian", url: "https://www.theguardian.com/world/rss", lang: "en", description: { en: "International reporting from the British daily.", de: "Internationale Berichte der britischen Tageszeitung.", ja: "英国の日刊紙による国際報道。", ru: "Международная журналистика британской газеты." } },
-      { title: "ТАСС", url: "https://tass.ru/rss.xml", lang: "ru", description: { en: "Russian news agency headlines and breaking news.", de: "Nachrichten der russischen Nachrichtenagentur TASSS.", ja: "ロシア通信TASSの最新ニュース。", ru: "Заголовки и срочные новости от российского информационного агентства." } },
-      { title: "РИА Новости", url: "https://ria.ru/rss2.xml", lang: "ru", description: { en: "Russian state news agency headlines.", de: "Nachrichten der russischen Staatsagentur RIA Novosti.", ja: "ロシア国営RIAノヴォスチのニュース。", ru: "Заголовки от российской государственной новостной службы." } },
       { title: "NPR News", url: "https://feeds.npr.org/1001/rss.xml", lang: "en", description: { en: "US news from public radio.", de: "Nachrichten aus den USA vom öffentlichen Radio.", ja: "米国の公共ラジオによるニュース。", ru: "Новости США от общественного радио." } },
       { title: "NHK", url: "https://www.nhk.or.jp/rss/news/cat0.xml", lang: "ja", description: { en: "Main news from Japan's public broadcaster.", de: "Hauptnachrichten des japanischen Rundfunks.", ja: "NHKの主要ニュース。", ru: "Главные новости от японского государственного вещателя." } },
     ],
@@ -53,7 +51,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "technology",
     iconSymbol: "desktopcomputer",
-    title: "Technology",
+    title: { en: "Technology", de: "Technologie", ja: "テクノロジー", ru: "Технологии" },
     description: { en: "News and background on software, hardware and the web.", de: "Nachrichten und Hintergründe zu Software, Hardware und Netz.", ja: "ソフトウェア、ハードウェア、ウェブのニュースと解説。", ru: "Новости и аналитика о ПО, железе и вебе." },
     feeds: [
       { title: "heise online", url: "https://www.heise.de/rss/heise-atom.xml", lang: "de", description: { en: "IT news and tests from Germany's best-known tech publisher.", de: "IT-Nachrichten und Tests des bekannten Technikverlags.", ja: "ドイツを代表するIT媒体のニュースとレビュー。", ru: "IT-новости и тесты от известного немецкого издателя." } },
@@ -63,15 +61,13 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
       { title: "The Verge", url: "https://www.theverge.com/rss/index.xml", lang: "en", description: { en: "Gadgets, tech and how they change culture.", de: "Geräte, Technik und ihr Einfluss auf die Kultur.", ja: "ガジェットとテクノロジー、その文化への影響。", ru: "Гаджеты, технологии и их влияние на культуру." } },
       { title: "ITmedia", url: "https://rss.itmedia.co.jp/rss/2.0/itmedia_all.xml", lang: "ja", description: { en: "IT news from Japan across all topics.", de: "IT-Nachrichten aus Japan zu allen Themen.", ja: "ITmediaの全分野の最新ニュース。", ru: "IT-новости из Японии по всем темам." } },
       { title: "GIGAZINE", url: "https://gigazine.net/news/rss_2.0/", lang: "ja", description: { en: "Quirky tech, gadgets and internet culture.", de: "Technik, Gadgets und Netzkultur mit Augenzwinkern.", ja: "ITやガジェット、ネット文化の話題。", ru: "Необычные технологии, гаджеты и интернет-культура." } },
-      { title: "Хабр", url: "https://habr.com/ru/all/rss/xml/", lang: "ru", description: { en: "Top tech articles from the Russian developer community.", de: "Top-Technologieartikel aus der russischen Entwickler-Community.", ja: "ロシアの技術者コミュニティからの人気記事。", ru: "Лучшие технологические статьи от российского сообщества разработчиков." } },
-      { title: "VC.ru", url: "https://habr.com/ru/vcru/rss/", lang: "ru", description: { en: "Tech, science and startup news from the Russian community.", de: "Technologie-, Wissenschafts- und Startup-Nachrichten aus der russischen Community.", ja: "ロシアのコミュニティからのテクノロジー、科学、スタートアップニュース。", ru: "Новости технологий, науки и стартапов от российского сообщества." } },
-      { title: "GIZMODE", url: "https://www.gizmodo.jp/index.xml", lang: "ja", description: { en: "Gadgets and science news in Japanese.", de: "Gadgets und Wissenschaft auf Japanisch.", ja: "ガジェットと科学の最新情報。", ru: "Новости гаджетов и науки на японском." } },
+      { title: "ギズモード", url: "https://www.gizmodo.jp/index.xml", lang: "ja", description: { en: "Gadgets and science news in Japanese.", de: "Gadgets und Wissenschaft auf Japanisch.", ja: "ガジェットと科学の最新情報。", ru: "Новости гаджетов и науки на японском." } },
     ],
   },
   {
     id: "apple",
     iconSymbol: "macbook.and.iphone",
-    title: "Apple",
+    title: { en: "Apple", de: "Apple", ja: "Apple", ru: "Apple" },
     description: { en: "iPhone, Mac and everything around them.", de: "iPhone, Mac und alles drumherum.", ja: "iPhone、Macとその周辺の話題。", ru: "iPhone, Mac и всё вокруг них." },
     feeds: [
       { title: "iPhone-Ticker", url: "https://www.iphone-ticker.de/feed/", lang: "de", description: { en: "Daily news about iPhone, iPad and Mac.", de: "Tägliche Neuigkeiten zu iPhone, iPad und Mac.", ja: "iPhone、iPad、Macの毎日のニュース。", ru: "Ежедневные новости об iPhone, iPad и Mac." } },
@@ -87,7 +83,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "development",
     iconSymbol: "chevron.left.forwardslash.chevron.right",
-    title: "Development",
+    title: { en: "Development", de: "Entwicklung", ja: "開発", ru: "Разработка" },
     description: { en: "Programming, tools and craft for developers.", de: "Programmierung, Werkzeuge und Handwerk für Entwickler.", ja: "プログラミング、ツール、開発の技術。", ru: "Программирование, инструменты и ремесло для разработчиков." },
     feeds: [
       { title: "heise Developer", url: "https://www.heise.de/developer/rss/news-atom.xml", lang: "de", description: { en: "News for software developers in German.", de: "Nachrichten für Softwareentwickler.", ja: "ソフトウェア開発者向けドイツ語ニュース。", ru: "Новости для разработчиков на немецком." } },
@@ -103,7 +99,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "science",
     iconSymbol: "atom",
-    title: "Science",
+    title: { en: "Science", de: "Wissenschaft", ja: "科学", ru: "Наука" },
     description: { en: "Research, space and nature.", de: "Forschung, Weltraum und Natur.", ja: "研究、宇宙、自然。", ru: "Исследования, космос и природа." },
     feeds: [
       { title: "Spektrum", url: "https://www.spektrum.de/alias/rss/spektrum-de-rss-feed/996406", lang: "de", description: { en: "Science news and explanations from a leading magazine.", de: "Wissenschaftsnachrichten und Erklärungen aus dem Magazin.", ja: "科学誌によるニュースと解説。", ru: "Новости науки и объяснения от ведущего журнала." } },
@@ -113,7 +109,6 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
       { title: "Nature", url: "https://www.nature.com/nature.rss", lang: "en", description: { en: "New papers from the leading science journal.", de: "Neue Studien aus der führenden Fachzeitschrift.", ja: "主要科学誌の最新論文。", ru: "Новые статьи от ведущего научного журнала." } },
       { title: "ScienceDaily", url: "https://www.sciencedaily.com/rss/all.xml", lang: "en", description: { en: "Short summaries of new research in every field.", de: "Kurze Zusammenfassungen neuer Forschung aller Fächer.", ja: "あらゆる分野の最新研究の要約。", ru: "Краткие сводки новых исследований по всем областям." } },
       { title: "N+1", url: "https://nplus1.ru/rss", lang: "ru", description: { en: "Science and culture magazine from Russia.", de: "Wissenschafts- und Kulturmagazin aus Russland.", ja: "ロシアの科学・文化雑誌。", ru: "Научно-культурологический журнал из России." } },
-      { title: "Популярная механика", url: "https://popmech.ru/feed/", lang: "ru", description: { en: "Popular science magazine covering technology and discoveries.", de: "Populärwissenschaftliches Magazin über Technologie und Entdeckungen.", ja: "テクノロジーと発見を扱う科学雑誌。", ru: "Популярный научно-технический журнал о технологиях и открытиях." } },
       { title: "sorae", url: "https://sorae.info/feed", lang: "ja", description: { en: "Space news and rocket launches.", de: "Raumfahrt-Nachrichten und Raketenstarts.", ja: "宇宙ニュースとロケット打ち上げ情報。", ru: "Новости о космосе и запусках ракет." } },
       { title: "ナゾロジー", url: "https://nazology.kusuguru.co.jp/feed", lang: "ja", description: { en: "Curious science stories in plain language.", de: "Erstaunliche Wissenschaftsgeschichten, leicht erzählt.", ja: "身近な科学の不思議をやさしく紹介。", ru: "Удивительные научные факты простым языком." } },
       { title: "日経サイエンス", url: "https://www.nikkei-science.com/?feed=rss2", lang: "ja", description: { en: "Japanese edition of Scientific American.", de: "Die japanische Ausgabe von Scientific American.", ja: "Scientific American日本版。", ru: "Японское издание Scientific American." } },
@@ -122,7 +117,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "design",
     iconSymbol: "paintpalette",
-    title: "Design",
+    title: { en: "Design", de: "Design", ja: "デザイン", ru: "Дизайн" },
     description: { en: "Web design, interfaces and creative work.", de: "Webdesign, Oberflächen und kreative Arbeit.", ja: "ウェブデザイン、UI、クリエイティブ。", ru: "Веб-дизайн, интерфейсы и творческая работа." },
     feeds: [
       { title: "Smashing Magazine", url: "https://www.smashingmagazine.com/feed/", lang: "en", description: { en: "Practical guides for designers and front-end developers.", de: "Praxisnahe Anleitungen für Designer und Frontend-Entwickler.", ja: "デザイナーとフロントエンド開発者向けの実践ガイド。", ru: "Практические руководства для дизайнеров и фронтендеров." } },
@@ -137,7 +132,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "gaming",
     iconSymbol: "gamecontroller",
-    title: "Gaming",
+    title: { en: "Gaming", de: "Spiele", ja: "ゲーム", ru: "Игры" },
     description: { en: "News, reviews and culture around video games.", de: "Nachrichten, Tests und Kultur rund um Videospiele.", ja: "ゲームのニュース、レビュー、カルチャー。", ru: "Новости, обзоры и культура видеоигр." },
     feeds: [
       { title: "GameStar", url: "https://www.gamestar.de/news/rss/news.rss", lang: "de", description: { en: "PC and console game news from Germany.", de: "Neuigkeiten zu PC- und Konsolenspielen.", ja: "PC・コンソールゲームのドイツ語ニュース。", ru: "Новости PC и консольных игр из Германии." } },
@@ -152,7 +147,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "business",
     iconSymbol: "chart.line.uptrend.xyaxis",
-    title: "Business",
+    title: { en: "Business", de: "Wirtschaft", ja: "ビジネス", ru: "Бизнес" },
     description: { en: "Markets, companies and the economy.", de: "Märkte, Unternehmen und Konjunktur.", ja: "市場、企業、経済。", ru: "Рынки, компании и экономика." },
     feeds: [
       { title: "Tagesschau Wirtschaft", url: "https://www.tagesschau.de/wirtschaft/index~rss2.xml", lang: "de", description: { en: "Economy news from public television.", de: "Wirtschaftsnachrichten des öffentlich-rechtlichen Fernsehens.", ja: "公共放送による経済ニュース。", ru: "Экономические новости от государственного ТВ." } },
@@ -167,7 +162,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "sport",
     iconSymbol: "sportscourt",
-    title: "Sport",
+    title: { en: "Sport", de: "Sport", ja: "スポーツ", ru: "Спорт" },
     description: { en: "Results, reports and background from the world of sport.", de: "Ergebnisse, Berichte und Hintergründe aus dem Sport.", ja: "試合結果、レポート、スポーツの背景。", ru: "Результаты, репортажи и аналитика из мира спорта." },
     feeds: [
       { title: "Sportschau", url: "https://www.sportschau.de/index~rss2.xml", lang: "de", description: { en: "Sport news from public television.", de: "Sportnachrichten des öffentlich-rechtlichen Fernsehens.", ja: "公共放送によるスポーツニュース。", ru: "Спортивные новости от государственного ТВ." } },
@@ -180,7 +175,7 @@ export const BUILT_IN_FEED_LISTS: FeedListData[] = [
   {
     id: "culture",
     iconSymbol: "theatermasks",
-    title: "Culture",
+    title: { en: "Culture", de: "Kultur", ja: "カルチャー", ru: "Культура" },
     description: { en: "Film, music, books and art.", de: "Film, Musik, Bücher und Kunst.", ja: "映画、音楽、本、アート。", ru: "Кино, музыка, книги и искусство." },
     feeds: [
       { title: "Monopol", url: "https://www.monopol-magazin.de/rss.xml", lang: "de", description: { en: "Contemporary art and its market.", de: "Zeitgenössische Kunst und Kunstmarkt.", ja: "現代アートとアート市場。", ru: "Современное искусство и арт-рынок." } },
