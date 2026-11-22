@@ -169,6 +169,7 @@
     "copyLink": "Link kopieren",
     "linkCopied": "Link kopiert!",
     "readingTime": "{{count}} Min. Lesezeit",
+    "chapters": "Kapitel",
     "toggleFullText": "Volltext aus Webseite laden (R)",
     "togglePreview": "Zurück zur Vorschau (R)",
     "extractionFailed": "Der vollständige Artikel konnte nicht geladen werden.",

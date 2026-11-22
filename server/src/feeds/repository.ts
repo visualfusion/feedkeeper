@@ -48,6 +48,10 @@ export interface Item {
   extraction_retry_at: string | null;
   image_url: string | null;
   author: string | null;
+  enclosure_url: string | null;
+  enclosure_type: string | null;
+  enclosure_duration_seconds: number | null;
+  chapters_url: string | null;
   published_at: string | null;
   created_at: string;
 }
@@ -307,11 +311,15 @@ export function upsertItems(
     publishedAt?: string;
     imageUrl?: string | null;
     author?: string | null;
+    enclosureUrl?: string | null;
+    enclosureType?: string | null;
+    enclosureDurationSeconds?: number | null;
+    chaptersUrl?: string | null;
   }>,
 ): number {
   const insert = db.prepare(
-    `INSERT INTO items (feed_id, guid, title, link, content_snippet, content_html, published_at, image_url, author)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO items (feed_id, guid, title, link, content_snippet, content_html, published_at, image_url, author, enclosure_url, enclosure_type, enclosure_duration_seconds, chapters_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (feed_id, guid) DO NOTHING`,
   );
   const update = db.prepare(
@@ -322,7 +330,11 @@ export function upsertItems(
        content_html = COALESCE(?, content_html),
        published_at = COALESCE(?, published_at),
        image_url = COALESCE(?, image_url),
-       author = COALESCE(?, author)
+       author = COALESCE(?, author),
+       enclosure_url = COALESCE(?, enclosure_url),
+       enclosure_type = COALESCE(?, enclosure_type),
+       enclosure_duration_seconds = COALESCE(?, enclosure_duration_seconds),
+       chapters_url = COALESCE(?, chapters_url)
      WHERE feed_id = ? AND guid = ?`,
   );
   const tombstone = db.prepare<[number, string], { last_seen_at: string }>("SELECT last_seen_at FROM item_tombstones WHERE feed_id = ? AND guid = ?");
@@ -347,14 +359,18 @@ export function upsertItems(
         row.publishedAt ?? null,
         largerHeroImage(row.imageUrl, row.contentHtml, row.link ?? null) ?? row.imageUrl ?? null,
         row.author ?? null,
+        row.enclosureUrl ?? null,
+        row.enclosureType ?? null,
+        row.enclosureDurationSeconds ?? null,
+        row.chaptersUrl ?? null,
       ] as const;
       const result = insert.run(...values);
       if (result.changes > 0) {
         inserted++;
         refreshLead(Number(result.lastInsertRowid));
       } else {
-        const previous = db.prepare<[number, string], { id: number; title: string | null; link: string | null; image_url: string | null; content_snippet: string | null; content_html: string | null; full_content_html: string | null; published_at: string | null; author: string | null; lead_version: number | null }>(
-          "SELECT id, title, link, image_url, content_snippet, content_html, full_content_html, published_at, author, lead_version FROM items WHERE feed_id = ? AND guid = ?").get(feedId, row.guid);
+        const previous = db.prepare<[number, string], { id: number; title: string | null; link: string | null; image_url: string | null; content_snippet: string | null; content_html: string | null; full_content_html: string | null; published_at: string | null; author: string | null; enclosure_url: string | null; enclosure_type: string | null; enclosure_duration_seconds: number | null; chapters_url: string | null; lead_version: number | null }>(
+          "SELECT id, title, link, image_url, content_snippet, content_html, full_content_html, published_at, author, enclosure_url, enclosure_type, enclosure_duration_seconds, chapters_url, lead_version FROM items WHERE feed_id = ? AND guid = ?").get(feedId, row.guid);
         const next = row.contentHtml;
         // Some publishers replace complete feed bodies with short teasers on a later poll.
         const retained = previous?.content_html && next && next.length < previous.content_html.length * 0.9 &&
@@ -373,9 +389,17 @@ export function upsertItems(
             (retained !== null && retained !== previous.content_html) ||
             (row.publishedAt !== undefined && row.publishedAt !== null && row.publishedAt !== previous.published_at) ||
             (nextImage !== previous.image_url) ||
-            (row.author !== undefined && row.author !== null && row.author !== previous.author);
+            (row.author !== undefined && row.author !== null && row.author !== previous.author) ||
+            (row.enclosureUrl !== undefined && row.enclosureUrl !== null && row.enclosureUrl !== previous.enclosure_url) ||
+            (row.enclosureType !== undefined && row.enclosureType !== null && row.enclosureType !== previous.enclosure_type) ||
+            (row.enclosureDurationSeconds !== undefined && row.enclosureDurationSeconds !== null && row.enclosureDurationSeconds !== previous.enclosure_duration_seconds) ||
+            (row.chaptersUrl !== undefined && row.chaptersUrl !== null && row.chaptersUrl !== previous.chapters_url);
           if (changed) {
-            update.run(row.title ?? null, row.link ?? null, nextSnippet, retained, row.publishedAt ?? null, nextImage, row.author ?? null, feedId, row.guid);
+            update.run(
+              row.title ?? null, row.link ?? null, nextSnippet, retained, row.publishedAt ?? null, nextImage, row.author ?? null,
+              row.enclosureUrl ?? null, row.enclosureType ?? null, row.enclosureDurationSeconds ?? null, row.chaptersUrl ?? null,
+              feedId, row.guid,
+            );
             const leadChanged = (retained !== null && retained !== previous.content_html) ||
               (row.link !== undefined && row.link !== previous.link) ||
               (row.title !== undefined && row.title !== previous.title) ||

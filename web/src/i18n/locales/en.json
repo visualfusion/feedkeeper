@@ -169,6 +169,7 @@
     "copyLink": "Copy link",
     "linkCopied": "Link copied!",
     "readingTime": "{{count}} min read",
+    "chapters": "Chapters",
     "toggleFullText": "Extract full text from web (R)",
     "togglePreview": "Back to preview (R)",
     "extractionFailed": "Could not extract full article from website.",

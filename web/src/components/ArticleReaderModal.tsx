@@ -6,6 +6,7 @@ import { sanitizeHtml, leadingArticleImage, estimateReadingTime, safeHttpUrl } f
 import { breakJapaneseHtml, textLanguage } from "../utils/japanese.js";
 import { Favicon } from "./Favicon.js";
 import { JapaneseText } from "./JapaneseText.js";
+import { MediaPlayer } from "./MediaPlayer.js";
 
 export type ArticleContentUpdate = Pick<Item, "id" | "full_content_html">;
 
@@ -388,6 +389,8 @@ export function ArticleReaderModal({
                 )}
               </div>
             )}
+
+            <MediaPlayer item={item} />
 
             {sanitizedContent ? (
               <div

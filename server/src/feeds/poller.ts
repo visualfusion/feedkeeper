@@ -66,6 +66,10 @@ async function pollAttempt(feed: Feed, signal: AbortSignal, interactive: boolean
     publishedAt: item.publishedAt,
     imageUrl: item.imageUrl,
     author: formatFeedAuthor(item.authors, current.title, current.site_url ?? current.url),
+    enclosureUrl: item.enclosureUrl,
+    enclosureType: item.enclosureType,
+    enclosureDurationSeconds: item.enclosureDurationSeconds,
+    chaptersUrl: item.chaptersUrl,
   }));
   // No await in this transaction. Items, health/validators and job completion become visible together.
   const newItems = db.transaction(() => {

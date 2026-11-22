@@ -647,6 +647,34 @@ paths:
         "503": { description: queue_full or source_busy; wait before trying again }
         "504": { description: Extraction or consumer waiting deadline exceeded; durable work may continue }
         "422": { description: consent_wall, paywall, bot_blocked, partial or could_not_extract_content }
+  /items/{id}/chapters:
+    get:
+      tags: [Items]
+      summary: Podcast chapters for an item
+      description: Fetches and caches Podcasting 2.0 JSON chapters when the item's feed provided a `podcast:chapters` URL.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Normalized chapter markers sorted by startTime
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [chapters]
+                properties:
+                  chapters:
+                    type: array
+                    items:
+                      type: object
+                      required: [startTime, title]
+                      properties:
+                        startTime: { type: number, minimum: 0 }
+                        title: { type: string }
+                        url: { type: string }
+                        img: { type: string }
+        "404": { description: item_not_found }
+        "502": { description: chapters_unavailable }
   /items/{id}/image:
     get:
       tags: [Images]
@@ -1091,6 +1119,14 @@ components:
         snippet: { type: [string, "null"] }
         lead: { type: [string, "null"], description: "The beginning of the article as one line of plain text, at most about 600 characters, without breadcrumbs, credits, calls to action and similar page chrome. Present when item.lead is advertised. Prefer it over deriving a teaser from the HTML." }
         imageUrl: { type: [string, "null"] }
+        media:
+          type: [object, "null"]
+          description: Audio or video enclosure metadata from the feed, when present
+          properties:
+            url: { type: string }
+            type: { type: [string, "null"] }
+            durationSeconds: { type: [integer, "null"] }
+            chaptersUrl: { type: [string, "null"] }
         hasFullText: { type: boolean }
         content: { $ref: "#/components/schemas/ArticleContent" }
         contentHtml: { type: [string, "null"], description: Only with content included }

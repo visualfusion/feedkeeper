@@ -169,6 +169,7 @@
     "copyLink": "リンクをコピー",
     "linkCopied": "リンクをコピーしました！",
     "readingTime": "読了目安 {{count}}分",
+    "chapters": "チャプター",
     "toggleFullText": "ウェブから全文を抽出 (R)",
     "togglePreview": "プレビューに戻る (R)",
     "extractionFailed": "ウェブサイトから記事の全文を抽出できませんでした。",

@@ -41,6 +41,12 @@ export function serializeItem(row: ItemRow, progress: Map<number, number>, withC
     snippet: cleanSnippet(row.content_snippet, row.title),
     lead: leadOf(row),
     imageUrl: row.image_url,
+    media: row.enclosure_url ? {
+      url: row.enclosure_url,
+      type: row.enclosure_type,
+      durationSeconds: row.enclosure_duration_seconds,
+      chaptersUrl: row.chapters_url,
+    } : null,
     hasFullText: Boolean(row.full_content_html),
     content: contentMetadata(row),
     ...(withContent ? { contentHtml: readerHtml(row.content_html, row.title, row.author, row.link), fullTextHtml: readerHtml(row.full_content_html, row.title, row.author, row.link) } : {}),

@@ -177,6 +177,7 @@
     "copyLink": "Скопировать ссылку",
     "linkCopied": "Ссылка скопирована!",
     "readingTime": "{{count}} мин чтения",
+    "chapters": "Главы",
     "toggleFullText": "Извлечь полный текст с сайта (R)",
     "togglePreview": "Вернуться к превью (R)",
     "extractionFailed": "Не удалось извлечь полную статью с сайта.",

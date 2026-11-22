@@ -13,6 +13,7 @@ import {
   findItemById,
 } from "../feeds/repository.js";
 import { loadFullText, type FullTextError } from "../feeds/fullText.js";
+import { loadItemChapters } from "../feeds/chapters.js";
 import { readerHtml } from "../feeds/articleContent.js";
 import { cleanSnippet } from "../feeds/contentNoise.js";
 import { fetchItemImage, pruneArchive, scheduleArchive, withArchivedImages, withProxiedImages } from "../feeds/archive.js";
@@ -152,4 +153,22 @@ itemsRouter.post("/:itemId/extract-content", async (req, res) => {
     ...(result.cached ? {} : { title: result.title, byline: result.byline }),
     cached: result.cached,
   });
+});
+
+itemsRouter.get("/:itemId/chapters", async (req, res) => {
+  const itemId = Number(req.params.itemId);
+  if (!Number.isInteger(itemId) || itemId <= 0) {
+    res.status(400).json({ error: "invalid_item_id" });
+    return;
+  }
+  const result = await loadItemChapters(req.user!.id, itemId);
+  if (result.status === "not_found") {
+    res.status(404).json({ error: "item_not_found" });
+    return;
+  }
+  if (result.status === "unavailable") {
+    res.status(502).json({ error: "chapters_unavailable" });
+    return;
+  }
+  res.json({ chapters: result.chapters });
 });

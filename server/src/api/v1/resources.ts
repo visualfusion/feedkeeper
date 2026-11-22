@@ -8,6 +8,7 @@ import { findArchivedImage, fetchItemImage, withArchivedImages, withProxiedImage
 import { ImageCacheBusyError } from "../../feeds/imageCache.js";
 import { discoverFeeds } from "../../feeds/discovery.js";
 import { loadFullText } from "../../feeds/fullText.js";
+import { loadItemChapters } from "../../feeds/chapters.js";
 import { generateOpml, importOpmlFeeds } from "../../feeds/opml.js";
 import { pickFeedListLanguage, resolveFeedLists } from "../../feeds/feedLists.js";
 import { pollFeed, pollFeeds } from "../../feeds/poller.js";
@@ -490,6 +491,15 @@ resourcesRouter.get("/items/:id", (req, res) => {
   const progress = readingPositions(req.user!.id, [row.id]);
   const hasNotes = itemsWithNotes(req.user!.id, [row.id]);
   res.json(serializeItem(prepare([row], req, parsed.data.images)[0], progress, true, hasNotes.has(row.id)));
+});
+
+resourcesRouter.get("/items/:id/chapters", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return invalid(res);
+  const result = await loadItemChapters(req.user!.id, id);
+  if (result.status === "not_found") return void res.status(404).json({ error: "item_not_found" });
+  if (result.status === "unavailable") return void res.status(502).json({ error: "chapters_unavailable" });
+  res.json({ chapters: result.chapters });
 });
 
 resourcesRouter.post("/items/:id/full-text", requireCapability("fulltext"), async (req, res) => {

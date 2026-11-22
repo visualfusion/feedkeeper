@@ -179,9 +179,20 @@ export interface Item {
   full_content_html?: string | null;
   image_url?: string | null;
   author?: string | null;
+  enclosure_url?: string | null;
+  enclosure_type?: string | null;
+  enclosure_duration_seconds?: number | null;
+  chapters_url?: string | null;
   published_at: string | null;
   read: boolean;
   bookmarked: boolean;
+}
+
+export interface PodcastChapter {
+  startTime: number;
+  title: string;
+  url?: string;
+  img?: string;
 }
 
 export interface MutedKeyword {
@@ -390,4 +401,5 @@ export const api = {
     }),
   runCleanup: () =>
     request<{ result: CleanupResult; stats: DatabaseStats }>("/system/cleanup", { method: "POST" }),
+  itemChapters: (itemId: number) => request<{ chapters: PodcastChapter[] }>(`/items/${itemId}/chapters`),
 };

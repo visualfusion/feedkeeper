@@ -57,6 +57,10 @@ test("parseFeedBody parses JSON Feed v1.1 and v1 fields", async () => {
     publishedAt: "2026-11-19T12:00:00.000Z",
     imageUrl: "https://example.org/hero.jpg",
     authors: ["Alice", "Bob"],
+    enclosureUrl: null,
+    enclosureType: null,
+    enclosureDurationSeconds: null,
+    chaptersUrl: null,
   });
   assert.deepEqual(parsed.items[1], {
     guid: "42",
@@ -67,6 +71,10 @@ test("parseFeedBody parses JSON Feed v1.1 and v1 fields", async () => {
     publishedAt: "2026-11-18T10:00:00.000Z",
     imageUrl: "https://example.org/cover.webp",
     authors: ["Carol"],
+    enclosureUrl: "https://example.org/audio.mp3",
+    enclosureType: "audio/mpeg",
+    enclosureDurationSeconds: null,
+    chaptersUrl: null,
   });
 });
 

@@ -15,6 +15,10 @@ export interface ParsedFeedItem {
   publishedAt: string | undefined;
   imageUrl: string | null;
   authors: Array<string | undefined>;
+  enclosureUrl: string | null;
+  enclosureType: string | null;
+  enclosureDurationSeconds: number | null;
+  chaptersUrl: string | null;
 }
 
 export interface ParsedFeed {
@@ -33,6 +37,8 @@ type CustomItem = Parser.Item & {
   mediaGroup?: unknown;
   contentEncoded?: string;
   author?: string;
+  itunesDuration?: unknown;
+  podcastChapters?: unknown;
   "media:content"?: unknown;
   "media:thumbnail"?: unknown;
   "media:group"?: unknown;
@@ -52,6 +58,8 @@ const xmlParser = new Parser<CustomFeed, CustomItem>({
       ["media:thumbnail", "mediaThumbnail", { keepArray: false }],
       ["media:group", "mediaGroup", { keepArray: false }],
       ["content:encoded", "contentEncoded", { keepArray: false }],
+      ["itunes:duration", "itunesDuration", { keepArray: false }],
+      ["podcast:chapters", "podcastChapters", { keepArray: false }],
     ],
   },
 });
@@ -66,10 +74,137 @@ function asNonEmptyString(value: unknown): string | undefined {
 
 const MIN_FEED_IMAGE_SIDE = 100;
 
-function mediaAttribute(value: unknown, key: "url" | "medium" | "type" | "width" | "height"): unknown {
+function mediaAttribute(value: unknown, key: "url" | "medium" | "type" | "width" | "height" | "duration"): unknown {
   if (!isRecord(value)) return undefined;
   if (isRecord(value.$) && value.$[key] !== undefined) return value.$[key];
   return value[key];
+}
+
+function asHttpUrl(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+const EXTENSION_MIME: Array<[RegExp, string]> = [
+  [/\.mp3(\?.*)?$/i, "audio/mpeg"],
+  [/\.m4a(\?.*)?$/i, "audio/mp4"],
+  [/\.aac(\?.*)?$/i, "audio/aac"],
+  [/\.(?:ogg|oga)(\?.*)?$/i, "audio/ogg"],
+  [/\.opus(\?.*)?$/i, "audio/opus"],
+  [/\.wav(\?.*)?$/i, "audio/wav"],
+  [/\.mp4(\?.*)?$/i, "video/mp4"],
+  [/\.m4v(\?.*)?$/i, "video/x-m4v"],
+  [/\.webm(\?.*)?$/i, "video/webm"],
+  [/\.mov(\?.*)?$/i, "video/quicktime"],
+];
+
+function resolveMediaMime(rawType: unknown, url: string): string | null {
+  if (typeof rawType === "string") {
+    const normalized = rawType.toLowerCase().split(";")[0].trim();
+    if (normalized.startsWith("audio/") || normalized.startsWith("video/")) return normalized;
+  }
+  for (const [pattern, mime] of EXTENSION_MIME) {
+    if (pattern.test(url)) return mime;
+  }
+  return null;
+}
+
+export function parseDurationSeconds(raw: unknown): number | null {
+  if (typeof raw === "number") {
+    return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : null;
+  }
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+    const value = Math.round(Number(trimmed));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+  const parts = trimmed.split(":");
+  if (parts.length >= 2 && parts.length <= 3 && parts.every((part) => /^\d+$/.test(part))) {
+    let total = 0;
+    for (const part of parts) {
+      total = total * 60 + Number(part);
+    }
+    return total > 0 ? total : null;
+  }
+  return null;
+}
+
+function extractXmlMedia(item: CustomItem): {
+  enclosureUrl: string | null;
+  enclosureType: string | null;
+  enclosureDurationSeconds: number | null;
+  chaptersUrl: string | null;
+} {
+  let enclosureUrl: string | null = null;
+  let enclosureType: string | null = null;
+
+  if (item.enclosure?.url) {
+    const url = asHttpUrl(item.enclosure.url);
+    const type = url ? resolveMediaMime(item.enclosure.type, url) : null;
+    if (url && type) {
+      enclosureUrl = url;
+      enclosureType = type;
+    }
+  }
+
+  const mediaContent = item.mediaContent ?? item["media:content"];
+  if (!enclosureUrl && mediaContent) {
+    const url = asHttpUrl(mediaAttribute(mediaContent, "url"));
+    const type = url ? resolveMediaMime(mediaAttribute(mediaContent, "type"), url) : null;
+    if (url && type) {
+      enclosureUrl = url;
+      enclosureType = type;
+    }
+  }
+
+  const duration = parseDurationSeconds(item.itunesDuration ?? mediaAttribute(mediaContent, "duration"));
+  const rawChaptersUrl = mediaAttribute(item.podcastChapters, "url");
+  const rawChaptersType = mediaAttribute(item.podcastChapters, "type");
+  const chaptersMime = typeof rawChaptersType === "string" ? rawChaptersType.toLowerCase().split(";")[0].trim() : "";
+  const chaptersUrl =
+    !chaptersMime || chaptersMime === "application/json+chapters" || chaptersMime === "application/json"
+      ? asHttpUrl(rawChaptersUrl)
+      : null;
+
+  return {
+    enclosureUrl,
+    enclosureType,
+    enclosureDurationSeconds: enclosureUrl ? duration : null,
+    chaptersUrl: enclosureUrl ? chaptersUrl : null,
+  };
+}
+
+function extractJsonFeedMedia(item: Record<string, unknown>): {
+  enclosureUrl: string | null;
+  enclosureType: string | null;
+  enclosureDurationSeconds: number | null;
+  chaptersUrl: string | null;
+} {
+  if (Array.isArray(item.attachments)) {
+    for (const attachment of item.attachments) {
+      if (!isRecord(attachment)) continue;
+      const url = asHttpUrl(attachment.url);
+      const type = url ? resolveMediaMime(attachment.mime_type, url) : null;
+      if (url && type) {
+        return {
+          enclosureUrl: url,
+          enclosureType: type,
+          enclosureDurationSeconds: parseDurationSeconds(attachment.duration_in_seconds),
+          chaptersUrl: null,
+        };
+      }
+    }
+  }
+  return { enclosureUrl: null, enclosureType: null, enclosureDurationSeconds: null, chaptersUrl: null };
 }
 
 function asMediaEntries(value: unknown): unknown[] {
@@ -304,6 +439,8 @@ function parseJsonFeed(body: string): ParsedFeed {
     const contentHtml = asNonEmptyString(entry.content_html) ?? null;
     const snippetSource = asNonEmptyString(entry.summary) ?? asNonEmptyString(entry.content_text) ?? contentHtml ?? undefined;
 
+    const media = extractJsonFeedMedia(entry);
+
     items.push({
       guid: itemGuid({ guid: rawId, link, title: itemTitle }),
       title: itemTitle,
@@ -313,6 +450,7 @@ function parseJsonFeed(body: string): ParsedFeed {
       publishedAt: normalizePublishedAt(asNonEmptyString(entry.date_published) ?? asNonEmptyString(entry.date_modified)) ?? undefined,
       imageUrl: extractJsonFeedImageUrl(entry, contentHtml),
       authors: extractJsonFeedAuthors(entry),
+      ...media,
     });
   }
 
@@ -354,6 +492,7 @@ export async function parseFeedBody(body: string): Promise<ParsedFeed> {
       publishedAt: normalizePublishedAt(item.isoDate ?? item.pubDate) ?? undefined,
       imageUrl: extractXmlImageUrl(item),
       authors: [item.creator, item.author],
+      ...extractXmlMedia(item),
     })),
   };
 }
