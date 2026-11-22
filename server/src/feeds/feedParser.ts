@@ -61,14 +61,44 @@ function asNonEmptyString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
-function mediaAttribute(value: unknown, key: "url" | "medium" | "type"): unknown {
+const MIN_FEED_IMAGE_SIDE = 100;
+
+function mediaAttribute(value: unknown, key: "url" | "medium" | "type" | "width" | "height"): unknown {
   if (!isRecord(value)) return undefined;
   if (isRecord(value.$) && value.$[key] !== undefined) return value.$[key];
   return value[key];
 }
 
+function asMediaEntries(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [value];
+}
+
+function parseDimension(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) && value > 0 ? value : null;
+  if (typeof value !== "string") return null;
+  const match = /^\s*(\d+(?:\.\d+)?)\s*(?:px)?\s*$/i.exec(value);
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function isTooSmallMedia(widthRaw: unknown, heightRaw: unknown): boolean {
+  const width = parseDimension(widthRaw);
+  const height = parseDimension(heightRaw);
+  return (width !== null && width < MIN_FEED_IMAGE_SIDE) || (height !== null && height < MIN_FEED_IMAGE_SIDE);
+}
+
 function cleanImageUrl(url: string): string {
   return url.trim().replace(/&(?:#038|amp);/g, "&");
+}
+
+export function isAvatarImageUrl(url: string): boolean {
+  try {
+    const host = new URL(url.trim()).hostname.toLowerCase();
+    return host === "avatars.githubusercontent.com" || host.endsWith(".avatars.githubusercontent.com");
+  } catch {
+    return false;
+  }
 }
 
 function isValidImageUrl(url: unknown): url is string {
@@ -82,6 +112,7 @@ function isValidImageUrl(url: unknown): url is string {
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
   const host = parsed.hostname.toLowerCase();
   if (host === "pixel.wp.com" || host.endsWith(".pixel.wp.com")) return false;
+  if (isAvatarImageUrl(url)) return false;
   const pathAndQuery = (parsed.pathname + parsed.search).toLowerCase();
   if (pathAndQuery.includes("/1x1") || pathAndQuery.includes("pixel") || pathAndQuery.includes("tracking") || pathAndQuery.includes("beacon")) {
     return false;
@@ -89,31 +120,51 @@ function isValidImageUrl(url: unknown): url is string {
   return true;
 }
 
+function htmlAttribute(tag: string, name: string): string | undefined {
+  const match = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i").exec(tag);
+  return match ? (match[1] ?? match[2] ?? match[3]) : undefined;
+}
+
 function firstHtmlImageUrl(html: unknown): string | null {
   if (typeof html !== "string" || !html.includes("<img")) return null;
-  const match = html.match(/<img[^>]+src=["'](https?:\/\/[^"'\s>]+)["']/i);
-  return match && isValidImageUrl(match[1]) ? cleanImageUrl(match[1]) : null;
+  for (const [tag] of html.matchAll(/<img\b[^>]*>/gi)) {
+    const src = htmlAttribute(tag, "src");
+    if (!src) continue;
+    const decodedSrc = decodeEntities(src);
+    if (!isValidImageUrl(decodedSrc)) continue;
+    if (isTooSmallMedia(htmlAttribute(tag, "width"), htmlAttribute(tag, "height"))) continue;
+    const classes = htmlAttribute(tag, "class") ?? "";
+    if (/\b(?:avatar|emoji|icon)\b/i.test(classes)) continue;
+    return cleanImageUrl(decodedSrc);
+  }
+  return null;
 }
 
 function extractXmlImageUrl(item: CustomItem): string | null {
   // 1. media:content (Media RSS)
   const mediaContent = item.mediaContent ?? item["media:content"];
   if (mediaContent) {
-    if (isValidImageUrl(mediaContent)) return cleanImageUrl(mediaContent);
-    const url = mediaAttribute(mediaContent, "url");
-    const medium = mediaAttribute(mediaContent, "medium");
-    const type = mediaAttribute(mediaContent, "type");
-    if (isValidImageUrl(url) && (medium === "image" || !medium || (typeof type === "string" && type.startsWith("image/")))) {
-      return cleanImageUrl(url);
+    for (const entry of asMediaEntries(mediaContent)) {
+      if (isValidImageUrl(entry)) return cleanImageUrl(entry);
+      if (isTooSmallMedia(mediaAttribute(entry, "width"), mediaAttribute(entry, "height"))) continue;
+      const url = mediaAttribute(entry, "url");
+      const medium = mediaAttribute(entry, "medium");
+      const type = mediaAttribute(entry, "type");
+      if (isValidImageUrl(url) && (medium === "image" || !medium || (typeof type === "string" && type.startsWith("image/")))) {
+        return cleanImageUrl(url);
+      }
     }
   }
 
   // 2. media:thumbnail
   const mediaThumbnail = item.mediaThumbnail ?? item["media:thumbnail"];
   if (mediaThumbnail) {
-    if (isValidImageUrl(mediaThumbnail)) return cleanImageUrl(mediaThumbnail);
-    const url = mediaAttribute(mediaThumbnail, "url");
-    if (isValidImageUrl(url)) return cleanImageUrl(url);
+    for (const entry of asMediaEntries(mediaThumbnail)) {
+      if (isValidImageUrl(entry)) return cleanImageUrl(entry);
+      if (isTooSmallMedia(mediaAttribute(entry, "width"), mediaAttribute(entry, "height"))) continue;
+      const url = mediaAttribute(entry, "url");
+      if (isValidImageUrl(url)) return cleanImageUrl(url);
+    }
   }
 
   // 3. enclosure

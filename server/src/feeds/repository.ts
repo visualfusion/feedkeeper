@@ -2,6 +2,7 @@ import { config } from "../config.js";
 import { db } from "../db/index.js";
 import { articleText } from "./articleContent.js";
 import { LEAD_VERSION } from "./contentNoise.js";
+import { isAvatarImageUrl } from "./feedParser.js";
 import { largerHeroImage } from "./heroImage.js";
 import { refreshGalleryClassification, refreshLead } from "./lead.js";
 import { decodeEntities, plainTitle } from "./text.js";
@@ -362,7 +363,8 @@ export function upsertItems(
         // a feed that alternates between two variants would change the content on every poll.
         const keptPrevious = retained !== null && next !== retained;
         const nextSnippet = keptPrevious ? null : row.contentSnippet ?? null;
-        const nextImage = largerHeroImage(row.imageUrl, retained, row.link ?? previous?.link ?? null) ?? previous?.image_url ?? row.imageUrl ?? null;
+        const reusablePreviousImage = previous?.image_url && !isAvatarImageUrl(previous.image_url) ? previous.image_url : null;
+        const nextImage = largerHeroImage(row.imageUrl, retained, row.link ?? previous?.link ?? null) ?? reusablePreviousImage ?? row.imageUrl ?? null;
 
         if (previous) {
           const changed = (row.title !== undefined && row.title !== previous.title) ||
