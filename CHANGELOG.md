@@ -2,6 +2,18 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.44.1] - 2026-11-23
+
+### Fixed
+- **SQLite & MCP dependencies:** Updated `better-sqlite3` (`13.0.3` → `13.2.0` in [#75](https://github.com/visualfusion/feedkeeper/pull/75), avoiding `process.report.getReport()` hangs on Linux musl) and `@modelcontextprotocol/sdk` (`1.32.1` → `1.32.2` in [#74](https://github.com/visualfusion/feedkeeper/pull/74)).
+- **Test environment isolation:** Deferred module imports in `mediaEnclosures.test.ts` until `SESSION_SECRET` is configured so the test suite passes in clean environments without a `.env` file.
+
+### Changed
+- **Tooling dependencies:** Updated `eslint` (`10.14.0` → `10.15.0` in [#71](https://github.com/visualfusion/feedkeeper/pull/71)) and `typescript-eslint` (`8.72.1` → `8.73.0` in [#72](https://github.com/visualfusion/feedkeeper/pull/72)).
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.44.0] - 2026-11-23
 
 ### Added
