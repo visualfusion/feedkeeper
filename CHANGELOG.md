@@ -2,6 +2,17 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.44.0] - 2026-11-23
+
+### Added
+- **Podcast & media enclosures:** Extracts audio and video enclosures (`<enclosure>`, `itunes:duration`, JSON Feed `attachments`) and `podcast:chapters` (`GET /api/items/:id/chapters`), shows episode durations in article lists, and embeds an HTML5 audio/video player with clickable chapter markers in the web reader.
+
+### Fixed
+- **Security dependencies:** Bumped `express` from `5.2.1` to `5.3.0` in [#73](https://github.com/visualfusion/feedkeeper/pull/73), bringing in upstream `qs` security fixes (`CVE-2026-2391` / `GHSA-w7fw-mjwx-w883`).
+
+### Upgrade notes
+- Migration `0048_item_media_enclosures.sql` adds `enclosure_url`, `enclosure_type`, `enclosure_duration_seconds`, and `chapters_url` columns to `items`.
+
 ## [0.43.0] - 2026-11-22
 
 ### Added
