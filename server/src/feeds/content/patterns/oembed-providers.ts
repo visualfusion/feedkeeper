@@ -20,7 +20,7 @@ export interface SocialPlatform {
 export const OEMBED_PROVIDER_SNAPSHOT = "2026-11-23";
 
 export const OEMBED_PROVIDER_PLATFORMS: SocialPlatform[] = [
-  { name: "YouTube", host: /^(?:youtube(?:-nocookie)?\.com|youtu\.be)$/, post: /^(?:\/watch\?(?:[^#&]+&)*v=[\w-]{6,}(?:&[^#]*)?|\/(?:shorts|live|embed)\/[\w-]{6,})$/, kind: "social" },
+  { name: "YouTube", host: /^(?:youtube(?:-nocookie)?\.com|youtu\.be)$/, post: /^(?:\/watch\?(?:[^#&]+&)*v=[\w-]{6,}(?:&[^#]*)?|\/(?:shorts|live)\/[\w-]{6,}(?:\?[^#]*)?|\/embed\/[\w-]{6,}(?:\?[^#]*)?)$/, kind: "social" },
   { name: "Vimeo", host: /^(?:vimeo\.com|player\.vimeo\.com)$/, post: /^(?:\/(?:video\/)?\d{5,}|\/channels\/[^/]+\/\d{5,})$/, kind: "social" },
   { name: "Dailymotion", host: /^(?:dailymotion\.com|dai\.ly)$/, post: /^(?:\/video\/[a-zA-Z0-9]+|\/[a-zA-Z0-9]+)$/, kind: "social" },
   { name: "Flickr", host: /^(?:flickr\.com|flic\.kr)$/, post: /^(?:\/photos\/[^/]+\/\d+|\/p\/[a-zA-Z0-9]+)$/, kind: "social" },
