@@ -12,7 +12,8 @@
     "db:restore": "node dist/backup-cli.js restore",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test test/*.test.ts",
-    "security:recover": "node dist/security-recover-cli.js"
+    "security:recover": "node dist/security-recover-cli.js",
+    "update:oembed-providers": "node scripts/update-oembed-providers.mjs"
   },
   "dependencies": {
     "@humanwhocodes/ico-to-png": "^1.1.0",

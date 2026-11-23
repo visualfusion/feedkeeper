@@ -1,0 +1,132 @@
+{
+  "source": "https://oembed.com/providers.json",
+  "snapshot_date": "2026-11-23",
+  "providers": [
+    {
+      "provider_name": "Bluesky Social",
+      "schemes": [
+        "https://bsky.app/profile/*/post/*"
+      ],
+      "item_paths": [
+        "^/profile/[^/]+/post/[^/]+/?$"
+      ]
+    },
+    {
+      "provider_name": "Dailymotion",
+      "schemes": [
+        "https://www.dailymotion.com/video/*"
+      ],
+      "item_paths": [
+        "^/video/[A-Za-z0-9]+/?$"
+      ]
+    },
+    {
+      "provider_name": "Flickr",
+      "schemes": [
+        "https://*.flickr.com/photos/*",
+        "https://flic.kr/p/*"
+      ],
+      "item_paths": [
+        "^/photos/[^/]+/\\d+/?$",
+        "^/p/[^/]+/?$"
+      ]
+    },
+    {
+      "provider_name": "Instagram",
+      "schemes": [
+        "https://instagram.com/*/p/*",
+        "https://www.instagram.com/*/p/*",
+        "https://instagram.com/p/*",
+        "https://www.instagram.com/p/*",
+        "https://instagram.com/tv/*",
+        "https://www.instagram.com/tv/*",
+        "https://www.instagram.com/reel/*",
+        "https://instagram.com/reel/*"
+      ],
+      "item_paths": [
+        "^/(?:[^/]+/)?(?:p|tv|reel)/[^/]+/?$"
+      ]
+    },
+    {
+      "provider_name": "Reddit",
+      "schemes": [
+        "https://reddit.com/r/*/comments/*/*",
+        "https://www.reddit.com/r/*/comments/*/*"
+      ],
+      "item_paths": [
+        "^/r/[^/]+/comments/[^/]+/[^/]+/?$"
+      ]
+    },
+    {
+      "provider_name": "SoundCloud",
+      "schemes": [
+        "https://soundcloud.com/*",
+        "https://on.soundcloud.com/*"
+      ],
+      "item_paths": [
+        "^/[^/]+/[^/]+/?$"
+      ]
+    },
+    {
+      "provider_name": "Spotify",
+      "schemes": [
+        "https://open.spotify.com/*"
+      ],
+      "item_paths": [
+        "^/(?:track|album|playlist|episode|show|artist)/[A-Za-z0-9]+/?$"
+      ]
+    },
+    {
+      "provider_name": "TikTok",
+      "schemes": [
+        "https://www.tiktok.com/*/video/*"
+      ],
+      "item_paths": [
+        "^/@[^/]+/video/\\d+/?$"
+      ]
+    },
+    {
+      "provider_name": "Vimeo",
+      "schemes": [
+        "https://vimeo.com/*",
+        "https://vimeo.com/channels/*/*",
+        "https://player.vimeo.com/video/*"
+      ],
+      "item_paths": [
+        "^/\\d{5,}/?$",
+        "^/channels/[^/]+/\\d{5,}/?$",
+        "^/video/\\d{5,}/?$"
+      ]
+    },
+    {
+      "provider_name": "X",
+      "schemes": [
+        "https://x.com/*/status/*"
+      ],
+      "item_paths": [
+        "^/[^/]+/status/\\d+/?$"
+      ]
+    },
+    {
+      "provider_name": "YouTube",
+      "schemes": [
+        "https://*.youtube.com/watch*",
+        "https://*.youtube.com/v/*",
+        "https://youtu.be/*",
+        "https://*.youtube.com/playlist?list=*",
+        "https://youtube.com/playlist?list=*",
+        "https://*.youtube.com/shorts*",
+        "https://youtube.com/shorts*",
+        "https://*.youtube.com/embed/*",
+        "https://*.youtube.com/live*",
+        "https://youtube.com/live*"
+      ],
+      "item_paths": [
+        "^/watch$",
+        "^/playlist$",
+        "^/(?:shorts|live|embed|v)/[\\w-]{6,}/?$",
+        "^/[\\w-]{6,}/?$"
+      ]
+    }
+  ]
+}
