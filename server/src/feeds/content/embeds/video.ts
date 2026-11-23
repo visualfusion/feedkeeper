@@ -1,4 +1,5 @@
 import { PLAY_LABEL, PLAYER_TITLES } from "../patterns/play-labels/index.js";
+import { OEMBED_PROVIDER_PLATFORMS } from "../patterns/oembed-providers.js";
 import { type ContentRule, type ContentRoot, type NoiseStats, flat, linkParagraph, parseAddress, pruneEmpty } from "../shared.js";
 
 const PLAY_SOURCE = /(?:^|[/_.-])play[-_]?(?:icon|button|btn)?\.(?:svg|png|webp|gif)(?:[?#]|$)/i;
@@ -14,21 +15,23 @@ export function embedTarget(source: string): { url: string; name: string } | nul
   const parsed = parseAddress(source);
   if (!parsed) return null;
   const address = parsed;
-  const host = address.hostname.replace(/^www\./, "");
+  const host = address.hostname.replace(/^(?:www|m|mobile)\./, "");
   const segments = address.pathname.split("/").filter(Boolean);
-  if (/^youtube(-nocookie)?\.com$/.test(host) && segments[0] === "embed" && /^[\w-]{6,}$/.test(segments[1] ?? "")) {
+  const path = `${address.pathname}${address.search}`;
+  const providerMatches = (name: string) => OEMBED_PROVIDER_PLATFORMS.some(provider => provider.name === name && provider.host.test(host) && provider.post.test(path));
+  if (providerMatches("YouTube") && /^youtube(-nocookie)?\.com$/.test(host) && segments[0] === "embed" && /^[\w-]{6,}$/.test(segments[1] ?? "")) {
     return { url: `https://www.youtube.com/watch?v=${segments[1]}`, name: "YouTube" };
   }
-  if (/^(?:m\.)?youtube\.com$/.test(host) && segments[0] === "watch" && /^[\w-]{6,}$/.test(address.searchParams.get("v") ?? "")) {
+  if (providerMatches("YouTube") && /^(?:m\.)?youtube\.com$/.test(host) && segments[0] === "watch" && /^[\w-]{6,}$/.test(address.searchParams.get("v") ?? "")) {
     return { url: `https://www.youtube.com/watch?v=${address.searchParams.get("v")}`, name: "YouTube" };
   }
-  if (host === "youtu.be" && /^[\w-]{6,}$/.test(segments[0] ?? "")) {
+  if (providerMatches("YouTube") && host === "youtu.be" && /^[\w-]{6,}$/.test(segments[0] ?? "")) {
     return { url: `https://www.youtube.com/watch?v=${segments[0]}`, name: "YouTube" };
   }
-  if (host === "player.vimeo.com" && segments[0] === "video" && /^\d+$/.test(segments[1] ?? "")) {
+  if (providerMatches("Vimeo") && host === "player.vimeo.com" && segments[0] === "video" && /^\d+$/.test(segments[1] ?? "")) {
     return { url: `https://vimeo.com/${segments[1]}`, name: "Vimeo" };
   }
-  if (host === "dailymotion.com" && segments[0] === "embed" && segments[1] === "video" && /^\w+$/.test(segments[2] ?? "")) {
+  if (OEMBED_PROVIDER_PLATFORMS.some(provider => provider.name === "Dailymotion" && provider.host.test(host) && /^\/embed\/video\/[\w]+$/.test(address.pathname)) && host === "dailymotion.com" && segments[0] === "embed" && segments[1] === "video" && /^\w+$/.test(segments[2] ?? "")) {
     return { url: `https://www.dailymotion.com/video/${segments[2]}`, name: "Dailymotion" };
   }
   return null;
