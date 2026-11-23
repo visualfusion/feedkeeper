@@ -5,11 +5,13 @@ import { type ContentRoot, type ContentRule, type NoiseStats, flat, linkParagrap
 export function socialPost(source: string): { platform: SocialPlatform; url: string } | null {
   const address = parseAddress(source.trim());
   if (!address || !/^https?:$/.test(address.protocol)) return null;
-  const host = address.hostname.replace(/^(?:www|m|mobile)\./, "");
-  const platform = SOCIAL_PLATFORMS.find(candidate => candidate.host.test(host));
-  if (!platform || !platform.post.test(`${address.pathname}${address.search}`)) return null;
-  const keepsQuery = platform.name === "Facebook";
-  return { platform, url: `${address.origin}${address.pathname.replace(/\/embed\/?$/, "/")}${keepsQuery ? address.search : ""}` };
+  const platform = SOCIAL_PLATFORMS.find(candidate => candidate.host.test(address.hostname) && candidate.post.test(address.href));
+  if (!platform) return null;
+  const keepsQuery = platform.name === "Facebook" || platform.name === "YouTube";
+  return {
+    platform,
+    url: `${address.origin}${address.pathname.replace(/\/embed\/?$/, "/")}${keepsQuery ? address.search : ""}`,
+  };
 }
 
 /** The post behind an embed iframe, which usually names it in the path or in a parameter. */
@@ -34,7 +36,10 @@ export function socialFrameTarget(source: string): { platform: SocialPlatform; u
     return inner ? socialPost(inner) : null;
   }
   if (MASTODON_EMBED_PATH.test(address.pathname) && /^https?:$/.test(address.protocol)) {
-    return { platform: { name: "Mastodon", host: /.*/, post: MASTODON_EMBED_PATH, kind: "social" }, url: `${address.origin}${address.pathname.replace(/\/embed\/?$/, "")}` };
+    return {
+      platform: { name: "Mastodon", host: /.*/, post: MASTODON_EMBED_PATH, kind: "social" },
+      url: `${address.origin}${address.pathname.replace(/\/embed\/?$/, "")}`,
+    };
   }
   return socialPost(source);
 }
@@ -91,7 +96,7 @@ function resolveSocialEmbeds(root: ContentRoot, stats: NoiseStats): { changed: b
 /** Posts of social platforms and audio players become one link to the post. */
 export const socialEmbeds: ContentRule = {
   name: "social-embeds",
-  description: "Instagram, X, TikTok, Bluesky, Threads, Reddit, Facebook posts and Spotify/SoundCloud players become one marked link.",
+  description: "Supported social posts and audio players become one marked link.",
   apply(root, stats) {
     const { changed, links } = resolveSocialEmbeds(root, stats);
     links.forEach(({ link, kind, source }) => {

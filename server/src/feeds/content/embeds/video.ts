@@ -1,4 +1,5 @@
 import { PLAY_LABEL, PLAYER_TITLES } from "../patterns/play-labels/index.js";
+import { OEMBED_PROVIDER_PLATFORMS } from "../patterns/oembed-providers.js";
 import { type ContentRule, type ContentRoot, type NoiseStats, flat, linkParagraph, parseAddress, pruneEmpty } from "../shared.js";
 
 const PLAY_SOURCE = /(?:^|[/_.-])play[-_]?(?:icon|button|btn)?\.(?:svg|png|webp|gif)(?:[?#]|$)/i;
@@ -11,36 +12,44 @@ function isPlayOverlay(image: Element): boolean {
 
 /** Direct video URL of the embeds that are common enough to be worth a link. Anything else is not turned into a link. */
 export function embedTarget(source: string): { url: string; name: string } | null {
-  const parsed = parseAddress(source);
-  if (!parsed) return null;
-  const address = parsed;
-  const host = address.hostname.replace(/^www\./, "");
-  const segments = address.pathname.split("/").filter(Boolean);
-  if (/^youtube(-nocookie)?\.com$/.test(host) && segments[0] === "embed" && /^[\w-]{6,}$/.test(segments[1] ?? "")) {
-    return { url: `https://www.youtube.com/watch?v=${segments[1]}`, name: "YouTube" };
+  const trimmed = source.trim();
+  const address = parseAddress(trimmed.startsWith("//") ? `https:${trimmed}` : trimmed);
+  if (!address || !/^https?:$/.test(address.protocol)) return null;
+  const host = address.hostname.replace(/^(?:www|m|mobile)\./, "");
+  const provider = OEMBED_PROVIDER_PLATFORMS.find(candidate => candidate.kind === "video" && candidate.post.test(address.href));
+
+  if (provider?.name === "YouTube") {
+    const id = address.searchParams.get("v") ?? address.pathname.split("/").filter(Boolean).at(-1);
+    if (id && /^[\w-]{6,}$/.test(id)) {
+      return { url: `https://www.youtube.com/watch?v=${id}`, name: provider.name };
+    }
   }
-  if (/^(?:m\.)?youtube\.com$/.test(host) && segments[0] === "watch" && /^[\w-]{6,}$/.test(address.searchParams.get("v") ?? "")) {
-    return { url: `https://www.youtube.com/watch?v=${address.searchParams.get("v")}`, name: "YouTube" };
+  if (provider?.name === "Vimeo" && host === "player.vimeo.com") {
+    const id = address.pathname.match(/\/video\/(\d{5,})$/)?.[1];
+    if (id) {
+      return { url: `https://vimeo.com/${id}`, name: provider.name };
+    }
   }
-  if (host === "youtu.be" && /^[\w-]{6,}$/.test(segments[0] ?? "")) {
-    return { url: `https://www.youtube.com/watch?v=${segments[0]}`, name: "YouTube" };
+  if (provider?.name === "Dailymotion") {
+    const id = address.pathname.match(/^\/video\/([a-zA-Z0-9]+)/)?.[1];
+    if (id) {
+      return { url: `https://www.dailymotion.com/video/${id}`, name: provider.name };
+    }
   }
-  if (host === "player.vimeo.com" && segments[0] === "video" && /^\d+$/.test(segments[1] ?? "")) {
-    return { url: `https://vimeo.com/${segments[1]}`, name: "Vimeo" };
-  }
-  if (host === "dailymotion.com" && segments[0] === "embed" && segments[1] === "video" && /^\w+$/.test(segments[2] ?? "")) {
-    return { url: `https://www.dailymotion.com/video/${segments[2]}`, name: "Dailymotion" };
+  if (host === "dailymotion.com") {
+    const id = address.pathname.match(/^\/embed\/video\/([\w]+)/)?.[1];
+    if (id) {
+      return { url: `https://www.dailymotion.com/video/${id}`, name: "Dailymotion" };
+    }
   }
   return null;
 }
 
 /** The name of the video site a watch-page address belongs to, for the labels of links that were saved without a title. */
 function videoSiteName(source: string): string | null {
-  const host = parseAddress(source)?.hostname.replace(/^(?:www|m)\./, "") ?? "";
-  if (/^(?:youtube(?:-nocookie)?\.com|youtu\.be)$/.test(host)) return "YouTube";
-  if (/^(?:player\.)?vimeo\.com$/.test(host)) return "Vimeo";
-  if (/^dailymotion\.com$/.test(host)) return "Dailymotion";
-  return null;
+  const address = parseAddress(source);
+  if (!address) return null;
+  return OEMBED_PROVIDER_PLATFORMS.find(platform => platform.kind === "video" && platform.post.test(address.href))?.name ?? null;
 }
 
 /**

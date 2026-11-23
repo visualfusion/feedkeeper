@@ -5,14 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json && node -e \"require('fs').cpSync('src/db/migrations','dist/db/migrations',{recursive:true})\"",
+    "build": "tsc -p tsconfig.json && node -e \"const fs=require('fs');fs.cpSync('src/db/migrations','dist/db/migrations',{recursive:true});fs.copyFileSync('src/feeds/content/patterns/providers.json','dist/feeds/content/patterns/providers.json')\"",
     "start": "node dist/server.js",
     "setup": "tsx src/setup-cli.ts",
     "db:backup": "node dist/backup-cli.js backup",
     "db:restore": "node dist/backup-cli.js restore",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test test/*.test.ts",
-    "security:recover": "node dist/security-recover-cli.js"
+    "security:recover": "node dist/security-recover-cli.js",
+    "update:oembed-providers": "node scripts/update-oembed-providers.mjs"
   },
   "dependencies": {
     "@humanwhocodes/ico-to-png": "^1.1.0",
