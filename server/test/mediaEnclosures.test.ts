@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { test } from "node:test";
-import { parseDurationSeconds, parseFeedBody } from "../src/feeds/feedParser.js";
-import { parsePodcastChapters } from "../src/feeds/chapters.js";
 
-test("parseDurationSeconds normalizes numeric, MM:SS, and HH:MM:SS formats", () => {
+test("parseDurationSeconds normalizes numeric, MM:SS, and HH:MM:SS formats", async () => {
+  process.env.DATABASE_PATH ??= ":memory:";
+  process.env.SESSION_SECRET ??= "test-session-secret-at-least-32-characters";
+  const { parseDurationSeconds } = await import("../src/feeds/feedParser.js");
   assert.equal(parseDurationSeconds(3600), 3600);
   assert.equal(parseDurationSeconds("3600"), 3600);
   assert.equal(parseDurationSeconds("42:15"), 2535);
@@ -15,6 +16,9 @@ test("parseDurationSeconds normalizes numeric, MM:SS, and HH:MM:SS formats", () 
 });
 
 test("parseFeedBody extracts audio/video enclosures, duration, and chapters from RSS and JSON Feed", async () => {
+  process.env.DATABASE_PATH ??= ":memory:";
+  process.env.SESSION_SECRET ??= "test-session-secret-at-least-32-characters";
+  const { parseFeedBody } = await import("../src/feeds/feedParser.js");
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
   <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
     <channel>
@@ -57,7 +61,10 @@ test("parseFeedBody extracts audio/video enclosures, duration, and chapters from
   assert.equal(parsedJson.items[0]?.enclosureDurationSeconds, 125);
 });
 
-test("parsePodcastChapters filters hidden chapters and sorts by startTime", () => {
+test("parsePodcastChapters filters hidden chapters and sorts by startTime", async () => {
+  process.env.DATABASE_PATH ??= ":memory:";
+  process.env.SESSION_SECRET ??= "test-session-secret-at-least-32-characters";
+  const { parsePodcastChapters } = await import("../src/feeds/chapters.js");
   const chapters = parsePodcastChapters(JSON.stringify({
     version: "1.2.0",
     chapters: [
