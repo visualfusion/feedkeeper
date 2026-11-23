@@ -12,7 +12,8 @@ function isPlayOverlay(image: Element): boolean {
 
 /** Direct video URL of the embeds that are common enough to be worth a link. Anything else is not turned into a link. */
 export function embedTarget(source: string): { url: string; name: string } | null {
-  const parsed = parseAddress(source);
+  const normalizedSource = source.trim().startsWith("//") ? `https:${source.trim()}` : source;
+  const parsed = parseAddress(normalizedSource);
   if (!parsed) return null;
   const address = parsed;
   const host = address.hostname.replace(/^(?:www|m|mobile)\./, "");

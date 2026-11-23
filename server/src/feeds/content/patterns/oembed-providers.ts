@@ -20,8 +20,8 @@ export interface SocialPlatform {
 export const OEMBED_PROVIDER_SNAPSHOT = "2026-11-23";
 
 export const OEMBED_PROVIDER_PLATFORMS: SocialPlatform[] = [
-  { name: "YouTube", host: /^(?:youtube(?:-nocookie)?\.com|youtu\.be)$/, post: /^(?:\/watch\?(?:[^#]*&)?v=[\w-]{6,}|\/(?:shorts|live|embed)\/[\w-]{6,}|\/[\w-]{6,})/, kind: "social" },
-  { name: "Vimeo", host: /^(?:vimeo\.com|player\.vimeo\.com)$/, post: /^(?:\/(?:video\/)?\d{6,}|\/channels\/[^/]+\/\d{6,})/, kind: "social" },
+  { name: "YouTube", host: /^(?:youtube(?:-nocookie)?\.com|youtu\.be)$/, post: /^(?:\/watch\?(?:[^#&]+&)*v=[\w-]{6,}(?:&[^#]*)?|\/(?:shorts|live|embed)\/[\w-]{6,})$/, kind: "social" },
+  { name: "Vimeo", host: /^(?:vimeo\.com|player\.vimeo\.com)$/, post: /^(?:\/(?:video\/)?\d{5,}|\/channels\/[^/]+\/\d{5,})$/, kind: "social" },
   { name: "Dailymotion", host: /^(?:dailymotion\.com|dai\.ly)$/, post: /^(?:\/video\/[a-zA-Z0-9]+|\/[a-zA-Z0-9]+)$/, kind: "social" },
   { name: "Flickr", host: /^(?:flickr\.com|flic\.kr)$/, post: /^(?:\/photos\/[^/]+\/\d+|\/p\/[a-zA-Z0-9]+)$/, kind: "social" },
   { name: "Imgur", host: /^imgur\.com$/, post: /^\/[a-zA-Z0-9]{5,8}$/, kind: "social" },
@@ -39,7 +39,7 @@ export const OEMBED_PROVIDER_PLATFORMS: SocialPlatform[] = [
   { name: "GIPHY", host: /^giphy\.com$/, post: /^\/gifs\/[^/]+-[\w]+/, kind: "social" },
   { name: "Audioboom", host: /^audioboom\.com$/, post: /^\/posts\/\d+/, kind: "audio" },
   { name: "Audius", host: /^(?:audius\.co|audius\.content)$/, post: /^\/[^/]+\/[^/]+/, kind: "audio" },
-  { name: "Spotify", host: /^open\.spotify\.com$/, post: /^\/(?:track|album|playlist|episode|show|artist)\/[\w]+/, kind: "audio" },
+  { name: "Spotify", host: /^open\.spotify\.com$/, post: /^\/(?:track|album|episode|show|artist)\/[\w]+$/, kind: "audio" },
   { name: "SoundCloud", host: /^soundcloud\.com$/, post: /^\/[^/]+\/[^/]+/, kind: "audio" },
   { name: "Instagram", host: /^instagram\.com$/, post: /^\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/[\w-]+/, kind: "social" },
   { name: "X", host: /^(?:twitter|x)\.com$/, post: /^\/(?:i\/|[\w]+\/)(?:web\/)?status\/\d+/, kind: "social" },
