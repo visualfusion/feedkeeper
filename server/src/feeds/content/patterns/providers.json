@@ -14,7 +14,8 @@
     {
       "provider_name": "Dailymotion",
       "schemes": [
-        "https://www.dailymotion.com/video/*"
+        "https://www.dailymotion.com/video/*",
+        "https://geo.dailymotion.com/player.html?video=*"
       ],
       "item_paths": [
         "^/video/[A-Za-z0-9]+/?$"
@@ -24,7 +25,9 @@
       "provider_name": "Flickr",
       "schemes": [
         "https://*.flickr.com/photos/*",
-        "https://flic.kr/p/*"
+        "https://flic.kr/p/*",
+        "https://flic.kr/s/*",
+        "https://*.*.flickr.com/*/*"
       ],
       "item_paths": [
         "^/photos/[^/]+/\\d+/?$",
@@ -37,14 +40,21 @@
         "https://instagram.com/*/p/*",
         "https://www.instagram.com/*/p/*",
         "https://instagram.com/p/*",
+        "https://instagr.am/p/*",
         "https://www.instagram.com/p/*",
+        "https://www.instagr.am/p/*",
         "https://instagram.com/tv/*",
+        "https://instagr.am/tv/*",
         "https://www.instagram.com/tv/*",
+        "https://www.instagr.am/tv/*",
         "https://www.instagram.com/reel/*",
-        "https://instagram.com/reel/*"
+        "https://instagram.com/reel/*",
+        "https://instagr.am/reel/*",
+        "https://www.instagram.com/*/reel/*",
+        "https://instagram.com/*/reel/*"
       ],
       "item_paths": [
-        "^/(?:[^/]+/)?(?:p|tv|reel)/[^/]+/?$"
+        "^/(?:[\\w.]+/)?(?:p|tv|reel|reels)/[\\w-]+/?$"
       ]
     },
     {
@@ -54,14 +64,15 @@
         "https://www.reddit.com/r/*/comments/*/*"
       ],
       "item_paths": [
-        "^/r/[^/]+/comments/[^/]+/[^/]+/?$"
+        "^/r/[^/]+/comments/[^/]+"
       ]
     },
     {
       "provider_name": "SoundCloud",
       "schemes": [
         "https://soundcloud.com/*",
-        "https://on.soundcloud.com/*"
+        "https://on.soundcloud.com/*",
+        "https://soundcloud.app.goog.gl/*"
       ],
       "item_paths": [
         "^/[^/]+/[^/]+/?$"
@@ -70,7 +81,8 @@
     {
       "provider_name": "Spotify",
       "schemes": [
-        "https://open.spotify.com/*"
+        "https://open.spotify.com/*",
+        "https://spotify.link/*"
       ],
       "item_paths": [
         "^/(?:track|album|playlist|episode|show|artist)/[A-Za-z0-9]+/?$"
@@ -79,18 +91,24 @@
     {
       "provider_name": "TikTok",
       "schemes": [
+        "https://www.tiktok.com/*",
         "https://www.tiktok.com/*/video/*"
       ],
       "item_paths": [
-        "^/@[^/]+/video/\\d+/?$"
+        "^/@[^/]+/(?:video|photo)/\\d+/?$",
+        "^/(?:video|photo)/\\d+/?$"
       ]
     },
     {
       "provider_name": "Vimeo",
       "schemes": [
         "https://vimeo.com/*",
+        "https://vimeo.com/album/*/video/*",
         "https://vimeo.com/channels/*/*",
-        "https://player.vimeo.com/video/*"
+        "https://vimeo.com/groups/*/videos/*",
+        "https://vimeo.com/ondemand/*/*",
+        "https://player.vimeo.com/video/*",
+        "https://vimeo.com/event/*/*"
       ],
       "item_paths": [
         "^/\\d{5,}/?$",
@@ -101,10 +119,12 @@
     {
       "provider_name": "X",
       "schemes": [
-        "https://x.com/*/status/*"
+        "https://x.com/*",
+        "https://x.com/*/status/*",
+        "https://*.x.com/*/status/*"
       ],
       "item_paths": [
-        "^/[^/]+/status/\\d+/?$"
+        "^/(?:i/|[^/]+/)(?:web/)?status/\\d+/?$"
       ]
     },
     {
