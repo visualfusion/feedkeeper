@@ -1,7 +1,7 @@
 import { OEMBED_PROVIDER_PLATFORMS, type SocialPlatform } from "./oembed-providers.js";
 export type { SocialPlatform } from "./oembed-providers.js";
 const CUSTOM_SOCIAL_PLATFORMS: SocialPlatform[] = [
-  { name: "Threads", host: /^threads\.(?:net|com)$/i, post: /^https?:\/\/threads\.(?:net|com)\/@[\w.]+\/post\/[\w-]+$/i, kind: "social" },
+  { name: "Threads", host: /^threads\.(?:net|com)$/i, post: /^https?:\/\/(?:www\.)?threads\.(?:net|com)\/@[\w.]+\/post\/[\w-]+$/i, kind: "social" },
   { name: "Facebook", host: /^(?:www\.)?facebook\.com$/i, post: { test: value => /^https?:\/\/(?:www\.)?facebook\.com\/(?:[^/?#]+\/)?(?:posts|activity|photos|videos|permalink|watch|reel|share)\b/i.test(value) || /^https?:\/\/(?:www\.)?facebook\.com\/photo\.php\?(?:[^#]*&)?fbid=/i.test(value) }, kind: "social" },
   { name: "X", host: /^twitter\.com$/i, post: /^https?:\/\/(?:www\.)?twitter\.com\/(?:i\/|[\w]+\/)(?:web\/)?status\/\d+/i, kind: "social" },
 ];

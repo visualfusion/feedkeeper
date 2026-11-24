@@ -110,6 +110,8 @@
     {
       "provider_name": "YouTube",
       "schemes": [
+        "https://www.youtube-nocookie.com/embed/*",
+        "https://youtube-nocookie.com/embed/*",
         "https://*.youtube.com/watch*",
         "https://*.youtube.com/v/*",
         "https://youtu.be/*",
