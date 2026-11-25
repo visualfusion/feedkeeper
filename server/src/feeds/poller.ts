@@ -22,26 +22,67 @@ import { configurePollHostCooldowns, PollQueue, type PollResult } from "./pollQu
 import { feedRequests, PollDeferredError, sourceHost } from "./requestGate.js";
 import { readPollSettings } from "./pollSettings.js";
 import { detectFeedKind, formatFeedAuthor, itemGuid, itemLink, parseFeedBody, resolveFeedIconUrls, type ParsedFeed } from "./feedParser.js";
+import { decodeEntities } from "./text.js";
 
 export { itemGuid, itemLink };
 
 configurePollHostCooldowns();
+
+function isYouTubeChannelUrl(rawUrl: string | null | undefined): boolean {
+  if (!rawUrl) return false;
+  try {
+    const host = new URL(rawUrl).hostname.toLowerCase();
+    return host === "youtube.com" || host.endsWith(".youtube.com");
+  } catch {
+    return false;
+  }
+}
+
+function extractHtmlMeta(html: string, nameOrProp: string): string | undefined {
+  const metaTags = html.match(/<meta\b[^>]{1,600}>/gi) ?? [];
+  const target = nameOrProp.toLowerCase();
+  for (const tag of metaTags) {
+    const propMatch = /\b(?:property|name)\s*=\s*["']([^"']+)["']/i.exec(tag);
+    if (!propMatch || propMatch[1]?.toLowerCase() !== target) continue;
+    const contentMatch = /\bcontent\s*=\s*["']([^"']*)["']/i.exec(tag);
+    if (contentMatch?.[1]) return decodeEntities(contentMatch[1]) ?? undefined;
+  }
+  return undefined;
+}
+
+async function refreshYouTubeShowMetadata(feedId: number, siteUrl: string, signal: AbortSignal): Promise<void> {
+  const fetched = await fetchFeed(siteUrl, { signal, priority: "background" });
+  if (fetched.notModified || !fetched.body) return;
+  const artworkUrl = extractHtmlMeta(fetched.body, "og:image");
+  const description = extractHtmlMeta(fetched.body, "og:description") ?? extractHtmlMeta(fetched.body, "description");
+  if (!artworkUrl && !description) return;
+  db.prepare(
+    "UPDATE feeds SET artwork_url = COALESCE(?, artwork_url), description = COALESCE(?, description) WHERE id = ?",
+  ).run(artworkUrl ?? null, description ?? null, feedId);
+}
 
 /**
  * Checks the feed's icon when it is due. The check starts right away but is not awaited, has its own deadline, and cannot retry or
  * fail a committed feed; downloads join the shared request limit as background work.
  */
 function scheduleIconMaintenance(feed: Feed, parsed: ParsedFeed | null): void {
-  if (!iconCheckDue(feed.icon_checked_at)) return;
-  updateFeedIcon(feed.id, feed.icon_url);
+  const siteUrl = parsed?.link || feed.site_url;
+  const needsYouTubeShowMeta = isYouTubeChannelUrl(siteUrl) && (!feed.artwork_url || !feed.description);
+  const iconDue = iconCheckDue(feed.icon_checked_at);
+  if (!iconDue && !needsYouTubeShowMeta) return;
+  if (iconDue) updateFeedIcon(feed.id, feed.icon_url);
   const signal = AbortSignal.timeout(readPollSettings().attemptTimeoutMs);
   const task = (async () => {
     try {
-      const siteUrl = parsed?.link || feed.site_url;
-      const htmlUrls = siteUrl ? await discoverIconUrls(siteUrl, signal) : [];
-      const feedUrls = parsed ? resolveFeedIconUrls(parsed, siteUrl || feed.url) : { icons: [], logos: [] };
-      signal.throwIfAborted();
-      await refreshFeedIcon(feed.id, siteUrl, [...htmlUrls, ...feedUrls.icons], signal, feedUrls.logos);
+      if (needsYouTubeShowMeta && siteUrl) {
+        await refreshYouTubeShowMetadata(feed.id, siteUrl, signal).catch(() => {});
+      }
+      if (iconDue) {
+        const htmlUrls = siteUrl ? await discoverIconUrls(siteUrl, signal) : [];
+        const feedUrls = parsed ? resolveFeedIconUrls(parsed, siteUrl || feed.url) : { icons: [], logos: [] };
+        signal.throwIfAborted();
+        await refreshFeedIcon(feed.id, siteUrl, [...htmlUrls, ...feedUrls.icons], signal, feedUrls.logos);
+      }
     } catch { /* Keep the successful poll; icon failures are best effort. */ }
   })();
   iconChecks.add(task);
