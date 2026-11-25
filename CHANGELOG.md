@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.46.1] - 2026-11-25
+
+### Fixed
+- **Search query tokenization:** Replaced the regular expression tokenizer in `searchQuery.ts` with a linear character scanner to eliminate potential regex backtracking on malformed quoted inputs.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.46.0] - 2026-11-25
 
 ### Added
