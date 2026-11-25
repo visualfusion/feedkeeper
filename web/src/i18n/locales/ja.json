@@ -403,5 +403,27 @@
     "invalidCredentials": "パスワードまたは確認コードが正しくありません。",
     "passkeyCancelled": "パスキーの確認がキャンセルされたか認識されませんでした。",
     "confirmAction": "確認"
+  },
+  "shortcuts": {
+    "title": "キーボードショートカット",
+    "subtitle": "キーボードだけでフィードや記事を素早く操作できます。",
+    "groups": {
+      "library": "記事一覧",
+      "article": "記事ビュー"
+    },
+    "nextItem": "次の記事を選択",
+    "previousItem": "前の記事を選択",
+    "openArticle": "記事を開く",
+    "nextArticle": "次の記事へ",
+    "previousArticle": "前の記事へ",
+    "toggleRead": "既読 / 未読を切り替え",
+    "toggleSaved": "あとで読むに保存",
+    "openOriginal": "ブラウザで開く",
+    "search": "記事を検索",
+    "refresh": "フィードを更新",
+    "markAllRead": "すべて既読にする",
+    "toggleFullText": "全文を読み込む / 切り替え",
+    "showShortcuts": "ショートカット一覧を表示",
+    "close": "閉じる"
   }
 }

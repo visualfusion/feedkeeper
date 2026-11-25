@@ -9,6 +9,7 @@ import { textLanguage } from "../utils/japanese.ts";
 
 interface NewspaperGridProps {
   items: Item[];
+  focusedItemId?: number | null;
   onOpen: (item: Item) => void;
   onBookmark: (item: Item) => void;
   onRead: (item: Item) => void;
@@ -36,10 +37,11 @@ function EditorialImage({ url, featured }: { url: string | null | undefined; fea
 }
 
 /** A feature spans two of the three columns only from `lg` up; below that it is a card like any other, so its look follows the viewport. */
-function EditorialCard({ item, featured, besideFeature, onOpen, onBookmark, onRead }: {
+function EditorialCard({ item, featured, besideFeature, focused, onOpen, onBookmark, onRead }: {
   item: Item;
   featured: boolean;
   besideFeature: boolean;
+  focused: boolean;
   onOpen: (item: Item) => void;
   onBookmark: (item: Item) => void;
   onRead: (item: Item) => void;
@@ -51,8 +53,13 @@ function EditorialCard({ item, featured, besideFeature, onOpen, onBookmark, onRe
   const formattedTime = date ? new Intl.DateTimeFormat(i18n.resolvedLanguage, { timeStyle: "short" }).format(date) : null;
 
   return (
-    <li className={featured ? "lg:col-span-2" : ""}>
-      <article className="card group relative flex h-full flex-col overflow-hidden transition-colors duration-150 hover:border-[var(--c-blue3)] hover:bg-[var(--c-surface-hover)]" style={{ opacity: item.read ? 0.65 : 1 }}>
+    <li data-item-id={item.id} className={featured ? "lg:col-span-2" : ""}>
+      <article
+        className={`card group relative flex h-full flex-col overflow-hidden transition-colors duration-150 hover:border-[var(--c-blue3)] hover:bg-[var(--c-surface-hover)] ${
+          focused ? "ring-2 ring-[var(--c-blue3)] border-[var(--c-blue3)] bg-[var(--c-surface-hover)]" : ""
+        }`}
+        style={{ opacity: item.read ? 0.65 : 1 }}
+      >
         <button
           type="button"
           className="absolute inset-0 z-10 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--c-blue3)]"
@@ -115,14 +122,23 @@ function EditorialCard({ item, featured, besideFeature, onOpen, onBookmark, onRe
   );
 }
 
-export function NewspaperGrid({ items, onOpen, onBookmark, onRead }: NewspaperGridProps) {
+export function NewspaperGrid({ items, focusedItemId, onOpen, onBookmark, onRead }: NewspaperGridProps) {
   const features = useMemo(() => editorialFeatures(items), [items]);
   const companions = useMemo(() => editorialCompanions(features), [features]);
 
   return (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 animate-page-fade">
       {items.map((item, index) => (
-        <EditorialCard key={item.id} item={item} featured={features[index]} besideFeature={companions[index]} onOpen={onOpen} onBookmark={onBookmark} onRead={onRead} />
+        <EditorialCard
+          key={item.id}
+          item={item}
+          featured={features[index]}
+          besideFeature={companions[index]}
+          focused={focusedItemId === item.id}
+          onOpen={onOpen}
+          onBookmark={onBookmark}
+          onRead={onRead}
+        />
       ))}
     </ul>
   );

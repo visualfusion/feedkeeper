@@ -18,6 +18,7 @@ import { toast } from "../utils/toast.ts";
 import { reportAllRefresh } from "../utils/refreshFeedback.ts";
 import { announceItemsChanged } from "../utils/badge.ts";
 import { syncOfflineCopy } from "../utils/offlineSync.ts";
+import { hasCommandModifier, isEditableTarget, openSafeExternalUrl } from "../utils/keyboard.ts";
 import { RefreshIcon, AlertIcon } from "../components/feeds/icons.tsx";
 import { feedErrorMessage } from "../utils/feedError.ts";
 import { HostNotice } from "../components/onboarding/HostNotice.tsx";
@@ -503,6 +504,7 @@ export function ItemsPage() {
   }, [articleParam, items]);
 
   function openArticle(item: Item) {
+    setFocusedItemId(item.id);
     setSelectedArticle(item);
     if (!item.read) {
       api.markRead(item.id).then(announceItemsChanged).catch(() => {});
@@ -590,6 +592,9 @@ export function ItemsPage() {
 
   // Shared by the refresh button and pull to refresh, so both give the same feedback.
   const [refreshingAll, setRefreshingAll] = useState(false);
+  const [focusedItemId, setFocusedItemId] = useState<number | null>(null);
+  const desktopSearchRef = useRef<HTMLInputElement>(null);
+
   async function refreshArticles() {
     setRefreshingAll(true);
     try {
@@ -602,6 +607,76 @@ export function ItemsPage() {
       setRefreshingAll(false);
     }
   }
+
+  useEffect(() => {
+    if (selectedArticle || focusedItemId == null) return;
+    const element = document.querySelector<HTMLElement>(`[data-item-id="${focusedItemId}"]`);
+    element?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }, [focusedItemId, selectedArticle]);
+
+  useEffect(() => {
+    if (selectedArticle) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (document.querySelector('[role="dialog"], [data-shortcuts-modal]')) return;
+      if (isEditableTarget(event.target) || isEditableTarget(document.activeElement) || hasCommandModifier(event)) {
+        return;
+      }
+
+      if (event.key === "/") {
+        event.preventDefault();
+        if (desktopSearchRef.current && desktopSearchRef.current.offsetParent !== null) {
+          desktopSearchRef.current.focus();
+          desktopSearchRef.current.select();
+        } else {
+          setMobileSearchOpen(true);
+        }
+        return;
+      }
+
+      if ((event.key === "r" || event.key === "R") && !refreshingAll && syncAllowed) {
+        event.preventDefault();
+        void refreshArticles();
+        return;
+      }
+
+      if (event.key === "A" && event.shiftKey) {
+        event.preventDefault();
+        void onMarkAllRead();
+        return;
+      }
+
+      if (items.length === 0) return;
+
+      const currentIndex = focusedItemId == null ? -1 : items.findIndex((item) => item.id === focusedItemId);
+      const focusedItem = currentIndex >= 0 ? items[currentIndex] : null;
+
+      if (event.key === "j" || event.key === "J" || event.key === "ArrowDown") {
+        event.preventDefault();
+        const nextIndex = currentIndex < 0 ? 0 : Math.min(currentIndex + 1, items.length - 1);
+        setFocusedItemId(items[nextIndex].id);
+      } else if (event.key === "k" || event.key === "K" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const prevIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
+        setFocusedItemId(items[prevIndex].id);
+      } else if ((event.key === "Enter" || event.key === "o" || event.key === "O") && focusedItem) {
+        event.preventDefault();
+        openArticle(focusedItem);
+      } else if ((event.key === "m" || event.key === "M") && focusedItem) {
+        event.preventDefault();
+        void toggleRead(focusedItem);
+      } else if ((event.key === "s" || event.key === "S") && focusedItem) {
+        event.preventDefault();
+        void toggleBookmark(focusedItem);
+      } else if ((event.key === "v" || event.key === "V") && focusedItem) {
+        event.preventDefault();
+        openSafeExternalUrl(focusedItem.link);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  });
 
   const dateFormatter = new Intl.DateTimeFormat(i18n.resolvedLanguage, {
     dateStyle: "medium",
@@ -724,6 +799,7 @@ export function ItemsPage() {
 
           <div className="relative hidden sm:block flex-1 min-w-0">
             <input
+              ref={desktopSearchRef}
               type="search"
               placeholder={t("items.searchPlaceholder")}
               aria-label={t("items.searchPlaceholder")}
@@ -872,17 +948,21 @@ export function ItemsPage() {
       ) : items.length === 0 ? (
         <p style={{ color: "var(--c-text-muted)" }}>{bookmarkedOnly && !search ? t("items.noSaved") : search ? t("items.noResults") : t("items.noItems")}</p>
       ) : activeView === "newspaper" ? (
-        <NewspaperGrid items={items} onOpen={openArticle} onBookmark={toggleBookmark} onRead={toggleRead} />
+        <NewspaperGrid items={items} focusedItemId={focusedItemId} onOpen={openArticle} onBookmark={toggleBookmark} onRead={toggleRead} />
       ) : (
         <ul className="flex flex-col gap-4 sm:gap-5 animate-page-fade">
           {items.map((item) => {
             const pubDate = item.published_at ? new Date(item.published_at) : null;
+            const isFocused = focusedItemId === item.id;
 
             return (
               <li
                 key={item.id}
+                data-item-id={item.id}
                 onClick={() => openArticle(item)}
-                className="card overflow-hidden p-4 sm:p-0 transition-colors duration-150 hover:bg-[var(--c-surface-hover)] hover:border-[var(--c-blue3)]/60 cursor-pointer group/card"
+                className={`card overflow-hidden p-4 sm:p-0 transition-colors duration-150 hover:bg-[var(--c-surface-hover)] hover:border-[var(--c-blue3)]/60 cursor-pointer group/card ${
+                  isFocused ? "ring-2 ring-[var(--c-blue3)] border-[var(--c-blue3)] bg-[var(--c-surface-hover)]" : ""
+                }`}
                 style={{ opacity: item.read ? 0.6 : 1 }}
               >
                 <div className="flex flex-col sm:flex-row sm:items-stretch justify-between gap-3 sm:gap-0">

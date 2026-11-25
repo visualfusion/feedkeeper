@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api, ApiError, type Item } from "../api/client.js";
 import { sanitizeHtml, leadingArticleImage, estimateReadingTime, safeHttpUrl } from "../utils/sanitizeHtml.js";
 import { breakJapaneseHtml, textLanguage } from "../utils/japanese.js";
+import { hasCommandModifier, isEditableTarget, openSafeExternalUrl } from "../utils/keyboard.js";
 import { Favicon } from "./Favicon.js";
 import { JapaneseText } from "./JapaneseText.js";
 import { MediaPlayer } from "./MediaPlayer.js";
@@ -151,21 +152,18 @@ export function ArticleReaderModal({
     const currentItem = item;
 
     function handleKeyDown(e: KeyboardEvent) {
-      // Don't trigger if focus is inside an input or textarea
-      if (
-        document.activeElement instanceof HTMLInputElement ||
-        document.activeElement instanceof HTMLTextAreaElement
-      ) {
+      if (document.querySelector("[data-shortcuts-modal]")) return;
+      if (isEditableTarget(e.target) || isEditableTarget(document.activeElement) || hasCommandModifier(e)) {
         return;
       }
 
       if (e.key === "Escape") {
         e.preventDefault();
         onClose();
-      } else if ((e.key === "j" || e.key === "ArrowRight") && hasNext && onNext) {
+      } else if ((e.key === "j" || e.key === "J" || e.key === "ArrowRight") && hasNext && onNext) {
         e.preventDefault();
         onNext();
-      } else if ((e.key === "k" || e.key === "ArrowLeft") && hasPrev && onPrevious) {
+      } else if ((e.key === "k" || e.key === "K" || e.key === "ArrowLeft") && hasPrev && onPrevious) {
         e.preventDefault();
         onPrevious();
       } else if (e.key === "s" || e.key === "S") {
@@ -177,9 +175,9 @@ export function ArticleReaderModal({
       } else if (e.key === "r" || e.key === "R") {
         e.preventDefault();
         handleToggleFullText();
-      } else if ((e.key === "o" || e.key === "O") && articleUrl) {
+      } else if ((e.key === "v" || e.key === "V" || e.key === "o" || e.key === "O") && articleUrl) {
         e.preventDefault();
-        window.open(articleUrl, "_blank", "noopener,noreferrer");
+        openSafeExternalUrl(articleUrl);
       }
     }
 

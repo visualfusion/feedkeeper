@@ -403,5 +403,27 @@
     "invalidCredentials": "Das Passwort oder der Bestätigungscode ist nicht korrekt.",
     "passkeyCancelled": "Passkey-Bestätigung wurde abgebrochen oder nicht erkannt.",
     "confirmAction": "Bestätigen"
+  },
+  "shortcuts": {
+    "title": "Tastaturkürzel",
+    "subtitle": "Feeds und Artikel direkt über die Tastatur bedienen.",
+    "groups": {
+      "library": "Artikelliste",
+      "article": "Artikelansicht"
+    },
+    "nextItem": "Nächster Eintrag",
+    "previousItem": "Vorheriger Eintrag",
+    "openArticle": "Artikel öffnen",
+    "nextArticle": "Nächster Artikel",
+    "previousArticle": "Vorheriger Artikel",
+    "toggleRead": "Gelesen / Ungelesen",
+    "toggleSaved": "Für später merken",
+    "openOriginal": "Im Browser öffnen",
+    "search": "Artikel durchsuchen",
+    "refresh": "Feeds aktualisieren",
+    "markAllRead": "Alle als gelesen markieren",
+    "toggleFullText": "Volltext laden / umschalten",
+    "showShortcuts": "Tastaturkürzel anzeigen",
+    "close": "Schließen"
   }
 }

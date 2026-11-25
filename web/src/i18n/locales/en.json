@@ -403,5 +403,27 @@
     "invalidCredentials": "The password or confirmation code is incorrect.",
     "passkeyCancelled": "Passkey confirmation was canceled or not recognized.",
     "confirmAction": "Confirm"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "subtitle": "Navigate your feeds and articles without leaving the keyboard.",
+    "groups": {
+      "library": "Article list",
+      "article": "Article view"
+    },
+    "nextItem": "Next item",
+    "previousItem": "Previous item",
+    "openArticle": "Open article",
+    "nextArticle": "Next article",
+    "previousArticle": "Previous article",
+    "toggleRead": "Mark read or unread",
+    "toggleSaved": "Save for later",
+    "openOriginal": "Open in browser",
+    "search": "Search articles",
+    "refresh": "Refresh feeds",
+    "markAllRead": "Mark all as read",
+    "toggleFullText": "Load or toggle full text",
+    "showShortcuts": "Show keyboard shortcuts",
+    "close": "Close"
   }
 }

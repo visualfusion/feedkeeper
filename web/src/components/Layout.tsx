@@ -1,14 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { BrandLockup } from "./BrandLockup.tsx";
 import { DesktopNav } from "./DesktopNav.tsx";
+import { KeyboardShortcutsModal } from "./KeyboardShortcutsModal.tsx";
 import { ProfileMenu } from "./ProfileMenu.tsx";
 import { OfflineBanner } from "./Offline.tsx";
 import { Toaster } from "./Toaster.tsx";
 import { resetItemsScrollY } from "../utils/scrollState.ts";
 import { onItemsChanged, refreshBadge } from "../utils/badge.ts";
 import { syncNow } from "../utils/offlineSync.ts";
+import { hasCommandModifier, isEditableTarget } from "../utils/keyboard.ts";
 
 import { resolvePageExtensions } from "../extensions/host.ts";
 import { useExtensions } from "../extensions/useExtensions.ts";
@@ -17,6 +19,19 @@ export function Layout() {
   const { t, i18n } = useTranslation();
   const pages = resolvePageExtensions(useExtensions(), i18n.resolvedLanguage || "en");
   const location = useLocation();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target) || hasCommandModifier(event)) return;
+      if (event.key === "?") {
+        event.preventDefault();
+        setShortcutsOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // Send changes made offline and keep articles available offline: on start, when the app returns to the foreground and when the connection comes back.
   useEffect(() => {
@@ -96,7 +111,7 @@ export function Layout() {
 
           <div className="flex items-center gap-3">
             <DesktopNav onItemsClick={handleItemsClick} pages={pages} />
-            <ProfileMenu />
+            <ProfileMenu onOpenShortcuts={() => setShortcutsOpen(true)} />
           </div>
         </div>
       </header>
@@ -111,6 +126,8 @@ export function Layout() {
       </main>
 
       <Toaster />
+
+      <KeyboardShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
       {/* Apple-style Floating Liquid Glass Tab Bar for Mobile */}
       <nav

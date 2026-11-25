@@ -16,7 +16,7 @@ const themeIcons: Record<Theme, ReactNode> = {
 const itemClass = "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--c-text)] transition-colors hover:bg-[var(--c-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--c-blue3)] cursor-pointer";
 
 /** Account menu bundling theme, settings, installation and logout; on mobile, settings stay in the tab bar. */
-export function ProfileMenu() {
+export function ProfileMenu({ onOpenShortcuts }: { onOpenShortcuts?: () => void }) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -115,6 +115,19 @@ export function ProfileMenu() {
               <svg className="h-4 w-4 text-[var(--c-text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
               {t("nav.settings")}
             </NavLink>
+            {onOpenShortcuts && (
+              <button
+                type="button"
+                className={`${itemClass} hidden md:flex justify-between`}
+                onClick={() => { setOpen(false); onOpenShortcuts(); }}
+              >
+                <span className="flex items-center gap-3">
+                  <svg className="h-4 w-4 text-[var(--c-text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" /></svg>
+                  {t("shortcuts.title")}
+                </span>
+                <kbd className="rounded border border-[var(--c-border)] bg-[var(--c-surface-hover)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--c-text-muted)]">?</kbd>
+              </button>
+            )}
             {installMode === "prompt" && (
               <button type="button" className={itemClass} onClick={() => { setOpen(false); void promptInstall(); }}>
                 <svg className="h-4 w-4 text-[var(--c-text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></svg>
