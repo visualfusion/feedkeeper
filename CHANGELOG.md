@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.44.3] - 2026-11-25
+
+### Changed
+- **oEmbed provider patterns:** Social and video embed recognition now loads host and URL schemes from a versioned snapshot of the [oEmbed provider registry](https://oembed.com/providers.json) (`server/src/feeds/content/patterns/providers.json`, refreshable via `npm run update:oembed-providers`) alongside custom rules for Threads, Facebook, `twitter.com`, and Mastodon, and adds Flickr support, contributed by [@Aaqibhafeezkhan](https://github.com/Aaqibhafeezkhan) in [#70](https://github.com/visualfusion/feedkeeper/pull/70).
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.44.2] - 2026-11-25
 
 ### Fixed
