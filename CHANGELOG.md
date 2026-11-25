@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.3] - 2026-11-25
+
+### Fixed
+- **YouTube `media:description` & thumbnail replacement:** Unwrapped `rss-parser` array values in `extractXmlMediaDescription` so YouTube `<media:description>` text is stored, and stopped retaining legacy `youtube.com/v/...` Flash embed URLs over new `<media:thumbnail>` URLs on item updates.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.47.2] - 2026-11-25
 
 ### Fixed

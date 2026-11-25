@@ -502,14 +502,28 @@ function extractXmlArtworkUrl(parsed: CustomFeed): string | undefined {
   return undefined;
 }
 
+function asMediaText(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const found = asMediaText(entry);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (isRecord(value) && typeof value._ === "string") {
+    return asNonEmptyString(value._) ?? undefined;
+  }
+  return asNonEmptyString(value) ?? undefined;
+}
+
 function extractXmlMediaDescription(item: CustomItem): string | undefined {
-  const direct = asNonEmptyString(item["media:description"]);
+  const direct = asMediaText(item["media:description"]);
   if (direct) return direct;
   const mediaGroup = item.mediaGroup ?? item["media:group"];
   if (mediaGroup) {
     for (const group of asMediaEntries(mediaGroup)) {
       if (!isRecord(group)) continue;
-      const grouped = asNonEmptyString(group["media:description"] ?? group.mediaDescription);
+      const grouped = asMediaText(group["media:description"] ?? group.mediaDescription);
       if (grouped) return grouped;
     }
   }

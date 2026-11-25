@@ -409,7 +409,8 @@ export function upsertItems(
         // a feed that alternates between two variants would change the content on every poll.
         const keptPrevious = retained !== null && next !== retained;
         const nextSnippet = keptPrevious ? null : row.contentSnippet ?? null;
-        const reusablePreviousImage = previous?.image_url && !isAvatarImageUrl(previous.image_url) ? previous.image_url : null;
+        const previousImageIsLegacyYouTubeSwf = Boolean(previous?.image_url && /^https?:\/\/(?:www\.)?youtube\.com\/v\//i.test(previous.image_url));
+        const reusablePreviousImage = previous?.image_url && !isAvatarImageUrl(previous.image_url) && !previousImageIsLegacyYouTubeSwf ? previous.image_url : null;
         const nextImage = largerHeroImage(row.imageUrl, retained, row.link ?? previous?.link ?? null) ?? reusablePreviousImage ?? row.imageUrl ?? null;
 
         if (previous) {
