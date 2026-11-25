@@ -16,6 +16,7 @@ interface WorkerSlot {
   busy: boolean;
   current: QueuedTask | null;
   timer: NodeJS.Timeout | null;
+  tasksProcessed: number;
 }
 
 interface WorkerResponse {
@@ -25,6 +26,7 @@ interface WorkerResponse {
 }
 
 const PARSE_TIMEOUT_MS = 15_000;
+const WORKER_MAX_OLD_SPACE_MB = 256;
 
 function readWorkerCount(): number {
   const raw = process.env.EXTRACTOR_WORKERS;
@@ -34,10 +36,21 @@ function readWorkerCount(): number {
   return parsed;
 }
 
+function readMaxTasksPerWorker(): number {
+  const raw = process.env.EXTRACTOR_WORKER_MAX_TASKS;
+  if (raw === undefined) return 250;
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > 10_000) return 250;
+  return parsed;
+}
+
 function createWorker(): Worker {
   const isTs = import.meta.url.endsWith(".ts");
   const url = new URL(isTs ? "./extractorWorker.ts" : "./extractorWorker.js", import.meta.url);
-  const worker = isTs ? new Worker(url, { execArgv: ["--import", "tsx"] }) : new Worker(url);
+  const resourceLimits = { maxOldGenerationSizeMb: WORKER_MAX_OLD_SPACE_MB };
+  const worker = isTs
+    ? new Worker(url, { execArgv: ["--import", "tsx"], resourceLimits })
+    : new Worker(url, { resourceLimits });
   worker.unref();
   return worker;
 }
@@ -61,12 +74,17 @@ class ExtractorWorkerPool {
 
   private spawnSlot(): WorkerSlot {
     const worker = createWorker();
-    const slot: WorkerSlot = { worker, busy: false, current: null, timer: null };
+    const slot: WorkerSlot = { worker, busy: false, current: null, timer: null, tasksProcessed: 0 };
 
     worker.on("message", (msg: WorkerResponse) => {
       const task = slot.current;
       if (!task || task.id !== msg.id) return;
       this.finishSlot(slot);
+      slot.tasksProcessed++;
+      // Recycle workers periodically so long-lived JSDOM heaps return memory to the OS.
+      if (slot.tasksProcessed >= readMaxTasksPerWorker()) {
+        this.dropSlot(slot);
+      }
       if (msg.error) task.reject(new Error(msg.error));
       else if (msg.result) task.resolve(msg.result);
       else task.reject(new Error("worker_empty_response"));

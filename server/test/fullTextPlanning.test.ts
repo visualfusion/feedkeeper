@@ -40,6 +40,7 @@ test("durable full texts share triggers, retry without occupying workers and res
   const source = createServer((req, res) => {
     const path = req.url!; starts.push(path); requests.set(path, (requests.get(path) ?? 0) + 1);
     if (path.startsWith("/blocked")) return res.writeHead(403).end();
+    if (path === "/unextractable") return res.writeHead(200, { "Content-Type": "text/html" }).end("<html><body><div></div></body></html>");
     if (path === "/retry" && requests.get(path) === 1) return res.writeHead(429, { "Retry-After": "1" }).end();
     if (path === "/retry-date" && requests.get(path) === 1) return res.writeHead(503, { "Retry-After": new Date(Date.now()+2000).toUTCString() }).end();
     if (path === "/timeout" || path === "/held" && hold) return;
@@ -124,5 +125,21 @@ test("durable full texts share triggers, retry without occupying workers and res
     const recovered = add("/recovered");
     assert.equal((await loadFullText(user, recovered)).ok, true);
     assert.equal(queue.scheduleFullTexts(), 4, "a successful request resumes automatic work for the host");
+
+    // Unextractable content does not trigger immediate retries or infinite hourly background loops.
+    db.prepare("DELETE FROM full_text_jobs").run();
+    db.prepare("UPDATE items SET extraction_status='feed_only'").run();
+    const unextractable = add("/unextractable");
+    assert.deepEqual(await loadFullText(user, unextractable), { ok: false, error: "could_not_extract_content" });
+    assert.equal(requests.get("/unextractable"), 1);
+    const failedItem = repo.findItemById(unextractable)!;
+    assert.equal(failedItem.extraction_status, "failed");
+    assert.ok(Date.parse(failedItem.extraction_retry_at!) > Date.now() + 6 * 86400_000);
+    db.prepare("UPDATE items SET extraction_retry_at='2020-01-01T00:00:00.000Z' WHERE id=?").run(unextractable);
+    assert.equal(queue.scheduleFullTexts(), 0, "failed items are not rescheduled in background");
+
+    const stale = add("/stale");
+    db.prepare("UPDATE items SET created_at='2020-01-01T00:00:00.000Z' WHERE id=?").run(stale);
+    assert.equal(queue.scheduleFullTexts(), 0, "stale subscription items older than 14 days are skipped in background");
   } finally { await queue.stopFullTextScheduler(); alternate.closeAllConnections(); await new Promise<void>(done => alternate.close(() => done())); source.closeAllConnections(); await new Promise<void>(done => source.close(() => done())); }
 });
