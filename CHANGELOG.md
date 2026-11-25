@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.1] - 2026-11-25
+
+### Fixed
+- **Show metadata delta sync & backfill:** Extended `trg_changes_feed_update` to emit subscription sync updates when `description`, `artwork_url`, or `detected_kind` change, and skipped conditional `ETag`/`Last-Modified` validators once for feeds still missing both show artwork and description.
+
+### Upgrade notes
+- Includes database migration `0051_sync_feed_media_metadata.sql` (applied automatically on startup).
+
 ## [0.47.0] - 2026-11-25
 
 ### Added

@@ -119,11 +119,13 @@ async function trySuggestReplacementForGoneFeed(feed: Feed): Promise<void> {
 
 /** One attempt; the queue owns retries, admission, single-flight and the total deadline. */
 async function pollAttempt(feed: Feed, signal: AbortSignal, interactive: boolean): Promise<PollResult> {
+  // Backfill show artwork and description once for feeds created before 0.47.0 even if the server returns 304 for cached validators.
+  const needsShowBackfill = !feed.artwork_url && !feed.description;
   let fetched;
   try {
     fetched = await fetchFeed(feed.url, {
-      etag: feed.etag ?? undefined,
-      lastModified: feed.last_modified ?? undefined,
+      etag: needsShowBackfill ? undefined : feed.etag ?? undefined,
+      lastModified: needsShowBackfill ? undefined : feed.last_modified ?? undefined,
       signal,
       priority: interactive ? "interactive" : "background",
     });
