@@ -19,9 +19,9 @@ export type FullTextResult =
   | { ok: false; error: FullTextError; message?: string; retryAt?: number; retryable?: boolean; host?: string; deferred?: boolean };
 
 function recordAttempt(id: number, status: string) {
-  const blocked = ["paywall", "consent_wall"].includes(status);
+  const longPause = ["paywall", "consent_wall", "failed", "bot_blocked", "timeout"].includes(status);
   const retry = status === "ready" || status === "feed_only" ? null :
-    new Date(Date.now() + (blocked ? 7 * 86400_000 : status === "partial" ? 86400_000 : 3600_000)).toISOString();
+    new Date(Date.now() + (longPause ? 7 * 86400_000 : status === "partial" ? 86400_000 : 3600_000)).toISOString();
   db.prepare("UPDATE items SET extraction_status = ?, extraction_attempted_at = ?, extraction_retry_at = ? WHERE id = ?")
     .run(status, new Date().toISOString(), retry, id);
 }
@@ -71,7 +71,7 @@ export async function executeFullText(userId: number, itemId: number, force: boo
     if (result.status !== "ok") {
       recordAttempt(itemId, result.status);
       return { ok: false, error: result.status === "failed" ? "could_not_extract_content" : result.status,
-        ...(result.status === "failed" || result.status === "timeout" ? { retryable: true } : {}) };
+        ...(result.status === "timeout" ? { retryable: true } : {}) };
     }
     const current = findItemById(itemId);
     if (!current || current.link !== item.link) return { ok: false, error: "item_not_found" };

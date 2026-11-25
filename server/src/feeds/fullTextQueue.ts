@@ -27,6 +27,7 @@ export function scheduleFullTexts(): number {
         AND e.status = 'active' AND e.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now')
         AND i.link IS NOT NULL AND i.full_content_html IS NULL
         AND i.extraction_status != 'feed_only'
+        AND i.extraction_status = 'pending'
         AND (i.extraction_retry_at IS NULL OR i.extraction_retry_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         AND NOT EXISTS (SELECT 1 FROM full_text_jobs j WHERE j.item_id = i.id)
 
@@ -39,6 +40,7 @@ export function scheduleFullTexts(): number {
         AND NOT EXISTS (SELECT 1 FROM subscriptions disabled WHERE disabled.user_id=b.user_id AND disabled.feed_id=i.feed_id AND disabled.full_text_mode='never')
         AND i.link IS NOT NULL AND i.full_content_html IS NULL
         AND i.extraction_status != 'feed_only'
+        AND i.extraction_status = 'pending'
         AND (i.extraction_retry_at IS NULL OR i.extraction_retry_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         AND NOT EXISTS (SELECT 1 FROM full_text_jobs j WHERE j.item_id = i.id)
 
@@ -51,6 +53,7 @@ export function scheduleFullTexts(): number {
         AND NOT EXISTS (SELECT 1 FROM subscriptions disabled WHERE disabled.user_id=n.user_id AND disabled.feed_id=i.feed_id AND disabled.full_text_mode='never')
         AND i.link IS NOT NULL AND i.full_content_html IS NULL
         AND i.extraction_status != 'feed_only'
+        AND i.extraction_status = 'pending'
         AND (i.extraction_retry_at IS NULL OR i.extraction_retry_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         AND NOT EXISTS (SELECT 1 FROM full_text_jobs j WHERE j.item_id = i.id)
 
@@ -63,6 +66,8 @@ export function scheduleFullTexts(): number {
         AND COALESCE(s.full_text_mode, 'auto') = 'auto'
         AND i.link IS NOT NULL AND i.full_content_html IS NULL
         AND i.extraction_status != 'feed_only'
+        AND i.extraction_status = 'pending'
+        AND i.created_at >= strftime('%Y-%m-%dT%H:%M:%fZ','now','-14 days')
         AND (i.extraction_retry_at IS NULL OR i.extraction_retry_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         AND NOT EXISTS (SELECT 1 FROM full_text_jobs j WHERE j.item_id = i.id)
     )
@@ -260,7 +265,7 @@ async function execute(job: Job, host: string) {
       retries++; return;
     }
     if (!result.ok && result.retryable) {
-      const retryAt = Math.max(Date.now() + 3600_000, result.retryAt ?? 0);
+      const retryAt = Math.max(Date.now() + 7 * 86400_000, result.retryAt ?? 0);
       db.prepare("UPDATE items SET extraction_status=?,extraction_retry_at=? WHERE id=?")
         .run(result.error === "source_busy" ? "bot_blocked" : "failed", new Date(retryAt).toISOString(), job.item_id);
     }

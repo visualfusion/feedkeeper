@@ -112,3 +112,27 @@ test("worker pool keeps the main event loop responsive across large HTML documen
     await stopExtractorPool();
   }
 });
+
+test("worker pool recycles workers after reaching max tasks and continues parsing", async () => {
+  const { stopExtractorPool } = await import("../src/feeds/extractorPool.js");
+  const prevMax = process.env.EXTRACTOR_WORKER_MAX_TASKS;
+  const prevWorkers = process.env.EXTRACTOR_WORKERS;
+  process.env.EXTRACTOR_WORKER_MAX_TASKS = "1";
+  process.env.EXTRACTOR_WORKERS = "1";
+  const paragraph = "<p>Ein langer Absatz mit genug Text für die Readability-Erkennung nach Worker-Recycling. ".repeat(10) + "</p>";
+  const html = `<html><head><title>Recycle Test</title></head><body><article><h1>Recycle Test</h1>${paragraph}</article></body></html>`;
+  const mockFetch: typeof fetch = async () => new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
+  try {
+    await stopExtractorPool();
+    for (let i = 0; i < 3; i++) {
+      const result = await extractArticleFromUrl(`https://93.184.216.34/recycle-${i}`, mockFetch);
+      assert.equal(result?.title, "Recycle Test");
+    }
+  } finally {
+    if (prevMax === undefined) delete process.env.EXTRACTOR_WORKER_MAX_TASKS;
+    else process.env.EXTRACTOR_WORKER_MAX_TASKS = prevMax;
+    if (prevWorkers === undefined) delete process.env.EXTRACTOR_WORKERS;
+    else process.env.EXTRACTOR_WORKERS = prevWorkers;
+    await stopExtractorPool();
+  }
+});
