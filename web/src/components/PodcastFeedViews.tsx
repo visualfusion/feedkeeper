@@ -213,7 +213,7 @@ export function VideoFeedGrid({
               )}
             </div>
             <div className="p-3.5 flex-1 flex flex-col justify-between gap-2">
-              <h3 className="text-sm font-semibold text-[var(--c-text)] line-clamp-2 leading-snug">{item.title}</h3>
+              <h3 className="text-sm font-semibold text-[var(--c-text)] line-clamp-2 leading-snug min-h-[2.45rem]">{item.title}</h3>
               <div className="flex items-center justify-between text-xs text-[var(--c-text-muted)]">
                 <span>{pubDate ? formatRelativeTime(pubDate, i18n.resolvedLanguage) : ""}</span>
                 <button
