@@ -2,6 +2,15 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.0] - 2026-11-25
+
+### Added
+- **Podcast & video feed kinds and show metadata:** Added automatic `detected_kind` classification (`article`, `audio`, `video`) with optional per-feed `kind_override`, show `description` and `artwork_url` extraction (`<itunes:image>`, YouTube channel `og:image` / `og:description`), and episode-level `<itunes:image>` support for podcast artwork.
+- **Persistent web media player & dedicated layouts:** Added a persistent mini/full web audio player with playback speed, 15s/30s skip, and position resume, plus a dedicated podcast episode list (`PodcastEpisodeList`), a 16:9 `VideoFeedGrid` with equal-height cards, and feed-kind-adapted filter labels and counts.
+
+### Upgrade notes
+- Includes database migration `0050_feed_media_metadata.sql` (applied automatically on startup).
+
 ## [0.46.1] - 2026-11-25
 
 ### Fixed
