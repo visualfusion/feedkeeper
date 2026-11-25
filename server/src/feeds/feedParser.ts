@@ -41,11 +41,14 @@ type CustomItem = Parser.Item & {
   contentEncoded?: string;
   author?: string;
   itunesDuration?: unknown;
+  itunesImage?: unknown;
   podcastChapters?: unknown;
   "media:content"?: unknown;
   "media:thumbnail"?: unknown;
   "media:group"?: unknown;
   "content:encoded"?: string;
+  "itunes:image"?: unknown;
+  itunes?: { image?: unknown };
 };
 
 type CustomFeed = Record<string, unknown> & {
@@ -62,6 +65,7 @@ const xmlParser = new Parser<CustomFeed, CustomItem>({
       ["media:group", "mediaGroup", { keepArray: false }],
       ["content:encoded", "contentEncoded", { keepArray: false }],
       ["itunes:duration", "itunesDuration", { keepArray: false }],
+      ["itunes:image", "itunesImage", { keepArray: false }],
       ["podcast:chapters", "podcastChapters", { keepArray: false }],
     ],
   },
@@ -331,7 +335,17 @@ function extractXmlImageUrl(item: CustomItem): string | null {
     }
   }
 
-  // 3. enclosure
+  // 3. itunes:image on episode level
+  const itunesImage = item.itunesImage ?? item["itunes:image"];
+  const itunesHref = isRecord(itunesImage)
+    ? asNonEmptyString(isRecord(itunesImage.$) ? itunesImage.$.href : itunesImage.href)
+    : asNonEmptyString(itunesImage);
+  if (isValidImageUrl(itunesHref)) return cleanImageUrl(itunesHref);
+  if (isRecord(item.itunes) && isValidImageUrl(item.itunes.image)) {
+    return cleanImageUrl(item.itunes.image);
+  }
+
+  // 4. enclosure
   if (item.enclosure?.url) {
     const url = item.enclosure.url;
     const type = item.enclosure.type ?? "";
