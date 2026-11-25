@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json && node -e \"const fs=require('fs');fs.cpSync('src/db/migrations','dist/db/migrations',{recursive:true});fs.copyFileSync('src/feeds/content/patterns/providers.json','dist/feeds/content/patterns/providers.json')\"",
     "start": "node dist/server.js",
     "setup": "tsx src/setup-cli.ts",
+    "doctor": "tsx src/doctor-cli.ts",
     "db:backup": "node dist/backup-cli.js backup",
     "db:restore": "node dist/backup-cli.js restore",
     "lint": "tsc -p tsconfig.json --noEmit",

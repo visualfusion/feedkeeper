@@ -152,3 +152,10 @@ test("an existing but empty secret file is not accepted as a secret", () => {
   // The file exists, so it is not rewritten: the start must fail loudly rather than run with an empty secret.
   assert.throws(() => prepareEnvironment(options(), env2, home), /Could not read or create the session secret/);
 });
+
+test("doctor command accepts --data-dir and --public-url without writing anything", () => {
+  const parsed = options(["--data-dir", "/srv/fk", "doctor", "--public-url", "https://feeds.example.org"]);
+  assert.equal(parsed.action, "doctor");
+  assert.equal(parsed.dataDir, "/srv/fk");
+  assert.equal(parsed.publicUrl, "https://feeds.example.org");
+});

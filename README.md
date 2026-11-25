@@ -214,6 +214,20 @@ npm run build
 npm run start
 ```
 
+### Diagnostics
+
+Run a read-only check of your Node.js version, `SESSION_SECRET`, `PUBLIC_URL`, writable data directories, free disk space, and SQLite database health:
+
+```bash
+npx feedkeeper doctor
+```
+
+From a cloned repository, run `npm run doctor`, or inside Docker Compose:
+
+```bash
+docker compose exec feedkeeper node server/dist/feedkeeper.js doctor
+```
+
 ## Hosted option
 
 If you would rather not operate a server, [FeedKeeper Cloud](https://feedkeeper.cloud) is a hosted edition run by the same maintainers. This repository stays MIT-licensed and fully self-hostable.

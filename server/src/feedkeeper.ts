@@ -14,6 +14,15 @@ async function main(): Promise<void> {
   const envFile = resolve(process.cwd(), ".env");
   if (existsSync(envFile)) process.loadEnvFile(envFile);
 
+  if (options.action === "doctor") {
+    const { runDoctorCli } = await import("./doctor-cli.js");
+    process.exitCode = runDoctorCli({
+      dataDir: options.dataDir,
+      publicUrl: options.publicUrl,
+    });
+    return;
+  }
+
   const prepared = prepareEnvironment(options, process.env);
 
   if (options.action === "backup" || options.action === "restore") {
