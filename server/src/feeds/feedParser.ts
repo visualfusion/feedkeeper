@@ -46,6 +46,7 @@ type CustomItem = Parser.Item & {
   "media:content"?: unknown;
   "media:thumbnail"?: unknown;
   "media:group"?: unknown;
+  "media:description"?: unknown;
   "content:encoded"?: string;
   "itunes:image"?: unknown;
   itunes?: { image?: unknown };
@@ -302,7 +303,11 @@ function extractMediaImageUrl(source: MediaSource): string | null {
       const url = mediaAttribute(entry, "url");
       const medium = mediaAttribute(entry, "medium");
       const type = mediaAttribute(entry, "type");
-      if (isValidImageUrl(url) && (medium === "image" || !medium || (typeof type === "string" && type.startsWith("image/")))) {
+      const isImageType = typeof type === "string" && type.toLowerCase().startsWith("image/");
+      const isNonImageType = typeof type === "string" && type.trim() !== "" && !isImageType;
+      const isNonImageMedium = typeof medium === "string" && medium.trim() !== "" && medium.toLowerCase() !== "image";
+      if (isNonImageType || isNonImageMedium) continue;
+      if (isValidImageUrl(url) && (medium === "image" || !medium || isImageType)) {
         return cleanImageUrl(url);
       }
     }
@@ -497,6 +502,33 @@ function extractXmlArtworkUrl(parsed: CustomFeed): string | undefined {
   return undefined;
 }
 
+function extractXmlMediaDescription(item: CustomItem): string | undefined {
+  const direct = asNonEmptyString(item["media:description"]);
+  if (direct) return direct;
+  const mediaGroup = item.mediaGroup ?? item["media:group"];
+  if (mediaGroup) {
+    for (const group of asMediaEntries(mediaGroup)) {
+      if (!isRecord(group)) continue;
+      const grouped = asNonEmptyString(group["media:description"] ?? group.mediaDescription);
+      if (grouped) return grouped;
+    }
+  }
+  return undefined;
+}
+
+function escapePlainDescriptionHtml(text: string): string {
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+  return escaped
+    .split(/\n{2,}/)
+    .map((block) => `<p>${block.trim().replace(/\n/g, "<br>")}</p>`)
+    .filter((block) => block !== "<p></p>")
+    .join("");
+}
+
 export async function parseFeedBody(body: string): Promise<ParsedFeed> {
   if (body.trimStart().startsWith("{")) {
     return parseJsonFeed(body);
@@ -518,17 +550,22 @@ export async function parseFeedBody(body: string): Promise<ParsedFeed> {
     icons,
     logos,
     artworkUrl,
-    items: parsed.items.map((item) => ({
-      guid: itemGuid(item),
-      title: plainTitle(item.title),
-      link: itemLink(item),
-      contentSnippet: decodeEntities(item.contentSnippet ?? item.content) ?? undefined,
-      contentHtml: item.contentEncoded ?? item["content:encoded"] ?? item.content ?? null,
-      publishedAt: normalizePublishedAt(item.isoDate ?? item.pubDate) ?? undefined,
-      imageUrl: extractXmlImageUrl(item),
-      authors: [item.creator, item.author],
-      ...extractXmlMedia(item),
-    })),
+    items: parsed.items.map((item) => {
+      const mediaDescription = extractXmlMediaDescription(item);
+      const rawSnippet = item.contentSnippet ?? item.content ?? mediaDescription;
+      const rawHtml = item.contentEncoded ?? item["content:encoded"] ?? item.content ?? null;
+      return {
+        guid: itemGuid(item),
+        title: plainTitle(item.title),
+        link: itemLink(item),
+        contentSnippet: decodeEntities(rawSnippet) ?? undefined,
+        contentHtml: rawHtml ?? (mediaDescription ? escapePlainDescriptionHtml(mediaDescription) : null),
+        publishedAt: normalizePublishedAt(item.isoDate ?? item.pubDate) ?? undefined,
+        imageUrl: extractXmlImageUrl(item),
+        authors: [item.creator, item.author],
+        ...extractXmlMedia(item),
+      };
+    }),
   };
 }
 
