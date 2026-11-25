@@ -904,6 +904,33 @@ export function ItemsPage() {
             </button>
           </div>
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {([
+            { token: "has:audio", label: t("items.filterAudio") },
+            { token: "has:video", label: t("items.filterVideo") },
+            { token: "has:notes", label: t("items.filterNotes") },
+          ] as const).map(({ token, label }) => {
+            const active = new RegExp(`(?:^|\\s)${token}(?:\\s|$)`, "i").test(search);
+            return (
+              <button
+                key={token}
+                type="button"
+                aria-pressed={active}
+                onClick={() => {
+                  const stripped = search.replace(new RegExp(`(?:^|\\s)${token}(?=\\s|$)`, "gi"), " ").replace(/\s+/g, " ").trim();
+                  updateSearch(active ? stripped : (stripped ? `${stripped} ${token}` : token));
+                }}
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors cursor-pointer ${
+                  active
+                    ? "border-[var(--c-blue3)] bg-[var(--c-blue3)]/15 text-[var(--c-text)]"
+                    : "border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-text-muted)] hover:text-[var(--c-text)] hover:border-[var(--c-blue3)]/60"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {feedsLoaded && feeds.length > 0 && !syncAllowed && <PlanNotice />}

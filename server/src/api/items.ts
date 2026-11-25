@@ -3,7 +3,9 @@ import { Router, type Request } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { requireSession } from "../auth/middleware.js";
+import { requireCapability } from "../auth/capabilities.js";
 import {
+  canAccessItem,
   listItemsForUser,
   markAllRead,
   markItemRead,
@@ -14,6 +16,7 @@ import {
 } from "../feeds/repository.js";
 import { loadFullText, type FullTextError } from "../feeds/fullText.js";
 import { loadItemChapters } from "../feeds/chapters.js";
+import { mediaPositions, upsertMediaPosition } from "../feeds/mediaPosition.js";
 import { readerHtml } from "../feeds/articleContent.js";
 import { cleanSnippet } from "../feeds/contentNoise.js";
 import { fetchItemImage, pruneArchive, scheduleArchive, withArchivedImages, withProxiedImages } from "../feeds/archive.js";
@@ -60,6 +63,7 @@ itemsRouter.get("/", (req, res) => {
   const archived = withArchivedImages(listItemsForUser(req.user!.id, parsed.data), origin);
   // Offline copies also get the images of articles that are not archived, through this server.
   const items = parsed.data.offline ? withProxiedImages(archived, origin) : archived;
+  const positions = mediaPositions(req.user!.id, items.map((item) => item.id));
   res.json(
     items.map(({ content_lead: _lead, lead_version: _leadVersion, ...item }) => ({
       ...item,
@@ -68,6 +72,7 @@ itemsRouter.get("/", (req, res) => {
       full_content_html: readerHtml(item.full_content_html, item.title, item.author, item.link),
       read: Boolean(item.read),
       bookmarked: Boolean(item.bookmarked),
+      media_position: positions.get(item.id) ?? null,
     })),
   );
 });
@@ -171,4 +176,26 @@ itemsRouter.get("/:itemId/chapters", async (req, res) => {
     return;
   }
   res.json({ chapters: result.chapters });
+});
+
+const mediaPositionSchema = z.object({
+  positionSeconds: z.number().min(0).max(864_000),
+  durationSeconds: z.number().min(0).max(864_000).nullable().optional(),
+  completed: z.boolean().optional(),
+  updatedAt: z.string().datetime().optional(),
+});
+
+itemsRouter.put("/:itemId/media-position", requireCapability("sync"), (req, res) => {
+  const itemId = Number(req.params.itemId);
+  if (!Number.isInteger(itemId) || itemId <= 0 || !canAccessItem(req.user!.id, itemId)) {
+    res.status(404).json({ error: "item_not_found" });
+    return;
+  }
+  const parsed = mediaPositionSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
+    return;
+  }
+  const saved = upsertMediaPosition(req.user!.id, itemId, parsed.data);
+  res.json({ itemId, ...saved });
 });

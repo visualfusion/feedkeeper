@@ -48,6 +48,7 @@ import { MAX_SUBSCRIPTION_BATCH, fetchStatusFor, subscribeBatch } from "../../fe
 import { buildOverview } from "../../mcp/digest.js";
 import { decodeCursor, encodeCursor } from "../../mcp/items.js";
 import { readingPositions, serializeItem, serializeSubscriptionDetail } from "./serialize.js";
+import { mediaPositions, upsertMediaPosition } from "../../feeds/mediaPosition.js";
 import { dismissEdition, editionCandidates, ensureEditionSchema, getEdition, getEditionState, type ServerEdition } from "../../native/editions.js";
 import { getEditionFeedback, resetEditionFeedback, setEditionFeedback } from "../../native/editionFeedback.js";
 import { getNativePreferences, patchNativePreferences } from "../../native/preferences.js";
@@ -200,6 +201,22 @@ resourcesRouter.post("/subscriptions/:id/refresh", requireCapability("sync"), as
   const result = await refresh(req.user!.id, Number(req.params.id));
   if (!result) return void res.status(404).json({ error: "not_found" });
   res.json(result);
+});
+
+resourcesRouter.post("/subscriptions/:id/accept-move", requireCapability("sync"), async (req, res) => {
+  const id = Number(req.params.id);
+  const existing = findSubscriptionForUser(req.user!.id, id);
+  if (!existing) return void res.status(404).json({ error: "not_found" });
+  if (!existing.suggested_url) return void res.status(404).json({ error: "no_suggested_url" });
+  try {
+    const moved = await changeFeedUrl(req.user!.id, id, existing.suggested_url);
+    res.json({ subscription: subscriptionOf(req.user!.id, moved.subscription.id) });
+  } catch (error) {
+    if (error instanceof MultipleFeedsFoundError) return void res.status(409).json({ error: "multiple_feeds_found", feeds: error.feeds });
+    if (error instanceof SsrfBlockedError) return void res.status(400).json(blockedUrlBody(error));
+    if (error instanceof FeedError) return void res.status(error.message === "not_subscribed" ? 404 : 400).json({ error: error.message });
+    res.status(400).json({ error: "invalid_feed", message: error instanceof Error ? error.message : String(error) });
+  }
 });
 
 resourcesRouter.post("/refresh", requireCapability("sync"), async (req, res) => {
@@ -414,12 +431,13 @@ resourcesRouter.get("/search", requireCapability("search.fts"), (req, res) => {
   });
 
   const progress = readingPositions(req.user!.id, rows.map((row) => row.id));
+  const mediaProgress = mediaPositions(req.user!.id, rows.map((row) => row.id));
   const hasNotes = itemsWithNotes(req.user!.id, rows.map((row) => row.id));
 
   res.json({
     query: query.q,
     total,
-    items: prepare(rows, req, query.images, withContent).map((row) => serializeItem(row, progress, withContent, hasNotes.has(row.id))),
+    items: prepare(rows, req, query.images, withContent).map((row) => serializeItem(row, progress, withContent, hasNotes.has(row.id), mediaProgress)),
   });
 });
 
@@ -450,9 +468,10 @@ resourcesRouter.get("/items", (req, res) => {
   const hasMore = rows.length > limit;
   const page = rows.slice(0, limit);
   const progress = readingPositions(req.user!.id, page.map((row) => row.id));
+  const mediaProgress = mediaPositions(req.user!.id, page.map((row) => row.id));
   const hasNotes = itemsWithNotes(req.user!.id, page.map((row) => row.id));
   res.json({
-    items: prepare(page, req, query.images, withContent).map((row) => serializeItem(row, progress, withContent, hasNotes.has(row.id))),
+    items: prepare(page, req, query.images, withContent).map((row) => serializeItem(row, progress, withContent, hasNotes.has(row.id), mediaProgress)),
     newestCursor: page[0] ? encodeCursor(page[0]) : null,
     nextCursor: hasMore && page.length ? encodeCursor(page[page.length - 1]) : null,
   });
@@ -466,8 +485,9 @@ resourcesRouter.get("/items/bundle", (req, res) => {
   const byId = new Map(findItemsForUser(req.user!.id, ids).map((row) => [row.id, row]));
   const rows = ids.map((id) => byId.get(id)).filter((row): row is NonNullable<typeof row> => Boolean(row));
   const progress = readingPositions(req.user!.id, rows.map((row) => row.id));
+  const mediaProgress = mediaPositions(req.user!.id, rows.map((row) => row.id));
   const hasNotes = itemsWithNotes(req.user!.id, rows.map((row) => row.id));
-  res.json({ items: prepare(rows, req, parsed.data.images, true).map((row) => serializeItem(row, progress, true, hasNotes.has(row.id))) });
+  res.json({ items: prepare(rows, req, parsed.data.images, true).map((row) => serializeItem(row, progress, true, hasNotes.has(row.id), mediaProgress)) });
 });
 
 // Explicit extraction side effect; read-only devices continue to consume the shared cache.
@@ -489,8 +509,9 @@ resourcesRouter.get("/items/:id", (req, res) => {
   if (!parsed.success) return invalid(res);
   if (!row) return void res.status(404).json({ error: "item_not_found" });
   const progress = readingPositions(req.user!.id, [row.id]);
+  const mediaProgress = mediaPositions(req.user!.id, [row.id]);
   const hasNotes = itemsWithNotes(req.user!.id, [row.id]);
-  res.json(serializeItem(prepare([row], req, parsed.data.images)[0], progress, true, hasNotes.has(row.id)));
+  res.json(serializeItem(prepare([row], req, parsed.data.images)[0], progress, true, hasNotes.has(row.id), mediaProgress));
 });
 
 resourcesRouter.get("/items/:id/chapters", async (req, res) => {
@@ -502,6 +523,24 @@ resourcesRouter.get("/items/:id/chapters", async (req, res) => {
   res.json({ chapters: result.chapters });
 });
 
+const mediaPositionSchema = z.object({
+  positionSeconds: z.number().min(0).max(864_000),
+  durationSeconds: z.number().min(0).max(864_000).nullable().optional(),
+  completed: z.boolean().optional(),
+  updatedAt: z.string().datetime().optional(),
+});
+
+resourcesRouter.put("/items/:id/media-position", requireCapability("sync"), (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0 || !canAccessItem(req.user!.id, id)) {
+    return void res.status(404).json({ error: "item_not_found" });
+  }
+  const parsed = mediaPositionSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return invalid(res, parsed.error.flatten());
+  const saved = upsertMediaPosition(req.user!.id, id, parsed.data);
+  res.json({ itemId: id, ...saved });
+});
+
 resourcesRouter.post("/items/:id/full-text", requireCapability("fulltext"), async (req, res) => {
   const id = Number(req.params.id);
   const result = await loadFullText(req.user!.id, id, { force: req.query.force === "true" });
@@ -509,8 +548,9 @@ resourcesRouter.post("/items/:id/full-text", requireCapability("fulltext"), asyn
     return void res.status(FULL_TEXT_STATUS[result.error]).json({ error: result.error, ...(result.error === "capability_not_available" ? { capability: "fulltext" } : {}), ...(result.message ? { message: result.message } : {}) });
   }
   const row = findItemForUser(req.user!.id, id)!;
+  const mediaProgress = mediaPositions(req.user!.id, [id]);
   const hasNotes = itemsWithNotes(req.user!.id, [id]);
-  res.json(serializeItem(prepare([row], req, req.query.images === "proxy" ? "proxy" : "original")[0], readingPositions(req.user!.id, [id]), true, hasNotes.has(id)));
+  res.json(serializeItem(prepare([row], req, req.query.images === "proxy" ? "proxy" : "original")[0], readingPositions(req.user!.id, [id]), true, hasNotes.has(id), mediaProgress));
 });
 
 const readAllSchema = z.object({ subscriptionId: z.number().int().positive().optional(), folderId: z.number().int().positive().optional() });
@@ -608,11 +648,12 @@ function editionResponse(req: Request, edition: ServerEdition) {
     .map((id) => byId.get(id))
     .filter((row): row is NonNullable<typeof row> => Boolean(row));
   const progress = readingPositions(req.user!.id, rows.map((r) => r.id));
+  const mediaProgress = mediaPositions(req.user!.id, rows.map((r) => r.id));
   const hasNotes = itemsWithNotes(req.user!.id, rows.map((r) => r.id));
   const prepared = prepare(rows, req, req.query.images === "proxy" ? "proxy" : "original", false);
   return {
     ...edition,
-    items: prepared.map((row) => serializeItem(row, progress, false, hasNotes.has(row.id))),
+    items: prepared.map((row) => serializeItem(row, progress, false, hasNotes.has(row.id), mediaProgress)),
   };
 }
 
@@ -726,8 +767,9 @@ resourcesRouter.post("/inbox", requireCapability("inbox"), async (req, res) => {
   try {
     const result = await saveToInbox(req.user!.id, parsed.data);
     const progress = readingPositions(req.user!.id, [result.itemId]);
+    const mediaProgress = mediaPositions(req.user!.id, [result.itemId]);
     const prepared = prepare([result.item], req, "original");
-    res.status(201).json(serializeItem(prepared[0], progress, true, result.hasNote));
+    res.status(201).json(serializeItem(prepared[0], progress, true, result.hasNote, mediaProgress));
   } catch (error) {
     if (error instanceof SsrfBlockedError) {
       return void res.status(400).json({ error: error.message });

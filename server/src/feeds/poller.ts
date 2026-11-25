@@ -1,10 +1,22 @@
 import type { Server } from "node:http";
-import { fetchFeed } from "./fetcher.js";
+import { FeedHttpError, fetchFeed } from "./fetcher.js";
+import { discoverFeeds } from "./discovery.js";
+import { isHostBlocked } from "./blockedHosts.js";
 import { discoverIconUrls, iconCheckDue } from "./icon.js";
 import { refreshFeedIcon } from "./feedIcon.js";
 import { enqueueNewItemNotifications, startPushOutbox, stopPushOutbox } from "../pushOutbox.js";
 import { hasUserCapability } from "../auth/capabilities.js";
-import { findFeedById, listSubscriberIds, updateFeedAfterPoll, updateFeedIcon, upsertItems, type Feed } from "./repository.js";
+import {
+  findFeedById,
+  findFeedByUrl,
+  listSubscriberIds,
+  replaceFeedUrl,
+  setFeedSuggestedUrl,
+  updateFeedAfterPoll,
+  updateFeedIcon,
+  upsertItems,
+  type Feed,
+} from "./repository.js";
 import { db } from "../db/index.js";
 import { configurePollHostCooldowns, PollQueue, type PollResult } from "./pollQueue.js";
 import { feedRequests, PollDeferredError, sourceHost } from "./requestGate.js";
@@ -43,14 +55,43 @@ export async function settleIconChecks(): Promise<void> {
   while (iconChecks.size) await Promise.allSettled([...iconChecks]);
 }
 
+const GONE_SUGGESTION_TTL_MS = 24 * 60 * 60 * 1000;
+
+function isUrlBlocked(url: string): boolean {
+  try { return isHostBlocked(new URL(url).hostname); }
+  catch { return true; }
+}
+
+async function trySuggestReplacementForGoneFeed(feed: Feed): Promise<void> {
+  const checkedAt = feed.suggested_url_checked_at ? Date.parse(feed.suggested_url_checked_at) : Number.NaN;
+  if (Number.isFinite(checkedAt) && Date.now() - checkedAt < GONE_SUGGESTION_TTL_MS) return;
+  try {
+    const originUrl = new URL(feed.url).origin;
+    const candidateSite = feed.site_url || originUrl;
+    const discovered = await discoverFeeds(candidateSite);
+    const match = discovered.find((entry) => entry.url !== feed.url && !isUrlBlocked(entry.url));
+    setFeedSuggestedUrl(feed.id, match ? match.url : null);
+  } catch {
+    setFeedSuggestedUrl(feed.id, null);
+  }
+}
+
 /** One attempt; the queue owns retries, admission, single-flight and the total deadline. */
 async function pollAttempt(feed: Feed, signal: AbortSignal, interactive: boolean): Promise<PollResult> {
-  const fetched = await fetchFeed(feed.url, {
-    etag: feed.etag ?? undefined,
-    lastModified: feed.last_modified ?? undefined,
-    signal,
-    priority: interactive ? "interactive" : "background",
-  });
+  let fetched;
+  try {
+    fetched = await fetchFeed(feed.url, {
+      etag: feed.etag ?? undefined,
+      lastModified: feed.last_modified ?? undefined,
+      signal,
+      priority: interactive ? "interactive" : "background",
+    });
+  } catch (error) {
+    if (error instanceof FeedHttpError && error.status === 410) {
+      await trySuggestReplacementForGoneFeed(feed);
+    }
+    throw error;
+  }
   const parsed = fetched.notModified ? null : await parseFeedBody(fetched.body);
   signal.throwIfAborted();
   const current = findFeedById(feed.id);
@@ -71,8 +112,21 @@ async function pollAttempt(feed: Feed, signal: AbortSignal, interactive: boolean
     enclosureDurationSeconds: item.enclosureDurationSeconds,
     chaptersUrl: item.chaptersUrl,
   }));
+  const permanentRedirect = fetched.permanentRedirectUrl && !isUrlBlocked(fetched.permanentRedirectUrl)
+    ? fetched.permanentRedirectUrl
+    : undefined;
   // No await in this transaction. Items, health/validators and job completion become visible together.
   const newItems = db.transaction(() => {
+    let effectiveFeed = current;
+    if (permanentRedirect) {
+      const collision = findFeedByUrl(permanentRedirect);
+      if (!collision) {
+        replaceFeedUrl(feed.id, permanentRedirect);
+        effectiveFeed = { ...current, url: permanentRedirect };
+      } else if (collision.id !== feed.id) {
+        setFeedSuggestedUrl(feed.id, permanentRedirect);
+      }
+    }
     const count = items ? upsertItems(feed.id, items) : 0;
     updateFeedAfterPoll(feed.id, {
       ...(parsed ? { title: parsed.title, siteUrl: parsed.link, etag: fetched.etag, lastModified: fetched.lastModified } : {}),
@@ -80,14 +134,14 @@ async function pollAttempt(feed: Feed, signal: AbortSignal, interactive: boolean
     });
     if (count > 0 && feed.last_success_at) enqueueNewItemNotifications(feed.id, count);
     db.prepare("DELETE FROM feed_poll_jobs WHERE feed_id = ?").run(feed.id);
-    return count;
+    return { count, effectiveFeed };
   })();
   // Push is committed above and dispatched independently of the feed deadline.
   startPushOutbox();
   // Icon upkeep is best effort. It runs after this result is returned: the poll slot is free again, and a new subscription that is
   // waiting for the first fetch is answered as soon as the feed is stored, not after the publisher's home page and icons.
-  scheduleIconMaintenance(feed, parsed);
-  return { newItems, error: null };
+  scheduleIconMaintenance(newItems.effectiveFeed, parsed);
+  return { newItems: newItems.count, error: null };
 }
 
 let queue: PollQueue | undefined;

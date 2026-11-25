@@ -7,6 +7,7 @@ import { largerHeroImage } from "./heroImage.js";
 import { refreshGalleryClassification, refreshLead } from "./lead.js";
 import { decodeEntities, plainTitle } from "./text.js";
 import { unwrapRedirectLink } from "./redirectLinks.js";
+import { appendSearchOperatorConditions, parseSearchQuery } from "./searchQuery.js";
 
 export interface Feed {
   id: number;
@@ -24,6 +25,8 @@ export interface Feed {
   full_text_blocked_at: string | null;
   icon_url: string | null;
   icon_checked_at: string | null;
+  suggested_url: string | null;
+  suggested_url_checked_at: string | null;
   is_system_inbox: number;
   created_at: string;
 }
@@ -490,12 +493,16 @@ export function listItemsForUser(
     params.push(userId);
   }
   if (opts.search) {
-    // Saved articles are searched in their archived full text too.
-    const fields = ["i.title", "i.content_snippet", ...(opts.bookmarkedOnly ? ["i.full_content_html", "i.content_html"] : [])];
-    conditions.push(
-      `(${fields.map((field) => `INSTR(LOWER(COALESCE(${field}, '')), LOWER(?)) > 0`).join(" OR ")} OR i.id IN (SELECT item_id FROM item_notes WHERE user_id = ? AND INSTR(LOWER(content), LOWER(?)) > 0))`,
-    );
-    params.push(...fields.map(() => opts.search), userId, opts.search);
+    const parsedSearch = parseSearchQuery(opts.search);
+    appendSearchOperatorConditions(parsedSearch, userId, conditions, params);
+    if (parsedSearch.textQuery) {
+      // Saved articles are searched in their archived full text too.
+      const fields = ["i.title", "i.content_snippet", ...(opts.bookmarkedOnly ? ["i.full_content_html", "i.content_html"] : [])];
+      conditions.push(
+        `(${fields.map((field) => `INSTR(LOWER(COALESCE(${field}, '')), LOWER(?)) > 0`).join(" OR ")} OR i.id IN (SELECT item_id FROM item_notes WHERE user_id = ? AND INSTR(LOWER(content), LOWER(?)) > 0))`,
+      );
+      params.push(...fields.map(() => parsedSearch.textQuery), userId, parsedSearch.textQuery);
+    }
   }
   if (opts.since) {
     conditions.push("i.created_at > ?");
@@ -878,9 +885,16 @@ export function countFeedSubscribers(feedId: number): number {
 export function replaceFeedUrl(feedId: number, url: string): void {
   db.prepare(
     `UPDATE feeds SET url = ?, etag = NULL, last_modified = NULL, last_error = NULL, consecutive_errors = 0,
-       full_text_blocks = 0, full_text_blocked_at = NULL
+       full_text_blocks = 0, full_text_blocked_at = NULL, suggested_url = NULL, suggested_url_checked_at = NULL
      WHERE id = ?`,
   ).run(url, feedId);
+}
+
+/** Records a replacement feed suggestion (e.g. from 410 Gone auto-discovery or a colliding permanent redirect). */
+export function setFeedSuggestedUrl(feedId: number, suggestedUrl: string | null): void {
+  db.prepare(
+    `UPDATE feeds SET suggested_url = ?, suggested_url_checked_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
+  ).run(suggestedUrl, feedId);
 }
 
 /** Move a user's subscription to another feed, keeping label, folder, order and full-text mode. */
@@ -1090,7 +1104,8 @@ export function searchItemsForUser(
   })[];
   total: number;
 } {
-  const fts = needsSubstringSearch(opts.query) ? "" : formatFtsQuery(opts.query);
+  const parsedQuery = parseSearchQuery(opts.query);
+  const fts = parsedQuery.textQuery && !needsSubstringSearch(parsedQuery.textQuery) ? formatFtsQuery(parsedQuery.textQuery) : "";
   const conditions: string[] = ["(s.id IS NOT NULL OR b.item_id IS NOT NULL OR n.user_id IS NOT NULL)",
     "(i.is_empty_gallery = 0 OR b.item_id IS NOT NULL OR n.user_id IS NOT NULL)"];
   const params: unknown[] = [];
@@ -1109,6 +1124,7 @@ export function searchItemsForUser(
   if (opts.bookmarkedOnly) {
     conditions.push("b.item_id IS NOT NULL");
   }
+  appendSearchOperatorConditions(parsedQuery, userId, conditions, params);
 
   // Search filter (FTS on items + user notes)
   if (fts) {
@@ -1116,10 +1132,10 @@ export function searchItemsForUser(
       i.id IN (SELECT rowid FROM items_fts WHERE items_fts MATCH ?)
       OR i.id IN (SELECT item_id FROM item_notes WHERE user_id = ? AND INSTR(LOWER(content), LOWER(?)) > 0)
     )`);
-    params.push(fts, userId, opts.query);
-  } else {
+    params.push(fts, userId, parsedQuery.textQuery);
+  } else if (parsedQuery.textQuery) {
     // Every word has to occur somewhere in the article or in the person's note.
-    const words = opts.query.trim().split(/\s+/).filter(Boolean).slice(0, 8);
+    const words = parsedQuery.textQuery.trim().split(/\s+/).filter(Boolean).slice(0, 8);
     for (const word of words) {
       conditions.push(`(
         INSTR(LOWER(COALESCE(i.title, '')), LOWER(?)) > 0

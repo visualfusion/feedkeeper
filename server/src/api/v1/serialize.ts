@@ -2,6 +2,7 @@ import { contentMetadata, readerHtml } from "../../feeds/articleContent.js";
 import { cleanSnippet } from "../../feeds/contentNoise.js";
 import { leadOf } from "../../feeds/lead.js";
 import { db } from "../../db/index.js";
+import type { MediaPositionEntry } from "../../feeds/mediaPosition.js";
 import type { listItemsForUser, SubscribedFeed } from "../../feeds/repository.js";
 import { serializeSubscription } from "../../sync/changeLog.js";
 
@@ -17,6 +18,7 @@ export function serializeSubscriptionDetail(subscription: SubscribedFeed) {
     lastSuccessAt: subscription.last_success_at,
     lastError: subscription.last_error,
     consecutiveErrors: subscription.consecutive_errors,
+    suggestedUrl: subscription.suggested_url ?? null,
   };
 }
 
@@ -28,7 +30,13 @@ export function readingPositions(userId: number, itemIds: number[]): Map<number,
   return new Map(rows.map((row) => [row.item_id, row.position]));
 }
 
-export function serializeItem(row: ItemRow, progress: Map<number, number>, withContent: boolean, hasNote = false) {
+export function serializeItem(
+  row: ItemRow,
+  progress: Map<number, number>,
+  withContent: boolean,
+  hasNote = false,
+  mediaProgress?: Map<number, MediaPositionEntry>,
+) {
   return {
     id: row.id,
     subscriptionId: row.feed_id,
@@ -56,6 +64,7 @@ export function serializeItem(row: ItemRow, progress: Map<number, number>, withC
       savedAt: row.bookmarked_at ?? null,
       archivedAt: row.archived_at ?? null,
       progress: progress.get(row.id) ?? null,
+      mediaPosition: mediaProgress?.get(row.id) ?? null,
       hasNote,
     },
   };

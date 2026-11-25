@@ -2,8 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireSession } from "../auth/middleware.js";
 import { requireCapability } from "../auth/capabilities.js";
-import { listSubscriptionsForUser, findFeedById, isUserSubscribed, reorderSubscriptions } from "../feeds/repository.js";
-import { subscribeToFeed, unsubscribeFromFeed, updateFeedSettings, FeedError, MultipleFeedsFoundError } from "../feeds/service.js";
+import { listSubscriptionsForUser, findFeedById, findSubscriptionForUser, isUserSubscribed, reorderSubscriptions } from "../feeds/repository.js";
+import { changeFeedUrl, subscribeToFeed, unsubscribeFromFeed, updateFeedSettings, FeedError, MultipleFeedsFoundError } from "../feeds/service.js";
 import { SsrfBlockedError, normalizeUrlCandidate } from "../feeds/ssrfGuard.js";
 import { blockedUrlBody } from "../feeds/blockedHosts.js";
 import { generateOpml, importOpmlFeeds } from "../feeds/opml.js";
@@ -223,6 +223,41 @@ feedsRouter.post("/:feedId/refresh", requireSync, async (req, res) => {
     deferred: pollResult.deferred ?? false,
     retryAt: pollResult.retryAt,
   });
+});
+
+feedsRouter.post("/:feedId/accept-move", requireSync, async (req, res) => {
+  const feedId = Number(req.params.feedId);
+  if (!Number.isInteger(feedId) || feedId <= 0) {
+    res.status(400).json({ error: "invalid_feed_id" });
+    return;
+  }
+  const existing = findSubscriptionForUser(req.user!.id, feedId);
+  if (!existing) {
+    res.status(404).json({ error: "feed_not_found" });
+    return;
+  }
+  if (!existing.suggested_url) {
+    res.status(404).json({ error: "no_suggested_url" });
+    return;
+  }
+  try {
+    const moved = await changeFeedUrl(req.user!.id, feedId, existing.suggested_url);
+    res.json({ feed: moved.subscription });
+  } catch (error) {
+    if (error instanceof MultipleFeedsFoundError) {
+      res.status(409).json({ error: "multiple_feeds_found", feeds: error.feeds });
+      return;
+    }
+    if (error instanceof SsrfBlockedError) {
+      res.status(400).json(blockedUrlBody(error));
+      return;
+    }
+    if (error instanceof FeedError) {
+      res.status(error.message === "not_subscribed" ? 404 : 400).json({ error: error.message });
+      return;
+    }
+    res.status(400).json({ error: "invalid_feed", message: error instanceof Error ? error.message : String(error) });
+  }
 });
 
 feedsRouter.post("/refresh-all", requireSync, async (req, res) => {

@@ -158,6 +158,21 @@ export function FeedRow({ feed, editing, refreshing, highlighted = false, folder
   const host = hostOf(feed.site_url) ?? hostOf(feed.url);
   const failing = Boolean(feed.last_error);
   const pending = !feed.last_polled_at;
+  const [acceptingMove, setAcceptingMove] = useState(false);
+
+  const handleAcceptMove = async () => {
+    if (acceptingMove || !feed.suggested_url) return;
+    setAcceptingMove(true);
+    try {
+      await api.acceptFeedMove(feed.id);
+      onSaved();
+      announceItemsChanged();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.error"));
+    } finally {
+      setAcceptingMove(false);
+    }
+  };
 
   const actions: ActionMenuItem[] = [
     { label: refreshing ? t("feeds.refreshing") : t("feeds.refreshFeed"), icon: <RefreshIcon className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />, onSelect: onRefresh, disabled: refreshing || !syncAllowed },
@@ -218,6 +233,19 @@ export function FeedRow({ feed, editing, refreshing, highlighted = false, folder
               <AlertIcon />
               <span className="line-clamp-2">{feedErrorMessage(t, feed.last_error ?? "", feed.url)}</span>
             </p>
+          )}
+          {feed.suggested_url && syncAllowed && (
+            <div className="mt-1.5 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleAcceptMove()}
+                disabled={acceptingMove}
+                title={feed.suggested_url}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[var(--c-blue3)]/50 bg-[var(--c-blue3)]/10 px-2.5 py-1 text-xs font-medium text-[var(--c-text)] hover:bg-[var(--c-blue3)]/20 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {acceptingMove ? t("feeds.acceptingSuggestedMove") : t("feeds.acceptSuggestedMove")}
+              </button>
+            </div>
           )}
         </div>
 

@@ -153,6 +153,7 @@ export interface Feed {
   notify: number;
   /** 1 when this feed's unread articles count towards the number on the app icon. */
   badge: number;
+  suggested_url?: string | null;
 }
 
 export interface Folder {
@@ -186,6 +187,12 @@ export interface Item {
   published_at: string | null;
   read: boolean;
   bookmarked: boolean;
+  media_position?: {
+    positionSeconds: number;
+    durationSeconds: number | null;
+    completed: boolean;
+    updatedAt: string;
+  } | null;
 }
 
 export interface PodcastChapter {
@@ -402,4 +409,14 @@ export const api = {
   runCleanup: () =>
     request<{ result: CleanupResult; stats: DatabaseStats }>("/system/cleanup", { method: "POST" }),
   itemChapters: (itemId: number) => request<{ chapters: PodcastChapter[] }>(`/items/${itemId}/chapters`),
+  setMediaPosition: (
+    itemId: number,
+    data: { positionSeconds: number; durationSeconds?: number | null; completed?: boolean; updatedAt?: string },
+  ) =>
+    request<{ itemId: number; positionSeconds: number; durationSeconds: number | null; completed: boolean; updatedAt: string }>(
+      `/items/${itemId}/media-position`,
+      { method: "PUT", body: JSON.stringify(data) },
+    ),
+  acceptFeedMove: (feedId: number) =>
+    request<{ feed: Feed }>(`/feeds/${feedId}/accept-move`, { method: "POST" }),
 };

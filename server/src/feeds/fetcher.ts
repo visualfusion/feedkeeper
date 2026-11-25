@@ -16,6 +16,7 @@ export interface FetchedFeed {
   notModified: boolean;
   contentType?: string;
   finalUrl: string;
+  permanentRedirectUrl?: string;
 }
 
 interface Download {
@@ -26,6 +27,7 @@ interface Download {
   etag?: string;
   lastModified?: string;
   finalUrl: string;
+  permanentRedirectUrl?: string;
 }
 
 function cacheLifetime(headers: { get(name: string): string | null }): number | undefined {
@@ -111,6 +113,8 @@ async function downloadPublic(
   opts: { accept: string; maxBytes: number; etag?: string; lastModified?: string; signal?: AbortSignal; priority?: RequestPriority },
 ): Promise<Download> {
   let currentUrl = url;
+  let permanentChain = true;
+  let permanentRedirectUrl: string | undefined;
   const controller = new AbortController();
   const settings = readPollSettings();
   let timeout: NodeJS.Timeout | undefined;
@@ -137,13 +141,25 @@ async function downloadPublic(
         if (rateLimitUntil) feedRequests.defer(host, rateLimitUntil);
         if (response.status === 304) {
           await response.body?.cancel();
-          return { notModified: true, buffer: Buffer.alloc(0), finalUrl: currentUrl, contentType: response.headers.get("content-type") ?? undefined };
+          return {
+            notModified: true,
+            buffer: Buffer.alloc(0),
+            finalUrl: currentUrl,
+            contentType: response.headers.get("content-type") ?? undefined,
+            ...(permanentRedirectUrl && permanentRedirectUrl !== url ? { permanentRedirectUrl } : {}),
+          };
         }
         if (response.status >= 300 && response.status < 400) {
           const location = response.headers.get("location");
           await response.body?.cancel();
           if (!location) throw new Error("Redirect without a Location header");
-          currentUrl = new URL(location, validated).toString();
+          const nextUrl = new URL(location, validated).toString();
+          if (permanentChain && (response.status === 301 || response.status === 308)) {
+            permanentRedirectUrl = nextUrl;
+          } else {
+            permanentChain = false;
+          }
+          currentUrl = nextUrl;
           continue;
         }
         if (!response.ok) {
@@ -180,6 +196,7 @@ async function downloadPublic(
           contentType: response.headers.get("content-type") ?? undefined,
           etag: response.headers.get("etag") ?? undefined,
           lastModified: response.headers.get("last-modified") ?? undefined, finalUrl: currentUrl,
+          ...(permanentRedirectUrl && permanentRedirectUrl !== url ? { permanentRedirectUrl } : {}),
         };
       } finally { release(); }
     }
@@ -201,7 +218,13 @@ export async function fetchFeed(
     priority: opts.priority,
   });
   if (download.notModified) {
-    return { notModified: true, body: "", finalUrl: download.finalUrl, contentType: download.contentType };
+    return {
+      notModified: true,
+      body: "",
+      finalUrl: download.finalUrl,
+      contentType: download.contentType,
+      ...(download.permanentRedirectUrl ? { permanentRedirectUrl: download.permanentRedirectUrl } : {}),
+    };
   }
   return {
     body: decodeFeedBuffer(download.buffer, download.contentType),
@@ -210,6 +233,7 @@ export async function fetchFeed(
     lastModified: download.lastModified,
     contentType: download.contentType,
     finalUrl: download.finalUrl,
+    ...(download.permanentRedirectUrl ? { permanentRedirectUrl: download.permanentRedirectUrl } : {}),
   };
 }
 

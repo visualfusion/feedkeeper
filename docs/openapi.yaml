@@ -360,6 +360,17 @@ paths:
       responses:
         "200": { description: OK }
         "404": { $ref: "#/components/responses/NotFound" }
+  /subscriptions/{id}/accept-move:
+    post:
+      tags: [Subscriptions]
+      summary: Switch a subscription to its suggested replacement feed URL
+      description: Applies `suggestedUrl` discovered after a 410 Gone response or colliding permanent redirect.
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: Updated subscription }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /refresh:
     post:
       tags: [Subscriptions]
@@ -675,6 +686,30 @@ paths:
                         img: { type: string }
         "404": { description: item_not_found }
         "502": { description: chapters_unavailable }
+  /items/{id}/media-position:
+    put:
+      tags: [Items]
+      summary: Save playback position for an item's audio or video enclosure
+      description: Stores per-user playback position with last-write-wins timestamp resolution and resets position to 0 when completed.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [positionSeconds]
+              properties:
+                positionSeconds: { type: number, minimum: 0 }
+                durationSeconds: { type: number, minimum: 0, nullable: true }
+                completed: { type: boolean }
+                updatedAt: { type: string, format: date-time }
+      responses:
+        "200": { description: Saved media position }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /items/{id}/image:
     get:
       tags: [Images]

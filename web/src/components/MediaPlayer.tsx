@@ -18,10 +18,14 @@ export function MediaPlayer({ item }: { item: Item }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [chapters, setChapters] = useState<PodcastChapter[]>([]);
+  const restoredForItemRef = useRef<number | null>(null);
+  const lastSavedAtRef = useRef<number>(0);
 
   useEffect(() => {
     let active = true;
     setChapters([]);
+    restoredForItemRef.current = null;
+    lastSavedAtRef.current = 0;
     if (!item.chapters_url) return;
     api.itemChapters(item.id)
       .then((res) => {
@@ -39,6 +43,32 @@ export function MediaPlayer({ item }: { item: Item }) {
 
   const isVideo = item.enclosure_type?.toLowerCase().startsWith("video/") ?? false;
 
+  const syncPosition = (media: HTMLMediaElement, completed = false) => {
+    const duration = Number.isFinite(media.duration) && media.duration > 0 ? Math.round(media.duration) : item.enclosure_duration_seconds ?? null;
+    const pos = completed ? 0 : Math.max(0, Math.round(media.currentTime));
+    lastSavedAtRef.current = Date.now();
+    void api.setMediaPosition(item.id, {
+      positionSeconds: pos,
+      durationSeconds: duration,
+      completed,
+      updatedAt: new Date().toISOString(),
+    }).catch(() => {});
+  };
+
+  const handleLoadedMetadata = (media: HTMLMediaElement) => {
+    if (restoredForItemRef.current === item.id) return;
+    restoredForItemRef.current = item.id;
+    const saved = item.media_position;
+    if (saved && !saved.completed && saved.positionSeconds > 0 && (!Number.isFinite(media.duration) || saved.positionSeconds < media.duration - 2)) {
+      media.currentTime = saved.positionSeconds;
+    }
+  };
+
+  const handleTimeUpdate = (media: HTMLMediaElement) => {
+    if (media.paused || Date.now() - lastSavedAtRef.current < 10_000) return;
+    syncPosition(media, false);
+  };
+
   const seekTo = (seconds: number) => {
     const media = isVideo ? videoRef.current : audioRef.current;
     if (!media) return;
@@ -54,6 +84,10 @@ export function MediaPlayer({ item }: { item: Item }) {
           controls
           preload="metadata"
           src={item.enclosure_url}
+          onLoadedMetadata={(e) => handleLoadedMetadata(e.currentTarget)}
+          onTimeUpdate={(e) => handleTimeUpdate(e.currentTarget)}
+          onPause={(e) => syncPosition(e.currentTarget, false)}
+          onEnded={(e) => syncPosition(e.currentTarget, true)}
           className="w-full rounded-lg max-h-96 bg-black"
         />
       ) : (
@@ -62,6 +96,10 @@ export function MediaPlayer({ item }: { item: Item }) {
           controls
           preload="metadata"
           src={item.enclosure_url}
+          onLoadedMetadata={(e) => handleLoadedMetadata(e.currentTarget)}
+          onTimeUpdate={(e) => handleTimeUpdate(e.currentTarget)}
+          onPause={(e) => syncPosition(e.currentTarget, false)}
+          onEnded={(e) => syncPosition(e.currentTarget, true)}
           className="w-full"
         />
       )}
