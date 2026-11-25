@@ -10,7 +10,29 @@ export interface ParsedSearchQuery {
   hasOperators: boolean;
 }
 
-const TOKEN_RE = /(\w+:"[^"]*"|\w+:[^\s]+|\S+)/g;
+function tokenizeSearchQuery(raw: string): string[] {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  const tokens: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < trimmed.length; i++) {
+    const ch = trimmed[i]!;
+    if (ch === "\"") {
+      inQuotes = !inQuotes;
+      current += ch;
+    } else if (!inQuotes && /\s/.test(ch)) {
+      if (current) {
+        tokens.push(current);
+        current = "";
+      }
+    } else {
+      current += ch;
+    }
+  }
+  if (current) tokens.push(current);
+  return tokens;
+}
 
 /**
  * Splits a search query into structured filter operators (`has:audio`, `has:video`,
@@ -31,7 +53,7 @@ export function parseSearchQuery(raw: string): ParsedSearchQuery {
   };
 
   const textParts: string[] = [];
-  const tokens = raw.trim().match(TOKEN_RE) ?? [];
+  const tokens = tokenizeSearchQuery(raw);
 
   for (const token of tokens) {
     const lower = token.toLowerCase();
