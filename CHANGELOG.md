@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.2] - 2026-11-25
+
+### Fixed
+- **YouTube descriptions & thumbnails:** Ignored non-image `<media:content>` types (such as legacy `application/x-shockwave-flash` video embeds) so `<media:thumbnail>` is stored as the item image, and extracted `<media:description>` from `<media:group>` as `contentSnippet` and `contentHtml`.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.47.1] - 2026-11-25
 
 ### Fixed
