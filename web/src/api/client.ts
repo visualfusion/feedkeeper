@@ -130,11 +130,17 @@ export function avatarUrl(user: Pick<User, "avatar_updated_at">): string | null 
   return user.avatar_updated_at ? `/api/auth/me/avatar?v=${encodeURIComponent(user.avatar_updated_at)}` : null;
 }
 
+export type FeedKind = "article" | "audio" | "video";
+
 export interface Feed {
   id: number;
   url: string;
   title: string | null;
   site_url: string | null;
+  description?: string | null;
+  artwork_url?: string | null;
+  detected_kind?: FeedKind;
+  kind_override?: FeedKind | null;
   poll_interval_minutes: number;
   last_polled_at: string | null;
   last_success_at: string | null;
@@ -286,7 +292,7 @@ export const api = {
   subscribeFeed: (url: string, label: string | null, folderId?: number | null) =>
     request<Feed>("/feeds", { method: "POST", body: JSON.stringify({ url, label, folderId }) }),
   unsubscribeFeed: (feedId: number) => request<void>(`/feeds/${feedId}`, { method: "DELETE" }),
-  updateFeed: (feedId: number, data: { label?: string | null; folderId?: number | null; pollIntervalMinutes?: number; fullTextMode?: "auto" | "never"; notify?: boolean; badge?: boolean }) =>
+  updateFeed: (feedId: number, data: { label?: string | null; folderId?: number | null; pollIntervalMinutes?: number; fullTextMode?: "auto" | "never"; kindOverride?: FeedKind | null; notify?: boolean; badge?: boolean }) =>
     request<Feed>(`/feeds/${feedId}`, { method: "PATCH", body: JSON.stringify(data) }),
   pushKey: () => request<{ publicKey: string }>("/push/key"),
   savePushDevice: (device: { endpoint: string; keys: { p256dh: string; auth: string } }) =>

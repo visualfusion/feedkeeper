@@ -21,6 +21,8 @@ export interface ParsedFeedItem {
   chaptersUrl: string | null;
 }
 
+export type FeedKind = "article" | "audio" | "video";
+
 export interface ParsedFeed {
   mimeType: FeedMimeType;
   title: string | undefined;
@@ -28,6 +30,7 @@ export interface ParsedFeed {
   link: string | undefined;
   icons: string[];
   logos: string[];
+  artworkUrl?: string;
   items: ParsedFeedItem[];
 }
 
@@ -52,7 +55,7 @@ type CustomFeed = Record<string, unknown> & {
 
 const xmlParser = new Parser<CustomFeed, CustomItem>({
   customFields: {
-    feed: ["icon"],
+    feed: ["icon", "itunes:image"],
     item: [
       ["media:content", "mediaContent", { keepArray: false }],
       ["media:thumbnail", "mediaThumbnail", { keepArray: false }],
@@ -461,8 +464,23 @@ function parseJsonFeed(body: string): ParsedFeed {
     link: asNonEmptyString(raw.home_page_url),
     icons,
     logos,
+    artworkUrl: logos[0] ?? icons[0],
     items,
   };
+}
+
+function extractXmlArtworkUrl(parsed: CustomFeed): string | undefined {
+  const itunesImage = parsed["itunes:image"] ?? parsed.itunesImage;
+  const href = isRecord(itunesImage)
+    ? asNonEmptyString(isRecord(itunesImage.$) ? itunesImage.$.href : itunesImage.href)
+    : asNonEmptyString(itunesImage);
+  if (href && isValidImageUrl(href)) return href;
+  if (isRecord(parsed.itunes) && typeof parsed.itunes.image === "string" && isValidImageUrl(parsed.itunes.image)) {
+    return parsed.itunes.image.trim();
+  }
+  if (typeof parsed.image?.url === "string" && isValidImageUrl(parsed.image.url)) return parsed.image.url.trim();
+  if (typeof parsed.icon === "string" && isValidImageUrl(parsed.icon)) return parsed.icon.trim();
+  return undefined;
 }
 
 export async function parseFeedBody(body: string): Promise<ParsedFeed> {
@@ -475,14 +493,17 @@ export async function parseFeedBody(body: string): Promise<ParsedFeed> {
   const logos: string[] = [];
   if (typeof parsed.icon === "string" && parsed.icon.trim()) icons.push(parsed.icon.trim());
   if (typeof parsed.image?.url === "string" && parsed.image.url.trim()) logos.push(parsed.image.url.trim());
+  const artworkUrl = extractXmlArtworkUrl(parsed);
+  if (artworkUrl && !logos.includes(artworkUrl)) logos.unshift(artworkUrl);
 
   return {
     mimeType: "application/rss+xml",
     title: plainTitle(parsed.title),
-    description: asNonEmptyString(parsed.description),
+    description: decodeEntities(asNonEmptyString(parsed.description)) ?? undefined,
     link: asNonEmptyString(parsed.link),
     icons,
     logos,
+    artworkUrl,
     items: parsed.items.map((item) => ({
       guid: itemGuid(item),
       title: plainTitle(item.title),
@@ -495,6 +516,38 @@ export async function parseFeedBody(body: string): Promise<ParsedFeed> {
       ...extractXmlMedia(item),
     })),
   };
+}
+
+function isYouTubeUrl(rawUrl: string | null | undefined): boolean {
+  if (!rawUrl) return false;
+  try {
+    const host = new URL(rawUrl).hostname.toLowerCase();
+    return host === "youtube.com" || host.endsWith(".youtube.com") || host === "youtu.be";
+  } catch {
+    return false;
+  }
+}
+
+/** Classifies a feed as `audio`, `video`, or `article` from its URL and recent items. */
+export function detectFeedKind(
+  feedUrl: string,
+  items: Array<{ link?: string | null; enclosureUrl?: string | null; enclosureType?: string | null }>,
+): FeedKind {
+  if (isYouTubeUrl(feedUrl)) return "video";
+  const sample = items.slice(0, 20);
+  if (sample.length === 0) return "article";
+  let audioCount = 0;
+  let videoCount = 0;
+  for (const item of sample) {
+    if (item.enclosureType?.toLowerCase().startsWith("video/") || isYouTubeUrl(item.link)) {
+      videoCount++;
+    } else if (item.enclosureUrl) {
+      audioCount++;
+    }
+  }
+  if (videoCount > 0 && videoCount >= audioCount && videoCount * 2 >= sample.length) return "video";
+  if (audioCount > 0 && audioCount * 2 >= sample.length) return "audio";
+  return "article";
 }
 
 export function formatFeedAuthor(authors: Array<string | undefined>, feedTitle: string | null, feedUrl: string): string | null {

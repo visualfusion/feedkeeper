@@ -16,7 +16,9 @@
     "offlineTitle": "Keine Verbindung",
     "offlineText": "FeedKeeper erreicht den Server gerade nicht. Prüfe deine Verbindung und versuche es erneut.",
     "offlineAction": "Du bist offline. Dafür brauchst du eine Verbindung.",
-    "offlinePending": "Wartet auf Senden: {{count}}."
+    "offlinePending": "Wartet auf Senden: {{count}}.",
+    "showMore": "Mehr anzeigen",
+    "showLess": "Weniger anzeigen"
   },
   "nav": {
     "feeds": "Feeds",
@@ -135,7 +137,12 @@
     "notifyHint": "Sendet eine Benachrichtigung an die Geräte, auf denen du Benachrichtigungen aktiviert hast.",
     "notifyActive": "Benachrichtigungen für diesen Feed aktiv",
     "badge": "Zahl am App-Symbol",
-    "badgeHint": "Ungelesene Artikel dieses Feeds zählen zur Zahl am App-Symbol. Standardmäßig aus."
+    "badgeHint": "Ungelesene Artikel dieses Feeds zählen zur Zahl am App-Symbol. Standardmäßig aus.",
+    "feedKind": "Darstellung",
+    "kindAuto": "Automatisch",
+    "kindArticle": "Artikel",
+    "kindAudio": "Audio-Podcast",
+    "kindVideo": "Video-Feed"
   },
   "items": {
     "title": "Artikel",
@@ -430,5 +437,13 @@
     "toggleFullText": "Volltext laden / umschalten",
     "showShortcuts": "Tastaturkürzel anzeigen",
     "close": "Schließen"
+  },
+  "player": {
+    "nowPlaying": "Aktuelle Wiedergabe",
+    "play": "Abspielen",
+    "pause": "Pause",
+    "back15": "15 Sekunden zurück",
+    "sleepOff": "Aus",
+    "timeRemaining": "Noch {{time}}"
   }
 }

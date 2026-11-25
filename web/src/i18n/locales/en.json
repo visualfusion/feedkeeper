@@ -16,7 +16,9 @@
     "offlineTitle": "No connection",
     "offlineText": "FeedKeeper cannot reach the server right now. Check your connection and try again.",
     "offlineAction": "You are offline. This needs a connection.",
-    "offlinePending": "Waiting to be sent: {{count}}."
+    "offlinePending": "Waiting to be sent: {{count}}.",
+    "showMore": "Show more",
+    "showLess": "Show less"
   },
   "nav": {
     "items": "Articles",
@@ -135,7 +137,12 @@
     "notifyHint": "Sends a notification to the devices where you turned notifications on.",
     "notifyActive": "Notifications active for this feed",
     "badge": "Count on the app icon",
-    "badgeHint": "Unread articles of this feed are added to the number on the app icon. Off by default."
+    "badgeHint": "Unread articles of this feed are added to the number on the app icon. Off by default.",
+    "feedKind": "Layout",
+    "kindAuto": "Automatic",
+    "kindArticle": "Article",
+    "kindAudio": "Audio podcast",
+    "kindVideo": "Video feed"
   },
   "items": {
     "title": "Items",
@@ -430,5 +437,13 @@
     "toggleFullText": "Load or toggle full text",
     "showShortcuts": "Show keyboard shortcuts",
     "close": "Close"
+  },
+  "player": {
+    "nowPlaying": "Now playing",
+    "play": "Play",
+    "pause": "Pause",
+    "back15": "Back 15 seconds",
+    "sleepOff": "Off",
+    "timeRemaining": "{{time}} left"
   }
 }

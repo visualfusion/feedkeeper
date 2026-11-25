@@ -3,7 +3,7 @@ import { announceItemsChanged } from "../../utils/badge.ts";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { api, type Feed } from "../../api/client.ts";
+import { api, type Feed, type FeedKind } from "../../api/client.ts";
 import { usePlanLimits } from "../../utils/planLimits.ts";
 import { ActionMenu, type ActionMenuItem } from "../ActionMenu.tsx";
 import { CustomSelect, type SelectOption } from "../CustomSelect.tsx";
@@ -38,6 +38,7 @@ function FeedEditor({ feed, folderOptions, intervalOptions, onClose, onSaved }: 
   const [labelChanged, setLabelChanged] = useState(false);
   const [folderId, setFolderId] = useState<number | null>(feed.folder_id ?? null);
   const [pollInterval, setPollInterval] = useState(feed.poll_interval_minutes);
+  const [kindOverride, setKindOverride] = useState<string>(feed.kind_override ?? "auto");
   const [fullText, setFullText] = useState(feed.full_text_mode !== "never");
   const [notify, setNotify] = useState<boolean>();
   const [badge, setBadge] = useState<boolean>();
@@ -51,6 +52,7 @@ function FeedEditor({ feed, folderOptions, intervalOptions, onClose, onSaved }: 
         folderId,
         pollIntervalMinutes: pollInterval,
         fullTextMode: fullText ? "auto" : "never",
+        kindOverride: kindOverride === "auto" ? null : (kindOverride as FeedKind),
         ...(notify !== undefined ? { notify } : {}),
         ...(badge !== undefined ? { badge } : {}),
       });
@@ -88,6 +90,20 @@ function FeedEditor({ feed, folderOptions, intervalOptions, onClose, onSaved }: 
         <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--c-text-muted)]">
           {t("feeds.interval")}
           <CustomSelect value={String(pollInterval)} onChange={(val) => setPollInterval(Number(val))} options={intervalOptions} className="w-full" />
+        </div>
+        <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--c-text-muted)]">
+          {t("feeds.feedKind")}
+          <CustomSelect
+            value={kindOverride}
+            onChange={setKindOverride}
+            options={[
+              { value: "auto", label: t("feeds.kindAuto") },
+              { value: "article", label: t("feeds.kindArticle") },
+              { value: "audio", label: t("feeds.kindAudio") },
+              { value: "video", label: t("feeds.kindVideo") },
+            ]}
+            className="w-full"
+          />
         </div>
       </div>
 

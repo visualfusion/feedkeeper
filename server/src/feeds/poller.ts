@@ -21,7 +21,7 @@ import { db } from "../db/index.js";
 import { configurePollHostCooldowns, PollQueue, type PollResult } from "./pollQueue.js";
 import { feedRequests, PollDeferredError, sourceHost } from "./requestGate.js";
 import { readPollSettings } from "./pollSettings.js";
-import { formatFeedAuthor, itemGuid, itemLink, parseFeedBody, resolveFeedIconUrls, type ParsedFeed } from "./feedParser.js";
+import { detectFeedKind, formatFeedAuthor, itemGuid, itemLink, parseFeedBody, resolveFeedIconUrls, type ParsedFeed } from "./feedParser.js";
 
 export { itemGuid, itemLink };
 
@@ -128,8 +128,17 @@ async function pollAttempt(feed: Feed, signal: AbortSignal, interactive: boolean
       }
     }
     const count = items ? upsertItems(feed.id, items) : 0;
+    const detectedKind = parsed ? detectFeedKind(effectiveFeed.url, parsed.items) : undefined;
     updateFeedAfterPoll(feed.id, {
-      ...(parsed ? { title: parsed.title, siteUrl: parsed.link, etag: fetched.etag, lastModified: fetched.lastModified } : {}),
+      ...(parsed ? {
+        title: parsed.title,
+        siteUrl: parsed.link,
+        description: parsed.description,
+        artworkUrl: parsed.artworkUrl,
+        detectedKind,
+        etag: fetched.etag,
+        lastModified: fetched.lastModified,
+      } : {}),
       error: null,
     });
     if (count > 0 && feed.last_success_at) enqueueNewItemNotifications(feed.id, count);

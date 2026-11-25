@@ -11,6 +11,7 @@ import { JapaneseText } from "../components/JapaneseText.tsx";
 import { formatMediaDuration } from "../components/MediaPlayer.tsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.tsx";
 import { NewspaperGrid } from "../components/NewspaperGrid.tsx";
+import { MediaShowHeader, PodcastEpisodeList, VideoFeedGrid } from "../components/PodcastFeedViews.tsx";
 import { PullToRefresh } from "../components/PullToRefresh.tsx";
 import { textLanguage } from "../utils/japanese.ts";
 import { getItemsScrollY, setItemsScrollY, resetItemsScrollY } from "../utils/scrollState.ts";
@@ -340,6 +341,7 @@ export function ItemsPage() {
 
   const currentFeedId = filterScope.startsWith("feed:") ? Number(filterScope.slice(5)) : undefined;
   const currentFeed = currentFeedId !== undefined ? feeds.find((feed) => feed.id === currentFeedId) : undefined;
+  const currentFeedKind = currentFeed ? (currentFeed.kind_override ?? currentFeed.detected_kind ?? "article") : "article";
   const currentFolderId = filterScope.startsWith("folder:") ? Number(filterScope.slice(7)) : undefined;
 
   /** No search, saved view or feed/folder scope: an empty list then says something about the library as a whole. */
@@ -974,6 +976,16 @@ export function ItemsPage() {
         </div>
       ) : items.length === 0 ? (
         <p style={{ color: "var(--c-text-muted)" }}>{bookmarkedOnly && !search ? t("items.noSaved") : search ? t("items.noResults") : t("items.noItems")}</p>
+      ) : currentFeed && !search && currentFeedKind === "audio" ? (
+        <>
+          <MediaShowHeader feed={currentFeed} />
+          <PodcastEpisodeList items={items} focusedItemId={focusedItemId} onOpen={openArticle} onBookmark={toggleBookmark} onRead={toggleRead} />
+        </>
+      ) : currentFeed && !search && currentFeedKind === "video" ? (
+        <>
+          <MediaShowHeader feed={currentFeed} />
+          <VideoFeedGrid items={items} focusedItemId={focusedItemId} onOpen={openArticle} onBookmark={toggleBookmark} />
+        </>
       ) : activeView === "newspaper" ? (
         <NewspaperGrid items={items} focusedItemId={focusedItemId} onOpen={openArticle} onBookmark={toggleBookmark} onRead={toggleRead} />
       ) : (

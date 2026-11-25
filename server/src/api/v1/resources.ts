@@ -155,6 +155,7 @@ const updateSchema = z.object({
   folderId: z.number().int().positive().nullable().optional(),
   pollIntervalMinutes: z.number().int().positive().max(10080).optional(),
   fullTextMode: z.enum(["auto", "never"]).optional(),
+  kindOverride: z.enum(["article", "audio", "video"]).nullable().optional(),
   notify: z.boolean().optional(),
   badge: z.boolean().optional(),
 });

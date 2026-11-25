@@ -8,12 +8,16 @@ import { refreshGalleryClassification, refreshLead } from "./lead.js";
 import { decodeEntities, plainTitle } from "./text.js";
 import { unwrapRedirectLink } from "./redirectLinks.js";
 import { appendSearchOperatorConditions, parseSearchQuery } from "./searchQuery.js";
+import type { FeedKind } from "./feedParser.js";
 
 export interface Feed {
   id: number;
   url: string;
   title: string | null;
   site_url: string | null;
+  description: string | null;
+  artwork_url: string | null;
+  detected_kind: FeedKind;
   poll_interval_minutes: number;
   last_polled_at: string | null;
   last_success_at: string | null;
@@ -77,6 +81,7 @@ export interface SubscribedFeed extends Feed {
   full_text_mode: FullTextMode;
   notify: number;
   badge: number;
+  kind_override: FeedKind | null;
   icon_hash?: string | null;
 }
 
@@ -228,6 +233,7 @@ export function listSubscriptionsForUser(userId: number): SubscribedFeed[] {
          s.full_text_mode AS full_text_mode,
          s.notify AS notify,
          s.badge AS badge,
+         s.kind_override AS kind_override,
          COALESCE(s.poll_interval_minutes, f.poll_interval_minutes) AS poll_interval_minutes,
          (
            SELECT COUNT(*) FROM items i
@@ -274,7 +280,16 @@ export function listFeedsDueForPoll(): Feed[] {
 
 export function updateFeedAfterPoll(
   feedId: number,
-  data: { title?: string; siteUrl?: string; etag?: string; lastModified?: string; error?: string | null },
+  data: {
+    title?: string;
+    siteUrl?: string;
+    description?: string;
+    artworkUrl?: string;
+    detectedKind?: FeedKind;
+    etag?: string;
+    lastModified?: string;
+    error?: string | null;
+  },
 ): void {
   if (data.error) {
     db.prepare(
@@ -289,6 +304,9 @@ export function updateFeedAfterPoll(
       `UPDATE feeds SET
          title = COALESCE(?, title),
          site_url = COALESCE(?, site_url),
+         description = COALESCE(?, description),
+         artwork_url = COALESCE(?, artwork_url),
+         detected_kind = COALESCE(?, detected_kind),
          etag = COALESCE(?, etag),
          last_modified = COALESCE(?, last_modified),
          last_error = NULL,
@@ -296,7 +314,16 @@ export function updateFeedAfterPoll(
          last_success_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
          last_polled_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
        WHERE id = ?`,
-    ).run(data.title ?? null, data.siteUrl ?? null, data.etag ?? null, data.lastModified ?? null, feedId);
+    ).run(
+      data.title ?? null,
+      data.siteUrl ?? null,
+      data.description ?? null,
+      data.artworkUrl ?? null,
+      data.detectedKind ?? null,
+      data.etag ?? null,
+      data.lastModified ?? null,
+      feedId,
+    );
   }
 }
 
@@ -625,6 +652,7 @@ export function findSubscriptionForUser(userId: number, feedId: number): Subscri
          s.full_text_mode AS full_text_mode,
          s.notify AS notify,
          s.badge AS badge,
+         s.kind_override AS kind_override,
          COALESCE(s.poll_interval_minutes, f.poll_interval_minutes) AS poll_interval_minutes,
          (
            SELECT COUNT(*) FROM items i
@@ -649,6 +677,14 @@ export function updateSubscriptionLabel(userId: number, feedId: number, label: s
 export function updateSubscriptionFolder(userId: number, feedId: number, folderId: number | null): void {
   db.prepare("UPDATE subscriptions SET folder_id = ? WHERE user_id = ? AND feed_id = ?").run(
     folderId,
+    userId,
+    feedId,
+  );
+}
+
+export function updateSubscriptionKindOverride(userId: number, feedId: number, kindOverride: FeedKind | null): void {
+  db.prepare("UPDATE subscriptions SET kind_override = ? WHERE user_id = ? AND feed_id = ?").run(
+    kindOverride,
     userId,
     feedId,
   );

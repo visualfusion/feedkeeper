@@ -11,6 +11,7 @@ import {
   updateSubscriptionFolder,
   updateSubscriptionPollInterval,
   updateSubscriptionFullTextMode,
+  updateSubscriptionKindOverride,
   updateSubscriptionNotify,
   updateSubscriptionBadge,
   findFolderById,
@@ -21,6 +22,7 @@ import {
   type FullTextMode,
   type SubscribedFeed,
 } from "./repository.js";
+import type { FeedKind } from "./feedParser.js";
 import { pollFeed, probeFeed } from "./poller.js";
 import { assertPublicFeedUrl } from "./blockedHosts.js";
 
@@ -129,7 +131,15 @@ export function unsubscribeFromFeed(userId: number, feedId: number): void {
 export function updateFeedSettings(
   userId: number,
   feedId: number,
-  settings: { label?: string | null; folderId?: number | null; pollIntervalMinutes?: number; fullTextMode?: FullTextMode; notify?: boolean; badge?: boolean },
+  settings: {
+    label?: string | null;
+    folderId?: number | null;
+    pollIntervalMinutes?: number;
+    fullTextMode?: FullTextMode;
+    kindOverride?: FeedKind | null;
+    notify?: boolean;
+    badge?: boolean;
+  },
 ): SubscribedFeed {
   if (!isUserSubscribed(userId, feedId)) {
     throw new FeedError("not_subscribed");
@@ -149,6 +159,10 @@ export function updateFeedSettings(
 
   if (settings.fullTextMode !== undefined) {
     updateSubscriptionFullTextMode(userId, feedId, settings.fullTextMode);
+  }
+
+  if (settings.kindOverride !== undefined) {
+    updateSubscriptionKindOverride(userId, feedId, settings.kindOverride);
   }
 
   if (settings.notify !== undefined) {

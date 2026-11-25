@@ -16,7 +16,9 @@
     "offlineTitle": "接続できません",
     "offlineText": "現在サーバーに接続できません。接続を確認してもう一度お試しください。",
     "offlineAction": "オフラインです。この操作には接続が必要です。",
-    "offlinePending": "送信待ち：{{count}}件。"
+    "offlinePending": "送信待ち：{{count}}件。",
+    "showMore": "もっと見る",
+    "showLess": "閉じる"
   },
   "nav": {
     "items": "記事",
@@ -135,7 +137,12 @@
     "notifyHint": "通知をオンにした端末に通知を送ります。",
     "notifyActive": "このフィードの通知が有効です",
     "badge": "アプリアイコンの数に含める",
-    "badgeHint": "このフィードの未読記事をアプリアイコンの数に加えます。初期設定ではオフです。"
+    "badgeHint": "このフィードの未読記事をアプリアイコンの数に加えます。初期設定ではオフです。",
+    "feedKind": "表示形式",
+    "kindAuto": "自動",
+    "kindArticle": "記事",
+    "kindAudio": "音声ポッドキャスト",
+    "kindVideo": "動画フィード"
   },
   "items": {
     "title": "記事",
@@ -430,5 +437,13 @@
     "toggleFullText": "全文を読み込む / 切り替え",
     "showShortcuts": "ショートカット一覧を表示",
     "close": "閉じる"
+  },
+  "player": {
+    "nowPlaying": "再生中",
+    "play": "再生",
+    "pause": "一時停止",
+    "back15": "15秒戻る",
+    "sleepOff": "オフ",
+    "timeRemaining": "残り {{time}}"
   }
 }

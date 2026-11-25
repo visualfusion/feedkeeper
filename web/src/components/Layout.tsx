@@ -7,6 +7,7 @@ import { KeyboardShortcutsModal } from "./KeyboardShortcutsModal.tsx";
 import { ProfileMenu } from "./ProfileMenu.tsx";
 import { OfflineBanner } from "./Offline.tsx";
 import { Toaster } from "./Toaster.tsx";
+import { GlobalMiniPlayer } from "./GlobalMiniPlayer.tsx";
 import { resetItemsScrollY } from "../utils/scrollState.ts";
 import { onItemsChanged, refreshBadge } from "../utils/badge.ts";
 import { syncNow } from "../utils/offlineSync.ts";
@@ -126,6 +127,7 @@ export function Layout() {
       </main>
 
       <Toaster />
+      <GlobalMiniPlayer />
 
       <KeyboardShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 

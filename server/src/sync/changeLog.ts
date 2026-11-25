@@ -38,6 +38,11 @@ export function serializeSubscription(subscription: SubscribedFeed) {
     badge: Boolean(subscription.badge),
     isInbox: Boolean(subscription.is_system_inbox),
     lastError: subscription.last_error,
+    kind: subscription.kind_override ?? subscription.detected_kind ?? "article",
+    detectedKind: subscription.detected_kind ?? "article",
+    kindOverride: subscription.kind_override ?? null,
+    description: subscription.description ?? null,
+    artworkUrl: subscription.artwork_url ?? null,
     iconHash: subscription.icon_hash ?? null,
     iconUrl: subscription.icon_hash
       ? `/api/v1/subscriptions/${subscription.id}/icon?v=${subscription.icon_hash}`
