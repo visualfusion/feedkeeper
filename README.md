@@ -83,7 +83,7 @@ If you use an AI coding assistant on your server or local machine, you can paste
 ## Features
 
 - **Categories and feed ordering** — group subscriptions into categories, search and filter the feed list, rename categories in place, and reorder feeds by dragging.
-- **Smart feed discovery** — paste a direct feed link or a website address (like `example.com/blog`); FeedKeeper finds RSS, Atom, and JSON Feeds (including YouTube channels, Bluesky, Mastodon, GitHub, Substack, Reddit, and Medium), including ones listed on a site's feed overview page, and checks each one before subscribing.
+- **Smart feed discovery** — paste a direct feed link or a website address (like `example.com/blog`); FeedKeeper finds RSS, Atom, and JSON Feeds (including YouTube channels, Bluesky, Mastodon, GitHub, Codeberg, Substack, Reddit, and Medium), including ones listed on a site's feed overview page, and checks each one before subscribing.
 - **Reliable feed updates** — fetch several feeds at once with limits per source. Slow feeds and temporary failures do not hold up other updates, and unfinished work resumes after a restart.
 - **Automatic character encoding** — parses standard UTF-8 as well as legacy ISO-8859-1/Windows-1252 feeds without garbled umlauts or broken symbols.
 - **Saved articles as a lasting archive** — star an article to save it: FeedKeeper keeps its full text and stores its images next to the database, so it stays readable even if the source changes. Saved articles survive cleanups and unsubscribing, ignore the word filter, and their full text is searchable.
@@ -96,7 +96,7 @@ If you use an AI coding assistant on your server or local machine, you can paste
 - **Universal Inbox (Read-it-Later)** — save web clippings, URLs, and personal notes directly to your personal inbox from any browser, share extension, or MCP client. Full article contents and lead images are automatically extracted and archived offline.
 - **Curated editions & daily briefings** — finite morning, midday, and evening editions. Curated by external agents via MCP (e.g. Claude, local LLMs, or custom scripts), with structured, linked editorial overviews. The latest publication remains available until its successor is published.
   Candidates and publication require readable body text beyond a repeated headline or read-more/player prompt, regardless of publisher or URL. Video/audio-only entries stay in the library but out of new editions; short reports, summaries and transcripts remain eligible. Existing editions are unchanged.
-- **Automated database housekeeping** — sensible defaults prune read articles, enforce maximum item retention, and run SQLite `VACUUM` on schedule to keep storage lean.
+- **Automated database housekeeping** — sensible defaults prune read articles (while keeping at least the newest 30 entries per feed), enforce maximum item retention, and run SQLite `VACUUM` on schedule to keep storage lean.
 - **Remote MCP access** — stream items directly into Claude or any MCP-compatible environment via standard Streamable HTTP, with read-only or read-write tokens, OAuth sign-in for connectors such as ChatGPT and Claude (consent page, PKCE, revocable in Settings), and cursor-based paging for incremental sync.
 - **Privacy & self-hosting first** — a single Node.js process and one SQLite file. No external database engines, no telemetry, no tracking.
 - **OPML 2.0 import & export** — switch back and forth from Feedly, NetNewsWire, Inoreader, or Reeder at any time.
@@ -354,7 +354,7 @@ Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) 
 
 ## License
 
-[MIT](LICENSE) — third-party licenses (including the Apache License 2.0 copy for the BudouX Japanese model) are listed in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+[MIT](LICENSE) — third-party licenses (including the Apache License 2.0 copy for the BudouX Japanese model and the MIT License for the oEmbed provider registry) are listed in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 
 ---
 
