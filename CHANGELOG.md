@@ -2,6 +2,18 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.45.0] - 2026-11-25
+
+### Added
+- **Web reader keyboard shortcuts:** Added list navigation (`J`/`K` or `↓`/`↑`), opening articles (`Enter`/`O`), list-level actions (`M` for read/unread, `S` for save, `V` for open in browser), search focus (`/`), feed refresh (`R`), mark all read (`Shift+A`), and a `?` keyboard shortcuts modal (also accessible from the account menu) across English, German, Japanese, and Russian.
+- **CLI diagnostics (`feedkeeper doctor`):** Added a read-only diagnostic command (`npx feedkeeper doctor`, `npm run doctor`) checking Node.js version, `SESSION_SECRET`, `PUBLIC_URL`, writable data/archive/cache paths, free disk space, and SQLite integrity (`PRAGMA quick_check` and applied migrations).
+
+### Changed
+- **Article modal shortcuts:** Aligned browser opening with the native apps on `V` (keeping `O` as a fallback) and ignored shortcut triggers while modifier keys or editable fields are active.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.44.3] - 2026-11-25
 
 ### Changed
