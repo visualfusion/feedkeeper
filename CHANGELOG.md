@@ -2,6 +2,15 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.44.2] - 2026-11-25
+
+### Fixed
+- **Full-text extraction retry loops:** Stopped immediate 3-attempt retries on `could_not_extract_content` results, raised background cooldowns for `failed`, `bot_blocked`, and `timeout` items to 7 days, and limited the background full-text planner to `pending` items (within the last 14 days for standard auto-mode subscriptions).
+- **Extractor worker memory growth:** Added a 256 MB V8 old-space limit (`resourceLimits`) to article extraction workers and automatically recycled each worker thread after 250 tasks (`EXTRACTOR_WORKER_MAX_TASKS`).
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.44.1] - 2026-11-23
 
 ### Fixed
