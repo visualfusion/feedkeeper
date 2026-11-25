@@ -2,6 +2,16 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.46.0] - 2026-11-25
+
+### Added
+- **Media playback position sync:** Added per-user audio and video playback position tracking (`item_media_positions`) with last-write-wins timestamp resolution, automatic reset to `0` (`completed`) at the end of an episode, `PUT /api/v1/items/:id/media-position` and `PUT /api/items/:itemId/media-position` endpoints, and automatic resume/save in the web player.
+- **Search filter operators & chips:** Added `has:audio`, `has:video`, `has:media`, `has:notes`, `is:unread`, `is:read`, `is:starred`, and `feed:` operators to article search (including operator-only queries without free text) plus quick filter chips (`Audio`, `Video`, `Notes`) in the web app.
+- **Automatic & suggested feed moves:** Permanent feed redirects (`301`/`308` leading to a valid feed) now update the feed URL automatically when unambiguous, while `410 Gone` responses trigger best-effort feed auto-discovery and surface a one-click `accept-move` suggestion in the API and web app.
+
+### Upgrade notes
+- Includes database migration `0049_media_positions_and_feed_moves.sql` (applied automatically on startup).
+
 ## [0.45.0] - 2026-11-25
 
 ### Added
