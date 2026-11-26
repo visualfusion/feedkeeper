@@ -5,7 +5,8 @@
   "description": "Self-hosted RSS, podcasts and YouTube for AI assistants: search, organize and curate your news.",
   "repository": {
     "url": "https://github.com/visualfusion/feedkeeper",
-    "source": "github"
+    "source": "github",
+    "id": "1374291942"
   },
   "version": "0.47.12",
   "packages": [
@@ -14,8 +15,25 @@
       "identifier": "feedkeeper",
       "version": "0.47.12",
       "runtimeHint": "npx",
-      "transport": { "type": "stdio" },
-      "packageArguments": [{ "type": "positional", "value": "mcp" }]
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ],
+  "websiteUrl": "https://feedkeeper.cloud",
+  "icons": [
+    {
+      "src": "https://feedkeeper.cloud/app-icon-180.png?v=2",
+      "mimeType": "image/png",
+      "sizes": [
+        "180x180"
+      ]
     }
   ]
 }
