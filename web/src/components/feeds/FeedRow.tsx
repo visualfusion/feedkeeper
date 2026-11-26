@@ -10,6 +10,7 @@ import { CustomSelect, type SelectOption } from "../CustomSelect.tsx";
 import { Favicon } from "../Favicon.tsx";
 import { feedErrorMessage } from "../../utils/feedError.ts";
 import { formatRelativeTime } from "../../utils/relativeTime.ts";
+import { safeHttpUrl } from "../../utils/sanitizeHtml.ts";
 import { toast } from "../../utils/toast.ts";
 import { AlertIcon, BellIcon, CheckAllIcon, EditIcon, GripIcon, RefreshIcon, TrashIcon } from "./icons.tsx";
 
@@ -180,6 +181,7 @@ export function FeedRow({ feed, editing, refreshing, highlighted = false, folder
   const { syncAllowed } = usePlanLimits();
   const name = feed.label ?? feed.title ?? feed.url;
   const host = hostOf(feed.site_url) ?? hostOf(feed.url);
+  const siteUrl = (feed.site_url ? safeHttpUrl(feed.site_url) : null) ?? (host ? safeHttpUrl(`https://${host}`) : null);
   const failing = Boolean(feed.last_error);
   const pending = !feed.last_polled_at;
   const [acceptingMove, setAcceptingMove] = useState(false);
@@ -246,11 +248,26 @@ export function FeedRow({ feed, editing, refreshing, highlighted = false, folder
             )}
           </div>
           <p className="mt-0.5 truncate text-xs text-[var(--c-text-muted)]">
+            {host && siteUrl ? (
+              <>
+                <a
+                  href={siteUrl}
+                  target="_blank"
+                  rel="nofollow noopener noreferrer"
+                  draggable={false}
+                  className="hover:text-[var(--c-text)] hover:underline"
+                >
+                  {host}
+                </a>
+                {" · "}
+              </>
+            ) : host ? (
+              `${host} · `
+            ) : null}
             {[
-              host,
               t("feeds.everyInterval", { interval: formatInterval(t, feed.poll_interval_minutes) }),
               feed.last_polled_at ? t("feeds.checkedAgo", { time: formatRelativeTime(new Date(feed.last_polled_at), i18n.resolvedLanguage) }) : t("feeds.statusPending"),
-            ].filter(Boolean).join(" · ")}
+            ].join(" · ")}
           </p>
           {failing && (
             <p className="mt-1.5 flex items-start gap-1.5 text-xs text-[var(--c-danger)]" title={feed.last_error ?? undefined}>
