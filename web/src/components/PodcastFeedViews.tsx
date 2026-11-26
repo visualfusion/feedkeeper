@@ -5,14 +5,18 @@ import { useAudioPlayer } from "../contexts/AudioPlayerContext.tsx";
 import { formatMediaDuration } from "./MediaPlayer.tsx";
 import { formatRelativeTime } from "../utils/relativeTime.ts";
 
+const HTML_ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": "\"",
+  "&#39;": "'",
+};
+
 function plainDescription(raw: string): string {
   return raw
     .replace(/<[^>]*>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, "\"")
-    .replace(/&#39;/g, "'")
+    .replace(/&(amp|lt|gt|quot|#39);/g, (entity) => HTML_ENTITIES[entity] ?? entity)
     .replace(/\s+/g, " ")
     .trim();
 }

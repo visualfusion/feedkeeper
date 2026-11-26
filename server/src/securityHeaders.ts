@@ -17,6 +17,7 @@ export function securityHeaderOptions(publicUrl: string): HelmetOptions {
         "upgrade-insecure-requests": servedOverHttps ? [] : null,
       },
     },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     strictTransportSecurity: servedOverHttps,
   };
 }

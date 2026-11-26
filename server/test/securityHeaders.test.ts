@@ -40,5 +40,6 @@ test("the content security policy stays strict on both", async () => {
     assert.match(policy, /media-src 'self' https: http:/, url);
     assert.match(policy, /frame-src 'self' https:\/\/www\.youtube-nocookie\.com https:\/\/www\.youtube\.com/, url);
     assert.match(policy, /object-src 'none'/, url);
+    assert.equal((await headersFor(url)).get("referrer-policy"), "strict-origin-when-cross-origin", url);
   }
 });

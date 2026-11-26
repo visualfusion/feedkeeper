@@ -74,12 +74,14 @@ export function ArticleReaderModal({
 
   useEffect(() => { setExtractedByline(null); }, [item?.id]);
 
+  const isYoutubeVideo = !item?.enclosure_url && Boolean(youtubeVideoId(item?.link));
+
   // Automatically trigger reader view extraction if configured and article not yet extracted.
   // Runs only when the modal opens or the active item changes; the derived values (articleUrl,
   // fullTextDisabled) and handleToggleFullText are read fresh from the current render, and
   // depending on them would re-run the extraction mid-flight.
   useEffect(() => {
-    if (!isOpen || !item || !articleUrl) return;
+    if (!isOpen || !item || !articleUrl || isYoutubeVideo) return;
     const isAutoReader = localStorage.getItem("feedkeeper_auto_reader_mode") !== "false";
     // Offline there is nothing to fetch; the article opens with what the feed provided.
     if (isAutoReader && !item.full_content_html && !fullTextDisabled && navigator.onLine) {
@@ -372,7 +374,7 @@ export function ArticleReaderModal({
             )}
 
             {/* Extraction Error Notice */}
-            {extractionError && (
+            {extractionError && !isYoutubeVideo && (
               <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-center justify-between gap-3">
                 <span>{extractionError}</span>
                 {articleUrl && (

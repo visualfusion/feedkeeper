@@ -89,6 +89,7 @@ export function MediaPlayer({ item }: { item: Item }) {
             src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0`}
             title={item.title ?? "YouTube Video"}
             className="w-full h-full border-0"
+            referrerPolicy="strict-origin-when-cross-origin"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
