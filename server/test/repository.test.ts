@@ -58,5 +58,33 @@ test("item state changes require a feed subscription", async () => {
   assert.equal(secondPage.length, 9);
   assert.equal(new Set([...firstPage, ...secondPage].map((item) => item.id)).size, 59);
 
+  // Slug/guid rename after publish with identical title and publishedAt updates existing item instead of duplicating.
+  assert.equal(upsertItems(feedId, [{
+    guid: "https://example.test/old-slug,123.html",
+    link: "https://example.test/old-slug,123.html",
+    title: "Renamed slug article",
+    publishedAt: "2026-11-24T13:41:00.000Z",
+  }]), 1);
+  assert.equal(upsertItems(feedId, [{
+    guid: "https://example.test/new-slug,123.html",
+    link: "https://example.test/new-slug,123.html",
+    title: "Renamed slug article",
+    publishedAt: "2026-11-24T13:41:00.000Z",
+  }]), 0);
+  assert.equal(
+    (db.prepare("SELECT link FROM items WHERE feed_id = ? AND title = 'Renamed slug article'").get(feedId) as { link: string }).link,
+    "https://example.test/new-slug,123.html",
+  );
+  assert.equal(
+    (db.prepare("SELECT COUNT(*) AS count FROM items WHERE feed_id = ? AND title = 'Renamed slug article'").get(feedId) as { count: number }).count,
+    1,
+  );
+  assert.equal(upsertItems(feedId, [{
+    guid: "https://example.test/later,124.html",
+    link: "https://example.test/later,124.html",
+    title: "Renamed slug article",
+    publishedAt: "2026-11-24T14:41:00.000Z",
+  }]), 1);
+
   db.close();
 });

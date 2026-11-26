@@ -365,7 +365,29 @@ export function upsertItems(
        enclosure_type = COALESCE(?, enclosure_type),
        enclosure_duration_seconds = COALESCE(?, enclosure_duration_seconds),
        chapters_url = COALESCE(?, chapters_url)
-     WHERE feed_id = ? AND guid = ?`,
+     WHERE id = ?`,
+  );
+  type PreviousItemRow = {
+    id: number;
+    title: string | null;
+    link: string | null;
+    image_url: string | null;
+    content_snippet: string | null;
+    content_html: string | null;
+    full_content_html: string | null;
+    published_at: string | null;
+    author: string | null;
+    enclosure_url: string | null;
+    enclosure_type: string | null;
+    enclosure_duration_seconds: number | null;
+    chapters_url: string | null;
+    lead_version: number | null;
+  };
+  const previousColumns = "id, title, link, image_url, content_snippet, content_html, full_content_html, published_at, author, enclosure_url, enclosure_type, enclosure_duration_seconds, chapters_url, lead_version";
+  const findByGuid = db.prepare<[number, string], PreviousItemRow>(`SELECT ${previousColumns} FROM items WHERE feed_id = ? AND guid = ?`);
+  // Some publishers rename a URL slug (and therefore the guid) after publishing while keeping title and timestamp intact.
+  const findByTitleAndPublishedAt = db.prepare<[number, string, string], PreviousItemRow>(
+    `SELECT ${previousColumns} FROM items WHERE feed_id = ? AND published_at = ? AND title = ? LIMIT 1`,
   );
   const tombstone = db.prepare<[number, string], { last_seen_at: string }>("SELECT last_seen_at FROM item_tombstones WHERE feed_id = ? AND guid = ?");
   const touchTombstone = db.prepare("UPDATE item_tombstones SET last_seen_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE feed_id = ? AND guid = ?");
@@ -379,67 +401,68 @@ export function upsertItems(
         if (removed.last_seen_at < touchBefore) touchTombstone.run(feedId, row.guid);
         continue;
       }
-      const values = [
-        feedId,
-        row.guid,
-        row.title ?? null,
-        row.link ?? null,
-        row.contentSnippet ?? null,
-        row.contentHtml ?? null,
-        row.publishedAt ?? null,
-        largerHeroImage(row.imageUrl, row.contentHtml, row.link ?? null) ?? row.imageUrl ?? null,
-        row.author ?? null,
-        row.enclosureUrl ?? null,
-        row.enclosureType ?? null,
-        row.enclosureDurationSeconds ?? null,
-        row.chaptersUrl ?? null,
-      ] as const;
-      const result = insert.run(...values);
-      if (result.changes > 0) {
-        inserted++;
-        refreshLead(Number(result.lastInsertRowid));
+      const existing = findByGuid.get(feedId, row.guid)
+        ?? (row.publishedAt && row.title?.trim() ? findByTitleAndPublishedAt.get(feedId, row.publishedAt, row.title) : undefined);
+      if (!existing) {
+        const values = [
+          feedId,
+          row.guid,
+          row.title ?? null,
+          row.link ?? null,
+          row.contentSnippet ?? null,
+          row.contentHtml ?? null,
+          row.publishedAt ?? null,
+          largerHeroImage(row.imageUrl, row.contentHtml, row.link ?? null) ?? row.imageUrl ?? null,
+          row.author ?? null,
+          row.enclosureUrl ?? null,
+          row.enclosureType ?? null,
+          row.enclosureDurationSeconds ?? null,
+          row.chaptersUrl ?? null,
+        ] as const;
+        const result = insert.run(...values);
+        if (result.changes > 0) {
+          inserted++;
+          refreshLead(Number(result.lastInsertRowid));
+        }
       } else {
-        const previous = db.prepare<[number, string], { id: number; title: string | null; link: string | null; image_url: string | null; content_snippet: string | null; content_html: string | null; full_content_html: string | null; published_at: string | null; author: string | null; enclosure_url: string | null; enclosure_type: string | null; enclosure_duration_seconds: number | null; chapters_url: string | null; lead_version: number | null }>(
-          "SELECT id, title, link, image_url, content_snippet, content_html, full_content_html, published_at, author, enclosure_url, enclosure_type, enclosure_duration_seconds, chapters_url, lead_version FROM items WHERE feed_id = ? AND guid = ?").get(feedId, row.guid);
+        const previous = existing;
         const next = row.contentHtml;
         // Some publishers replace complete feed bodies with short teasers on a later poll.
-        const retained = previous?.content_html && next && next.length < previous.content_html.length * 0.9 &&
+        const retained = previous.content_html && next && next.length < previous.content_html.length * 0.9 &&
           articleText(next).length < articleText(previous.content_html).length * 0.9 ? previous.content_html : next ?? null;
         // The summary belongs to the body it was sent with: keeping the longer body keeps its summary too, or
         // a feed that alternates between two variants would change the content on every poll.
         const keptPrevious = retained !== null && next !== retained;
         const nextSnippet = keptPrevious ? null : row.contentSnippet ?? null;
-        const previousImageIsLegacyYouTubeSwf = Boolean(previous?.image_url && /^https?:\/\/(?:www\.)?youtube\.com\/v\//i.test(previous.image_url));
-        const reusablePreviousImage = previous?.image_url && !isAvatarImageUrl(previous.image_url) && !previousImageIsLegacyYouTubeSwf ? previous.image_url : null;
-        const nextImage = largerHeroImage(row.imageUrl, retained, row.link ?? previous?.link ?? null) ?? reusablePreviousImage ?? row.imageUrl ?? null;
+        const previousImageIsLegacyYouTubeSwf = Boolean(previous.image_url && /^https?:\/\/(?:www\.)?youtube\.com\/v\//i.test(previous.image_url));
+        const reusablePreviousImage = previous.image_url && !isAvatarImageUrl(previous.image_url) && !previousImageIsLegacyYouTubeSwf ? previous.image_url : null;
+        const nextImage = largerHeroImage(row.imageUrl, retained, row.link ?? previous.link ?? null) ?? reusablePreviousImage ?? row.imageUrl ?? null;
 
-        if (previous) {
-          const changed = (row.title !== undefined && row.title !== previous.title) ||
+        const changed = (row.title !== undefined && row.title !== previous.title) ||
+          (row.link !== undefined && row.link !== previous.link) ||
+          (!keptPrevious && row.contentSnippet !== undefined && row.contentSnippet !== previous.content_snippet) ||
+          (retained !== null && retained !== previous.content_html) ||
+          (row.publishedAt !== undefined && row.publishedAt !== null && row.publishedAt !== previous.published_at) ||
+          (nextImage !== previous.image_url) ||
+          (row.author !== undefined && row.author !== null && row.author !== previous.author) ||
+          (row.enclosureUrl !== undefined && row.enclosureUrl !== null && row.enclosureUrl !== previous.enclosure_url) ||
+          (row.enclosureType !== undefined && row.enclosureType !== null && row.enclosureType !== previous.enclosure_type) ||
+          (row.enclosureDurationSeconds !== undefined && row.enclosureDurationSeconds !== null && row.enclosureDurationSeconds !== previous.enclosure_duration_seconds) ||
+          (row.chaptersUrl !== undefined && row.chaptersUrl !== null && row.chaptersUrl !== previous.chapters_url);
+        if (changed) {
+          update.run(
+            row.title ?? null, row.link ?? null, nextSnippet, retained, row.publishedAt ?? null, nextImage, row.author ?? null,
+            row.enclosureUrl ?? null, row.enclosureType ?? null, row.enclosureDurationSeconds ?? null, row.chaptersUrl ?? null,
+            previous.id,
+          );
+          const leadChanged = (retained !== null && retained !== previous.content_html) ||
             (row.link !== undefined && row.link !== previous.link) ||
-            (!keptPrevious && row.contentSnippet !== undefined && row.contentSnippet !== previous.content_snippet) ||
-            (retained !== null && retained !== previous.content_html) ||
-            (row.publishedAt !== undefined && row.publishedAt !== null && row.publishedAt !== previous.published_at) ||
-            (nextImage !== previous.image_url) ||
-            (row.author !== undefined && row.author !== null && row.author !== previous.author) ||
-            (row.enclosureUrl !== undefined && row.enclosureUrl !== null && row.enclosureUrl !== previous.enclosure_url) ||
-            (row.enclosureType !== undefined && row.enclosureType !== null && row.enclosureType !== previous.enclosure_type) ||
-            (row.enclosureDurationSeconds !== undefined && row.enclosureDurationSeconds !== null && row.enclosureDurationSeconds !== previous.enclosure_duration_seconds) ||
-            (row.chaptersUrl !== undefined && row.chaptersUrl !== null && row.chaptersUrl !== previous.chapters_url);
-          if (changed) {
-            update.run(
-              row.title ?? null, row.link ?? null, nextSnippet, retained, row.publishedAt ?? null, nextImage, row.author ?? null,
-              row.enclosureUrl ?? null, row.enclosureType ?? null, row.enclosureDurationSeconds ?? null, row.chaptersUrl ?? null,
-              feedId, row.guid,
-            );
-            const leadChanged = (retained !== null && retained !== previous.content_html) ||
-              (row.link !== undefined && row.link !== previous.link) ||
-              (row.title !== undefined && row.title !== previous.title) ||
-              (!keptPrevious && row.contentSnippet !== undefined && row.contentSnippet !== previous.content_snippet);
-            if (previous.lead_version !== LEAD_VERSION || (leadChanged && !previous.full_content_html)) refreshLead(previous.id);
-            else if (leadChanged) refreshGalleryClassification(previous.id);
-          } else if (previous.lead_version !== LEAD_VERSION && !previous.full_content_html) {
-            refreshLead(previous.id);
-          }
+            (row.title !== undefined && row.title !== previous.title) ||
+            (!keptPrevious && row.contentSnippet !== undefined && row.contentSnippet !== previous.content_snippet);
+          if (previous.lead_version !== LEAD_VERSION || (leadChanged && !previous.full_content_html)) refreshLead(previous.id);
+          else if (leadChanged) refreshGalleryClassification(previous.id);
+        } else if (previous.lead_version !== LEAD_VERSION && !previous.full_content_html) {
+          refreshLead(previous.id);
         }
       }
     }
