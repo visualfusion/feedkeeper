@@ -70,3 +70,23 @@ test("does not promote tracking pixels or images deep in the article", () => {
     "https://example.com/story",
   ), "https://example.com/article.jpg");
 });
+
+test("removes responsive picture hero variants with width/focal-point suffixes and proxied URLs", () => {
+  const hero = "https://cdn.example.test/images/6f0f1c3a-3a07-4782-a5a6-cf3270ad98de_w520_r2.08_fpx41.99_fpy45.jpg";
+  const body = `<figure>
+    <picture><img src="https://cdn.example.test/images/6f0f1c3a-3a07-4782-a5a6-cf3270ad98de_w960_r1.5_fpx41.99_fpy45.jpg" alt="Player"></picture>
+    <picture><img src="https://cdn.example.test/images/6f0f1c3a-3a07-4782-a5a6-cf3270ad98de_w520_r1.33_fpx41.99_fpy45.jpg" alt="Player"></picture>
+    <figcaption>Lead photo credit</figcaption>
+  </figure><p>${"Long enough body paragraph to avoid short-body heuristic. ".repeat(12)}</p>`;
+  const clean = sanitizeHtml(body, { heroImageUrl: hero });
+  assert.equal(clean.includes("<img"), false);
+  assert.equal(clean.includes("Lead photo credit"), false);
+  assert.equal(clean.includes("Long enough body paragraph"), true);
+
+  const proxied = sanitizeHtml(
+    `<figure><img src="https://img-proxy.example.test/?url=https://media.example.test/576203.JPG&amp;q=100&amp;f=webp"><figcaption>Proxy caption</figcaption></figure><p>${"Article text. ".repeat(40)}</p>`,
+    { heroImageUrl: "https://media.example.test/576203.JPG" },
+  );
+  assert.equal(proxied.includes("<img"), false);
+  assert.equal(proxied.includes("Proxy caption"), false);
+});

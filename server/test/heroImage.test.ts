@@ -44,5 +44,10 @@ test("comparableImageKey and aspect-ratio crop path variants match across preset
   const cropLarge = "https://images.example.test/image/id/base/cropB/16x9-big/photo-238.jpg?width=1920";
   assert.equal(comparableImageKey(cropSmall), comparableImageKey(cropLarge));
   assert.equal(largerHeroImage(cropSmall, `<img src="${cropLarge}">`, null), cropLarge);
+
+  const focalSmall = "https://cdn.example.test/images/6f0f1c3a-3a07-4782-a5a6-cf3270ad98de_w520_r2.08_fpx41.99_fpy45.jpg";
+  const focalLarge = "https://cdn.example.test/images/6f0f1c3a-3a07-4782-a5a6-cf3270ad98de_w960_r1.5_fpx41.99_fpy45.jpg";
+  assert.equal(comparableImageKey(focalSmall), comparableImageKey(focalLarge));
+  assert.equal(largerHeroImage(focalSmall, `<img src="${focalLarge}">`, null), focalLarge);
 });
 

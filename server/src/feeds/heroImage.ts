@@ -21,6 +21,11 @@ export function imageVariant(raw: string): Variant | null {
     // The query of such addresses is a cache version (`?v=…`), not part of the picture.
     return { key: `${url.origin}${named[1]}#${named[3] ?? ""}`, width: Number(named[2]) };
   }
+  const widthSuffix = /^(.*)[-_]w(\d{2,4})(?:[-_][a-z]+[0-9.-]+)*(\.[a-z0-9]{2,5})?$/i.exec(path);
+  if (widthSuffix) {
+    const ext = (widthSuffix[3] ?? "").toLowerCase().replace(/^\.(?:webp|jpeg)$/, ".jpg");
+    return { key: `${url.origin}${widthSuffix[1]}#${ext}`, width: Number(widthSuffix[2]) };
+  }
   const widthParam = ["w", "width"].find((name) => /^\d{2,4}$/.test(url.searchParams.get(name) ?? ""));
   if (widthParam) {
     const rest = new URLSearchParams(url.searchParams);
@@ -79,6 +84,7 @@ export function comparableImageKey(raw: string | null | undefined, baseUrl?: str
   url.hash = "";
   url.pathname = url.pathname
     .replace(/[-_]\d{2,4}x\d{2,4}(?=\.\w+$)/, "")
+    .replace(/[-_]w\d{2,4}(?:[-_][a-z]+[0-9.-]+)*(?=\.\w+$)/i, "")
     .replace(/\/\d{1,4}(?=\/[^/]{12,}$)/, "/_")
     .replace(/(?:\/[^/]+)?\/\d{1,4}x\d{1,4}(?:-[a-z0-9]+)?(?=\/[^/]+$)/i, "/_")
     .replace(/\.(?:webp|jpeg)$/i, ".jpg");

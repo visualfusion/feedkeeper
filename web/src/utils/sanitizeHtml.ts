@@ -60,6 +60,7 @@ function imageFilename(url: string | null): string {
   try {
     return new URL(unwrapped).pathname.split("/").filter(Boolean).at(-1)?.toLowerCase()
       ?.replace(/[-_]\d{2,4}x\d{2,4}(?=\.\w+$)/, "")
+      .replace(/[-_]w\d{2,4}(?:[-_][a-z]+[0-9.-]+)*(?=\.\w+$)/, "")
       .replace(/\.(?:webp|jpeg)$/, ".jpg") ?? "";
   } catch {
     return "";
@@ -174,7 +175,7 @@ export function sanitizeHtml(rawHtml: string, options: SanitizeOptions = {}): st
     doc.querySelectorAll('a[data-media="paywall"]').forEach((link) => { link.textContent = options.paywallLabel ?? ""; });
   }
 
-  doc.querySelectorAll("p, div, figure, a").forEach((element) => {
+  doc.querySelectorAll("p, div, figure, a, picture, source").forEach((element) => {
     if (!element.textContent?.trim() && !element.querySelector("img")) element.remove();
   });
 
