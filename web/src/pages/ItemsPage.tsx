@@ -72,6 +72,7 @@ export function ItemsPage() {
   const nextOffset = useRef(0);
   const scrollRestored = useRef(false);
   const [selectedArticle, setSelectedArticle] = useState<Item | null>(null);
+  const [searchFocused, setSearchFocused] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "newspaper">(() => {
     try {
       return localStorage.getItem("feedkeeper_items_view") === "newspaper" ? "newspaper" : "list";
@@ -810,6 +811,8 @@ export function ItemsPage() {
               className="input w-full pl-9 pr-3"
               value={search}
               onChange={(e) => updateSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-45 text-[var(--c-text-muted)]"><SearchIcon /></span>
           </div>
@@ -840,6 +843,8 @@ export function ItemsPage() {
                 className="input min-w-0 flex-1 pl-9"
                 value={search}
                 onChange={(e) => updateSearch(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
                 onKeyDown={(e) => { if (e.key === "Escape") closeMobileSearch(); }}
               />
               <button
@@ -908,33 +913,36 @@ export function ItemsPage() {
             </button>
           </div>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {([
-            { token: "has:audio", label: t("items.filterAudio") },
-            { token: "has:video", label: t("items.filterVideo") },
-            { token: "has:notes", label: t("items.filterNotes") },
-          ] as const).map(({ token, label }) => {
-            const active = new RegExp(`(?:^|\\s)${token}(?:\\s|$)`, "i").test(search);
-            return (
-              <button
-                key={token}
-                type="button"
-                aria-pressed={active}
-                onClick={() => {
-                  const stripped = search.replace(new RegExp(`(?:^|\\s)${token}(?=\\s|$)`, "gi"), " ").replace(/\s+/g, " ").trim();
-                  updateSearch(active ? stripped : (stripped ? `${stripped} ${token}` : token));
-                }}
-                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors cursor-pointer ${
-                  active
-                    ? "border-[var(--c-blue3)] bg-[var(--c-blue3)]/15 text-[var(--c-text)]"
-                    : "border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-text-muted)] hover:text-[var(--c-text)] hover:border-[var(--c-blue3)]/60"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
+        {(searchFocused || mobileSearchOpen || search.trim().length > 0) && (
+          <div className="relative z-10 mt-2 flex flex-wrap items-center gap-1.5 sm:pl-[calc(16rem+0.75rem)]">
+            {([
+              { token: "has:audio", label: t("items.filterAudio") },
+              { token: "has:video", label: t("items.filterVideo") },
+              { token: "has:notes", label: t("items.filterNotes") },
+            ] as const).map(({ token, label }) => {
+              const active = new RegExp(`(?:^|\\s)${token}(?:\\s|$)`, "i").test(search);
+              return (
+                <button
+                  key={token}
+                  type="button"
+                  aria-pressed={active}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    const stripped = search.replace(new RegExp(`(?:^|\\s)${token}(?=\\s|$)`, "gi"), " ").replace(/\s+/g, " ").trim();
+                    updateSearch(active ? stripped : (stripped ? `${stripped} ${token}` : token));
+                  }}
+                  className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors cursor-pointer ${
+                    active
+                      ? "border-[var(--c-blue3)] bg-[var(--c-blue3)]/15 text-[var(--c-text)]"
+                      : "border-[var(--c-border)] bg-[var(--c-surface)] text-[var(--c-text-muted)] hover:text-[var(--c-text)] hover:border-[var(--c-blue3)]/60"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {feedsLoaded && feeds.length > 0 && !syncAllowed && <PlanNotice />}
