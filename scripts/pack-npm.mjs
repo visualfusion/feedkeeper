@@ -39,6 +39,7 @@ writeFileSync(
 
 const manifest = {
   name: "feedkeeper",
+  mcpName: "io.github.visualfusion/feedkeeper-core",
   version: rootPackage.version,
   description: "A lightweight, self-hosted RSS reader and remote MCP server for your news, blogs, and AI workflows.",
   keywords: ["rss", "atom", "feed-reader", "self-hosted", "mcp", "model-context-protocol", "sqlite"],

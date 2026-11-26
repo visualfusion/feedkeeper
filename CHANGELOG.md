@@ -2,6 +2,17 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.11] - 2026-11-26
+
+### Added
+- **MCP Registry metadata:** Prepared a separate self-hosted Core listing and added the required ownership identifier to the npm package.
+
+### Fixed
+- **Media and paywall cards in web reader:** Kept `data-media` and `data-source` attributes on links during HTML sanitization (instead of letting `ALLOW_DATA_ATTR: false` strip them) while still removing any other `data-*` attributes, so inline media cards and paywall links render properly again.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.47.10] - 2026-11-26
 
 ### Fixed

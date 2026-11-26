@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.visualfusion/feedkeeper-core",
+  "title": "FeedKeeper Core – News, Podcasts & YouTube",
+  "description": "Self-hosted RSS, podcasts and YouTube for AI assistants: search, organize and curate your news.",
+  "repository": {
+    "url": "https://github.com/visualfusion/feedkeeper",
+    "source": "github"
+  },
+  "version": "0.47.11",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "feedkeeper",
+      "version": "0.47.11",
+      "runtimeHint": "npx",
+      "transport": { "type": "stdio" },
+      "packageArguments": [{ "type": "positional", "value": "mcp" }]
+    }
+  ]
+}
