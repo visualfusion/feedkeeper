@@ -14,15 +14,51 @@ export function formatMediaDuration(seconds: number): string {
   return `${minutes}:${String(secs).padStart(2, "0")}`;
 }
 
+export function youtubeVideoId(rawUrl?: string | null): string | null {
+  if (!rawUrl) return null;
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+    const host = parsed.hostname.toLowerCase();
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    let candidate: string | null = null;
+    if (host === "youtu.be") {
+      candidate = parts[0] ?? null;
+    } else if (
+      host === "youtube.com" ||
+      host === "www.youtube.com" ||
+      host === "m.youtube.com" ||
+      host === "music.youtube.com" ||
+      host === "youtube-nocookie.com" ||
+      host === "www.youtube-nocookie.com"
+    ) {
+      if (parsed.pathname === "/watch") {
+        candidate = parsed.searchParams.get("v");
+      } else if (parts.length >= 2 && ["embed", "shorts", "live", "v"].includes(parts[0])) {
+        candidate = parts[1];
+      }
+    }
+    return candidate && /^[A-Za-z0-9_-]{6,32}$/.test(candidate) ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 export function MediaPlayer({ item }: { item: Item }) {
   const { t } = useTranslation();
   const audioPlayer = useAudioPlayer();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [chapters, setChapters] = useState<PodcastChapter[]>([]);
+  const [youtubePlaying, setYoutubePlaying] = useState(false);
   const restoredForItemRef = useRef<number | null>(null);
   const lastSavedAtRef = useRef<number>(0);
 
   const isVideo = item.enclosure_type?.toLowerCase().startsWith("video/") ?? false;
+  const ytId = !item.enclosure_url ? youtubeVideoId(item.link) : null;
+
+  useEffect(() => {
+    setYoutubePlaying(false);
+  }, [item.id]);
 
   useEffect(() => {
     let active = true;
@@ -41,6 +77,41 @@ export function MediaPlayer({ item }: { item: Item }) {
       active = false;
     };
   }, [item.id, item.chapters_url, isVideo]);
+
+  if (ytId) {
+    const thumb = item.image_url && !/^https?:\/\/(?:www\.)?youtube\.com\/v\//i.test(item.image_url)
+      ? item.image_url
+      : `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+    return (
+      <div className="mb-6 rounded-xl border border-[var(--c-border)] bg-black overflow-hidden aspect-video relative">
+        {youtubePlaying ? (
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0`}
+            title={item.title ?? "YouTube Video"}
+            className="w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setYoutubePlaying(true)}
+            aria-label={t("player.play")}
+            className="group relative w-full h-full block cursor-pointer"
+          >
+            <img src={thumb} alt="" className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-200" />
+            <span className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+              <span className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-md border border-white/25 text-white flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+                <svg className="w-7 h-7 translate-x-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <polygon points="6 4 20 12 6 20 6 4" />
+                </svg>
+              </span>
+            </span>
+          </button>
+        )}
+      </div>
+    );
+  }
 
   if (!item.enclosure_url) return null;
 

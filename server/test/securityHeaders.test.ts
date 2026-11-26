@@ -38,6 +38,7 @@ test("the content security policy stays strict on both", async () => {
     const policy = (await headersFor(url)).get("content-security-policy") ?? "";
     assert.match(policy, /script-src 'self'/, url);
     assert.match(policy, /media-src 'self' https: http:/, url);
+    assert.match(policy, /frame-src 'self' https:\/\/www\.youtube-nocookie\.com https:\/\/www\.youtube\.com/, url);
     assert.match(policy, /object-src 'none'/, url);
   }
 });

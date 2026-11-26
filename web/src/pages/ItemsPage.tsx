@@ -8,7 +8,7 @@ import { ArticleReaderModal, type ArticleContentUpdate } from "../components/Art
 import { ArticleExcerpt } from "../components/ArticleExcerpt.tsx";
 import { Favicon } from "../components/Favicon.tsx";
 import { JapaneseText } from "../components/JapaneseText.tsx";
-import { formatMediaDuration } from "../components/MediaPlayer.tsx";
+import { formatMediaDuration, youtubeVideoId } from "../components/MediaPlayer.tsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.tsx";
 import { NewspaperGrid } from "../components/NewspaperGrid.tsx";
 import { MediaShowHeader, PodcastEpisodeList, VideoFeedGrid } from "../components/PodcastFeedViews.tsx";
@@ -1035,10 +1035,10 @@ export function ItemsPage() {
                           className="w-3.5 h-3.5 rounded-xs shrink-0 object-contain"
                         />
                         <span className="truncate">{item.feed_title}</span>
-                        {item.enclosure_url && (
+                        {(item.enclosure_url || youtubeVideoId(item.link)) && (
                           <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[var(--c-border)] px-2 py-0.5 text-[11px] font-medium tracking-normal normal-case text-[var(--c-text-muted)] shrink-0">
-                            <span aria-hidden="true">{item.enclosure_type?.startsWith("video/") ? "▶" : "🎧"}</span>
-                            {item.enclosure_duration_seconds ? formatMediaDuration(item.enclosure_duration_seconds) : (item.enclosure_type?.startsWith("video/") ? "Video" : "Audio")}
+                            <span aria-hidden="true">{item.enclosure_type?.startsWith("video/") || (!item.enclosure_url && youtubeVideoId(item.link)) ? "▶" : "🎧"}</span>
+                            {item.enclosure_duration_seconds ? formatMediaDuration(item.enclosure_duration_seconds) : (item.enclosure_type?.startsWith("video/") || (!item.enclosure_url && youtubeVideoId(item.link)) ? "Video" : "Audio")}
                           </span>
                         )}
                       </div>

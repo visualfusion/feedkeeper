@@ -13,6 +13,7 @@ export function securityHeaderOptions(publicUrl: string): HelmetOptions {
         "script-src": ["'self'"],
         "img-src": ["'self'", "data:", "https:", "http:"],
         "media-src": ["'self'", "https:", "http:"],
+        "frame-src": ["'self'", "https://www.youtube-nocookie.com", "https://www.youtube.com"],
         "upgrade-insecure-requests": servedOverHttps ? [] : null,
       },
     },

@@ -7,7 +7,7 @@ import { breakJapaneseHtml, textLanguage } from "../utils/japanese.js";
 import { hasCommandModifier, isEditableTarget, openSafeExternalUrl } from "../utils/keyboard.js";
 import { Favicon } from "./Favicon.js";
 import { JapaneseText } from "./JapaneseText.js";
-import { MediaPlayer } from "./MediaPlayer.js";
+import { MediaPlayer, youtubeVideoId } from "./MediaPlayer.js";
 
 export type ArticleContentUpdate = Pick<Item, "id" | "full_content_html">;
 
@@ -304,7 +304,7 @@ export function ArticleReaderModal({
         {/* Scrollable Article Body */}
         {/* Own compositing layer: keeps WebKit from dropping images under the blurred header while scrolling */}
         <main className="flex-1 overflow-y-auto overscroll-contain transform-gpu" style={{ paddingTop: headerHeight }}>
-          {visibleLeadImage && !compactLeadImage && (
+          {visibleLeadImage && !compactLeadImage && !(!item?.enclosure_url && youtubeVideoId(item?.link)) && (
             <img
               src={visibleLeadImage.src}
               alt=""
