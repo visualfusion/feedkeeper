@@ -1,7 +1,7 @@
 # FeedKeeper
 
 <p align="center">
-  <strong>A lightweight, self-hosted RSS reader and remote MCP server for your news, blogs, and AI workflows.</strong>
+  <strong>A lightweight, self-hosted RSS reader, podcast & YouTube client, and remote MCP server for your news, media, and AI workflows.</strong>
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
 
 <br />
 
-FeedKeeper is an independent RSS, Atom, and JSON Feed manager built for people who want full ownership over their subscriptions. It runs quietly on your own server or Raspberry Pi, stores everything in a local SQLite database, and requires zero cloud accounts.
+FeedKeeper is an independent RSS, Atom, and JSON Feed manager for news, blogs, podcasts, and YouTube channels — built for people who want full ownership over their subscriptions. It runs quietly on your own server or Raspberry Pi, stores everything in a local SQLite database, and requires zero cloud accounts.
 
 Beyond a clean web reader, FeedKeeper includes a native, authenticated **[Model Context Protocol (MCP)](https://modelcontextprotocol.io)** endpoint. Listed in the official MCP Registry (`io.github.visualfusion/feedkeeper`) and verified for the Anthropic Claude Directory, it lets MCP clients read, search, bookmark, and organize your feeds over a remote connection. Your subscriptions and reading history stay in your own SQLite database.
 
