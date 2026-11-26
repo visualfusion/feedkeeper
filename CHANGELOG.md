@@ -2,6 +2,19 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.5] - 2026-11-26
+
+### Added
+- **Inline YouTube player in web reader:** Opening a YouTube feed item in the reader modal now displays a 16:9 thumbnail preview with a play button that loads `youtube-nocookie.com` inline on click, and marks YouTube items in list and newspaper cards.
+- **Extended media enclosure parsing:** Added support for Atom `<link rel="enclosure">`, `<media:content>` arrays and `<media:group>` blocks, `.flac` audio files, and `application/ogg` MIME types.
+
+### Fixed
+- **Web audio & video playback CSP:** Added `media-src 'self' https: http:` and `frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com` to the Content Security Policy so external podcast/video streams and inline YouTube embeds play in Safari and other browsers.
+- **Web podcast show views & playback:** `PodcastEpisodeList` now falls back to show artwork/icons, `MediaShowHeader` strips HTML tags from show descriptions, `NewspaperGrid` renders media chips, and `AudioPlayerContext` reapplies playback speed on metadata load and clears playing state on media errors.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.47.4] - 2026-11-26
 
 ### Fixed
