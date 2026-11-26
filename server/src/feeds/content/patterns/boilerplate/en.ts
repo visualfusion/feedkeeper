@@ -10,6 +10,10 @@ export const ANYWHERE: readonly RegExp[] = [
   /^(?:Download on the (?:App|Mac App) Store|Get it on Google Play|Available on Google Play|[^.!?]{2,40} (?:for Android )?on Google Play)$/i,
   // A picture's filename shown as text.
   /^[\w\-. ]{3,120}\.(?:jpe?g|png|webp|gif|avif)$/i,
+  // Newsletter footer chrome (Substack, Ghost, Beehiiv): action links and sign-off lines that arrive inside the article body.
+  /^(?:View (?:this email |it )?in (?:your )?browser|Subscribe(?: now| here| to [^.!?]{1,80})?|Share(?: this (?:post|article|story))?|Unsubscribe(?: here)?|Get the app|Leave a comment)\.?$/i,
+  /^Forwarded this email\?(?:\s+Subscribe[^.!?]{0,80}\.?)?$/i,
+  /^You(?:'re| are) receiving this (?:email )?because you subscribed to [^.!?]{1,80}\.?$/i,
 ];
 
 /** Orphaned recommendation headings without a following list. */
