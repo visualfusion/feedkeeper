@@ -2,6 +2,18 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.8] - 2026-11-26
+
+### Added
+- **Feed favicons in scope selector:** Feeds in the article list's scope dropdown (`CustomSelect`) now display their favicon next to the feed name in both the trigger and options list.
+- **Configurable UI language list:** Added support for an optional `<meta name="feedkeeper-languages">` tag to restrict available UI languages in `i18next` and `LanguageSwitcher` (defaults to all supported languages for self-hosting).
+
+### Fixed
+- **Search filter chips visibility & alignment:** Quick-filter chips (`Audio`, `Video`, `Notes`) now appear only when the search input is focused or active, align left-justified beneath the search field on desktop, and stay visible above the docked sticky toolbar backdrop.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.47.7] - 2026-11-26
 
 ### Added
