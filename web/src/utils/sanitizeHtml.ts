@@ -142,8 +142,11 @@ export function sanitizeHtml(rawHtml: string, options: SanitizeOptions = {}): st
     if (!src || isPixel(img, src) || isDuplicateHero || isRepeatedImage) {
       const alt = isDuplicateHero ? img.getAttribute("alt")?.trim() : null;
       const parentP = img.closest("p");
+      const parentFigure = img.closest("figure");
       img.remove();
-      if (alt && alt.length >= 15 && parentP && parentP.textContent?.trim() === alt && !parentP.querySelector("img")) {
+      if (parentFigure && !parentFigure.querySelector("img")) {
+        parentFigure.remove();
+      } else if (alt && alt.length >= 15 && parentP && parentP.textContent?.trim() === alt && !parentP.querySelector("img")) {
         parentP.remove();
       }
     } else {
