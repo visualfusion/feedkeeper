@@ -75,17 +75,18 @@ export function ArticleReaderModal({
   useEffect(() => { setExtractedByline(null); }, [item?.id]);
 
   const isYoutubeVideo = !item?.enclosure_url && Boolean(youtubeVideoId(item?.link));
+  const isMediaItem = isYoutubeVideo || Boolean(item?.enclosure_url);
 
   // Automatically trigger reader view extraction if configured and article not yet extracted.
   // Runs only when the modal opens or the active item changes; the derived values (articleUrl,
   // fullTextDisabled) and handleToggleFullText are read fresh from the current render, and
   // depending on them would re-run the extraction mid-flight.
   useEffect(() => {
-    if (!isOpen || !item || !articleUrl || isYoutubeVideo) return;
+    if (!isOpen || !item || !articleUrl || isMediaItem) return;
     const isAutoReader = localStorage.getItem("feedkeeper_auto_reader_mode") !== "false";
     // Offline there is nothing to fetch; the article opens with what the feed provided.
     if (isAutoReader && !item.full_content_html && !fullTextDisabled && navigator.onLine) {
-      handleToggleFullText();
+      handleToggleFullText({ silent: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, item?.id]);
@@ -102,7 +103,7 @@ export function ArticleReaderModal({
   }, [isOpen]);
 
   // Extract full article text from original website via Readability
-  const handleToggleFullText = useCallback(async () => {
+  const handleToggleFullText = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!item || pendingExtractions.current.has(item.id)) return;
 
     if (item.full_content_html) {
@@ -134,10 +135,9 @@ export function ArticleReaderModal({
       if (activeItemIdRef.current === targetItem.id) {
         if (err instanceof ApiError && err.code === "consent_wall") {
           setConsentWall(true);
-        } else if (err instanceof ApiError && err.status === 0) {
+        } else if (!silent && err instanceof ApiError && err.status === 0) {
           setExtractionError(t("common.offlineAction"));
-        } else if (!(err instanceof ApiError && err.code === "full_text_disabled")) {
-          console.error("Failed to extract full text:", err);
+        } else if (!silent && !(err instanceof ApiError && err.code === "full_text_disabled")) {
           setExtractionError(t("reader.extractionFailed"));
         }
       }
@@ -373,18 +373,18 @@ export function ArticleReaderModal({
               </div>
             )}
 
-            {/* Extraction Error Notice */}
+            {/* Calm notice matching consentWall when manual full-text extraction fails */}
             {extractionError && !isYoutubeVideo && (
-              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-center justify-between gap-3">
+              <div className="mb-6 p-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-bg)] text-sm text-[var(--c-text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <span>{extractionError}</span>
                 {articleUrl && (
                   <a
                     href={articleUrl}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="underline font-semibold whitespace-nowrap hover:opacity-80"
+                    className="btn-secondary text-sm whitespace-nowrap self-start sm:self-center"
                   >
-                    {t("reader.openOriginal")}
+                    {t("reader.readOriginal")}
                   </a>
                 )}
               </div>
@@ -440,10 +440,10 @@ export function ArticleReaderModal({
               </div>
 
               <div className="flex items-center gap-2">
-                {articleUrl && (!fullTextDisabled || item.full_content_html) && (
+                {articleUrl && !isMediaItem && (!fullTextDisabled || item.full_content_html) && (
                   <button
                     type="button"
-                    onClick={handleToggleFullText}
+                    onClick={() => void handleToggleFullText()}
                     disabled={extracting}
                     title={showFullText ? t("reader.togglePreview") : t("reader.toggleFullText")}
                     aria-label={showFullText ? t("reader.togglePreview") : t("reader.toggleFullText")}
