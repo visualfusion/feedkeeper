@@ -33,15 +33,49 @@ export function imageVariant(raw: string): Variant | null {
   return null;
 }
 
+function embeddedOriginalUrl(url: URL): string | null {
+  for (const [name, value] of url.searchParams) {
+    if (!["url", "src", "image", "source"].includes(name.toLowerCase())) continue;
+    try {
+      const inner = new URL(value);
+      if ((inner.protocol === "https:" || inner.protocol === "http:") && inner.host && inner.toString() !== url.toString()) {
+        return inner.toString();
+      }
+    } catch { /* Not a valid embedded URL. */ }
+  }
+  let decodedPath: string;
+  try {
+    decodedPath = decodeURIComponent(url.pathname);
+  } catch {
+    decodedPath = url.pathname;
+  }
+  for (const marker of ["/https://", "/http://", "/https:/", "/http:/"]) {
+    const idx = decodedPath.indexOf(marker);
+    if (idx === -1) continue;
+    const tail = decodedPath.slice(idx + 1).replace(/^(https?):\/(?!\/)/i, "$1://");
+    try {
+      const inner = new URL(tail);
+      if ((inner.protocol === "https:" || inner.protocol === "http:") && inner.host && inner.toString() !== url.toString()) {
+        return inner.toString();
+      }
+    } catch { /* Not a valid embedded path URL. */ }
+  }
+  return null;
+}
+
 /**
  * Canonical identity of an image across CDN size presets, aspect-ratio crop directories, format extensions and width
  * query parameters, while keeping origin, non-size directories and picture-identifying query parameters intact.
  */
-export function comparableImageKey(raw: string | null | undefined, baseUrl?: string | null): string | null {
+export function comparableImageKey(raw: string | null | undefined, baseUrl?: string | null, depth = 0): string | null {
   if (!raw) return null;
   let url: URL;
   try { url = new URL(decodeEntities(raw.trim()), baseUrl ?? undefined); } catch { return null; }
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  if (depth < 3) {
+    const inner = embeddedOriginalUrl(url);
+    if (inner) return comparableImageKey(inner, undefined, depth + 1);
+  }
   url.hash = "";
   url.pathname = url.pathname
     .replace(/[-_]\d{2,4}x\d{2,4}(?=\.\w+$)/, "")

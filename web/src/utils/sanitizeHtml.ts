@@ -16,10 +16,49 @@ export function safeHttpUrl(rawUrl: string, baseUrl?: string | null): string | n
   }
 }
 
-function imageFilename(url: string | null): string {
-  if (!url) return "";
+function embeddedOriginalUrl(rawUrl: string): string | null {
+  let url: URL;
   try {
-    return new URL(url).pathname.split("/").filter(Boolean).at(-1)?.toLowerCase()
+    url = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+  for (const [name, value] of url.searchParams) {
+    if (!["url", "src", "image", "source"].includes(name.toLowerCase())) continue;
+    const inner = safeHttpUrl(value);
+    if (inner && inner !== rawUrl) return inner;
+  }
+  let decodedPath: string;
+  try {
+    decodedPath = decodeURIComponent(url.pathname);
+  } catch {
+    decodedPath = url.pathname;
+  }
+  for (const marker of ["/https://", "/http://", "/https:/", "/http:/"]) {
+    const idx = decodedPath.indexOf(marker);
+    if (idx === -1) continue;
+    const tail = decodedPath.slice(idx + 1).replace(/^(https?):\/(?!\/)/i, "$1://");
+    const inner = safeHttpUrl(tail);
+    if (inner && inner !== rawUrl) return inner;
+  }
+  return null;
+}
+
+function unwrapImageUrl(rawUrl: string | null): string | null {
+  let current = rawUrl;
+  for (let depth = 0; depth < 3 && current; depth++) {
+    const inner = embeddedOriginalUrl(current);
+    if (!inner) break;
+    current = inner;
+  }
+  return current;
+}
+
+function imageFilename(url: string | null): string {
+  const unwrapped = unwrapImageUrl(url);
+  if (!unwrapped) return "";
+  try {
+    return new URL(unwrapped).pathname.split("/").filter(Boolean).at(-1)?.toLowerCase()
       ?.replace(/[-_]\d{2,4}x\d{2,4}(?=\.\w+$)/, "")
       .replace(/\.(?:webp|jpeg)$/, ".jpg") ?? "";
   } catch {
@@ -71,14 +110,16 @@ export function sanitizeHtml(rawHtml: string, options: SanitizeOptions = {}): st
   const cleanHtml = DOMPurify.sanitize(rawHtml, sanitizeConfig);
   const doc = new DOMParser().parseFromString(cleanHtml, "text/html");
   const heroUrl = options.heroImageUrl ? safeHttpUrl(options.heroImageUrl, options.baseUrl) : null;
-  const heroFilename = imageFilename(heroUrl);
+  const heroUnwrapped = unwrapImageUrl(heroUrl);
+  const heroFilename = imageFilename(heroUnwrapped);
   const bodyTextLength = doc.body.textContent?.trim().length ?? 0;
   let previousImage: Element | null = null;
   let previousImageSrc: string | null = null;
 
   Array.from(doc.querySelectorAll("img")).forEach((img, index) => {
     const src = safeHttpUrl(img.getAttribute("src") ?? "", options.baseUrl);
-    const filename = imageFilename(src);
+    const srcUnwrapped = unwrapImageUrl(src);
+    const filename = imageFilename(srcUnwrapped);
     let isArchivedLeadingHero = false;
     if (index === 0 && heroUrl?.includes("/archive/images/") && src?.includes("/archive/images/")) {
       const before = doc.createRange();
@@ -88,7 +129,7 @@ export function sanitizeHtml(rawHtml: string, options: SanitizeOptions = {}): st
     }
     const isDuplicateHero = Boolean(
       heroUrl && src &&
-      (src === heroUrl || (heroFilename && filename === heroFilename) || isArchivedLeadingHero || (index === 0 && bodyTextLength < 400)),
+      (src === heroUrl || (heroUnwrapped && srcUnwrapped === heroUnwrapped) || (heroFilename && filename === heroFilename) || isArchivedLeadingHero || (index === 0 && bodyTextLength < 400)),
     );
     let isRepeatedImage = false;
     if (src && src === previousImageSrc && previousImage) {

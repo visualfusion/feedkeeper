@@ -234,10 +234,11 @@ export function ArticleReaderModal({
     return "";
   }, [item, activeContentHtml, heroImageUrl, t]);
 
-  // Estimated reading time
-  const readingTime = useMemo(() => {
-    const rawText = activeContentHtml ?? item?.content_snippet ?? "";
-    return estimateReadingTime(rawText.replace(/<[^>]+>/g, " "));
+  // Estimated reading time & word count (very short teasers omit reading time)
+  const { readingTime, wordCount } = useMemo(() => {
+    const plain = (activeContentHtml ?? item?.content_snippet ?? "").replace(/<[^>]+>/g, " ").trim();
+    const words = plain ? plain.split(/\s+/).length : 0;
+    return { readingTime: estimateReadingTime(plain), wordCount: words };
   }, [activeContentHtml, item?.content_snippet]);
 
   // Copy article link to clipboard
@@ -330,7 +331,20 @@ export function ArticleReaderModal({
               )}
 
               <h1 lang={textLanguage(item.title)} className={`text-2xl sm:text-3xl font-bold font-['Manrope'] text-[var(--c-text)] leading-snug tracking-tight mb-3${textLanguage(item.title) === "ja" ? " ja-phrases" : ""}`}>
-                {item.title ? <JapaneseText text={item.title} /> : null}
+                {item.title ? (
+                  articleUrl ? (
+                    <a
+                      href={articleUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline decoration-[var(--c-border)] underline-offset-4"
+                    >
+                      <JapaneseText text={item.title} />
+                    </a>
+                  ) : (
+                    <JapaneseText text={item.title} />
+                  )
+                ) : null}
               </h1>
             </div>
 
@@ -357,7 +371,7 @@ export function ArticleReaderModal({
                   </span>
                 </>
               )}
-              {!isMediaItem && !consentWall && (showFullText || Boolean(item.full_content_html) || readingTime > 1) && (
+              {!isMediaItem && !consentWall && wordCount >= 40 && (showFullText || Boolean(item.full_content_html) || readingTime > 1) && (
                 <>
                   {(byline || formattedDate) && <span>•</span>}
                   <span>{t("reader.readingTime", { count: readingTime })}</span>
