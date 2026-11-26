@@ -2,6 +2,18 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.7] - 2026-11-26
+
+### Added
+- **Newsletter boilerplate cleanup:** Added English boilerplate patterns in `patterns/boilerplate/en.ts` to strip recurring newsletter footer chrome from platforms such as Substack, Ghost, and Beehiiv (action links like "View in browser", "Subscribe now", "Share this post", "Forwarded this email?", and subscription notices) across whole blocks, inline links, and `<br>`-separated footer lines (thanks to @TariQMah in #78).
+
+### Fixed
+- **Web reader notice placement & reading time:** Moved consent and full-text extraction notices below the article excerpt in `ArticleReaderModal` and hid the reading time badge on media items, consent walls, and short excerpts to match the native app.
+- **Podcast & video view switcher:** Hid the list/newspaper view switcher on podcast and video feeds in `ItemsPage` since those feed kinds use dedicated media layouts.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.47.6] - 2026-11-26
 
 ### Fixed
