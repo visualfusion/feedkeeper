@@ -13,6 +13,7 @@
   --c-border: rgba(51, 65, 85, 0.14);
   --c-text: #0f172a;
   --c-text-muted: #64748b;
+  --c-link: #0f172a;
   --c-blue1: #0f172a;
   --c-blue3: #334155;
   --c-blue4: #475569;
@@ -37,6 +38,7 @@
   --c-border: rgba(203, 213, 225, 0.12);
   --c-text: #f1f5f9;
   --c-text-muted: #94a3b8;
+  --c-link: #7db3f5;
   --c-blue1: #334155;
   --c-blue3: #64748b;
   --c-blue4: #94a3b8;
@@ -62,6 +64,7 @@
     --c-border: rgba(203, 213, 225, 0.12);
     --c-text: #f1f5f9;
     --c-text-muted: #94a3b8;
+    --c-link: #7db3f5;
     --c-blue1: #334155;
     --c-blue3: #64748b;
     --c-blue4: #94a3b8;
@@ -435,7 +438,7 @@ p:lang(ja) {
 }
 
 .reader-content a {
-  color: var(--c-blue1);
+  color: var(--c-link);
   text-decoration: underline;
   text-underline-offset: 3px;
   transition: opacity 0.15s ease;
