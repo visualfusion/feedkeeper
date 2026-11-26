@@ -120,7 +120,10 @@ function FeedEditor({ feed, folderOptions, intervalOptions, onClose, onSaved }: 
       <label className="flex cursor-pointer select-none items-start gap-2.5 text-sm">
         <input type="checkbox" className="mt-0.5 rounded" checked={notify ?? (feed.notify !== 0)} onChange={(e) => setNotify(e.target.checked)} />
         <span>
-          {t("feeds.notify")}
+          {(() => {
+            const effectiveKind = kindOverride === "auto" ? (feed.detected_kind ?? "article") : kindOverride;
+            return effectiveKind === "audio" ? t("feeds.notifyAudio") : effectiveKind === "video" ? t("feeds.notifyVideo") : t("feeds.notify");
+          })()}
           <span className="mt-0.5 block text-xs text-[var(--c-text-muted)]">{t("feeds.notifyHint")}</span>
         </span>
       </label>
@@ -129,7 +132,12 @@ function FeedEditor({ feed, folderOptions, intervalOptions, onClose, onSaved }: 
         <input type="checkbox" className="mt-0.5 rounded" checked={badge ?? (feed.badge !== 0)} onChange={(e) => setBadge(e.target.checked)} />
         <span>
           {t("feeds.badge")}
-          <span className="mt-0.5 block text-xs text-[var(--c-text-muted)]">{t("feeds.badgeHint")}</span>
+          <span className="mt-0.5 block text-xs text-[var(--c-text-muted)]">
+            {(() => {
+              const effectiveKind = kindOverride === "auto" ? (feed.detected_kind ?? "article") : kindOverride;
+              return effectiveKind === "audio" ? t("feeds.badgeHintAudio") : effectiveKind === "video" ? t("feeds.badgeHintVideo") : t("feeds.badgeHint");
+            })()}
+          </span>
         </span>
       </label>
 
