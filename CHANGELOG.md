@@ -2,6 +2,16 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.10] - 2026-11-26
+
+### Fixed
+- **Responsive hero image variants:** Normalized width, aspect-ratio, and focal-point filename suffixes (such as `_w960_r1.5_fpx…`) in `heroImage` and `sanitizeHtml`, and cleared empty `<picture>` wrappers so duplicate responsive hero images and their captions are cleanly removed.
+- **Orphaned related reading-time lists:** Stripped sidebar headings in `<p>` elements followed by `<ul>`/`<ol>` lists that only contain reading-time tokens (such as `1 Min`, `4 Min`) in the second half of an article.
+- **Keyboard focus ring in article list:** Clicking an article card in the web reader list no longer activates the keyboard focus outline; the ring is now shown only for keyboard navigation (`J`/`K`, arrow keys).
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.47.9] - 2026-11-26
 
 ### Added
