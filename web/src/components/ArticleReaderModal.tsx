@@ -361,35 +361,6 @@ export function ArticleReaderModal({
               <span>{t("reader.readingTime", { count: readingTime })}</span>
             </div>
 
-            {/* Consent walls are expected, so they get a calm hint instead of an error */}
-            {consentWall && (
-              <div className="mb-6 p-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-bg)] text-sm text-[var(--c-text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <span>{t("reader.consentWall")}</span>
-                {articleUrl && (
-                  <a href={articleUrl} target="_blank" rel="noreferrer noopener" className="btn-primary text-sm whitespace-nowrap self-start sm:self-center">
-                    {t("reader.readOriginal")}
-                  </a>
-                )}
-              </div>
-            )}
-
-            {/* Calm notice matching consentWall when manual full-text extraction fails */}
-            {extractionError && !isYoutubeVideo && (
-              <div className="mb-6 p-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-bg)] text-sm text-[var(--c-text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <span>{extractionError}</span>
-                {articleUrl && (
-                  <a
-                    href={articleUrl}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="btn-secondary text-sm whitespace-nowrap self-start sm:self-center"
-                  >
-                    {t("reader.readOriginal")}
-                  </a>
-                )}
-              </div>
-            )}
-
             <MediaPlayer item={item} />
 
             {sanitizedContent ? (
@@ -408,6 +379,35 @@ export function ArticleReaderModal({
               <p className="text-[var(--c-text-muted)] italic">
                 {t("items.noItems")}
               </p>
+            )}
+
+            {/* Consent walls are expected, so they get a calm hint below the excerpt matching the native app */}
+            {consentWall && (
+              <div className="mt-6 p-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-bg)] text-sm text-[var(--c-text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span>{t("reader.consentWall")}</span>
+                {articleUrl && (
+                  <a href={articleUrl} target="_blank" rel="noreferrer noopener" className="btn-primary text-sm whitespace-nowrap self-start sm:self-center">
+                    {t("reader.readOriginal")}
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Calm notice matching consentWall below the excerpt when manual full-text extraction fails */}
+            {extractionError && !isYoutubeVideo && (
+              <div className="mt-6 p-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-bg)] text-sm text-[var(--c-text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span>{extractionError}</span>
+                {articleUrl && (
+                  <a
+                    href={articleUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="btn-secondary text-sm whitespace-nowrap self-start sm:self-center"
+                  >
+                    {t("reader.readOriginal")}
+                  </a>
+                )}
+              </div>
             )}
 
             <div className="mt-12 pt-6 border-t border-[var(--c-border)]/60 flex items-center justify-between gap-3">
