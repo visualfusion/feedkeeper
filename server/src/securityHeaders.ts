@@ -12,6 +12,7 @@ export function securityHeaderOptions(publicUrl: string): HelmetOptions {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
         "script-src": ["'self'"],
         "img-src": ["'self'", "data:", "https:", "http:"],
+        "media-src": ["'self'", "https:", "http:"],
         "upgrade-insecure-requests": servedOverHttps ? [] : null,
       },
     },
