@@ -5,11 +5,24 @@ import { useAudioPlayer } from "../contexts/AudioPlayerContext.tsx";
 import { formatMediaDuration } from "./MediaPlayer.tsx";
 import { formatRelativeTime } from "../utils/relativeTime.ts";
 
+function plainDescription(raw: string): string {
+  return raw
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function MediaShowHeader({ feed }: { feed: Feed }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const title = feed.label?.trim() || feed.title?.trim() || feed.url;
   const cover = feed.artwork_url || `/api/feeds/${feed.id}/icon`;
+  const description = feed.description ? plainDescription(feed.description) : "";
 
   return (
     <div className="mb-6 flex items-start gap-4 rounded-2xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 sm:p-5">
@@ -20,12 +33,12 @@ export function MediaShowHeader({ feed }: { feed: Feed }) {
       />
       <div className="min-w-0 flex-1">
         <h2 className="text-lg sm:text-xl font-bold text-[var(--c-text)] leading-snug">{title}</h2>
-        {feed.description && (
+        {description && (
           <>
             <p className={`mt-1.5 text-sm text-[var(--c-text-muted)] ${expanded ? "" : "line-clamp-2"}`}>
-              {feed.description}
+              {description}
             </p>
-            {feed.description.length > 140 && (
+            {description.length > 140 && (
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
@@ -51,12 +64,14 @@ function progressRatio(item: Item, activeTime?: number, activeDur?: number): num
 }
 
 export function PodcastEpisodeList({
+  feed,
   items,
   focusedItemId,
   onOpen,
   onBookmark,
   onRead,
 }: {
+  feed?: Feed;
   items: Item[];
   focusedItemId: number | null;
   onOpen: (item: Item) => void;
@@ -107,8 +122,13 @@ export function PodcastEpisodeList({
               </button>
             )}
 
-            {item.image_url && (
-              <img src={item.image_url} alt="" className="hidden sm:block h-12 w-12 rounded-lg object-cover shrink-0 border border-[var(--c-border)]" loading="lazy" />
+            {(item.image_url || feed?.artwork_url || item.feed_id) && (
+              <img
+                src={item.image_url || feed?.artwork_url || `/api/feeds/${item.feed_id}/icon`}
+                alt=""
+                className="h-12 w-12 rounded-lg object-cover shrink-0 border border-[var(--c-border)] bg-[var(--c-bg)]"
+                loading="lazy"
+              />
             )}
 
             <div className="min-w-0 flex-1">

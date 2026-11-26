@@ -38,6 +38,7 @@ type CustomItem = Parser.Item & {
   mediaContent?: unknown;
   mediaThumbnail?: unknown;
   mediaGroup?: unknown;
+  rawLinks?: unknown;
   contentEncoded?: string;
   author?: string;
   itunesDuration?: unknown;
@@ -61,7 +62,8 @@ const xmlParser = new Parser<CustomFeed, CustomItem>({
   customFields: {
     feed: ["icon", "itunes:image"],
     item: [
-      ["media:content", "mediaContent", { keepArray: false }],
+      ["link", "rawLinks", { keepArray: true }],
+      ["media:content", "mediaContent", { keepArray: true }],
       ["media:thumbnail", "mediaThumbnail", { keepArray: false }],
       ["media:group", "mediaGroup", { keepArray: false }],
       ["content:encoded", "contentEncoded", { keepArray: false }],
@@ -106,6 +108,7 @@ const EXTENSION_MIME: Array<[RegExp, string]> = [
   [/\.aac(\?.*)?$/i, "audio/aac"],
   [/\.(?:ogg|oga)(\?.*)?$/i, "audio/ogg"],
   [/\.opus(\?.*)?$/i, "audio/opus"],
+  [/\.flac(\?.*)?$/i, "audio/flac"],
   [/\.wav(\?.*)?$/i, "audio/wav"],
   [/\.mp4(\?.*)?$/i, "video/mp4"],
   [/\.m4v(\?.*)?$/i, "video/x-m4v"],
@@ -116,6 +119,7 @@ const EXTENSION_MIME: Array<[RegExp, string]> = [
 function resolveMediaMime(rawType: unknown, url: string): string | null {
   if (typeof rawType === "string") {
     const normalized = rawType.toLowerCase().split(";")[0].trim();
+    if (normalized === "application/ogg") return "audio/ogg";
     if (normalized.startsWith("audio/") || normalized.startsWith("video/")) return normalized;
   }
   for (const [pattern, mime] of EXTENSION_MIME) {
@@ -154,6 +158,7 @@ function extractXmlMedia(item: CustomItem): {
 } {
   let enclosureUrl: string | null = null;
   let enclosureType: string | null = null;
+  let mediaDuration: unknown = undefined;
 
   if (item.enclosure?.url) {
     const url = asHttpUrl(item.enclosure.url);
@@ -164,17 +169,46 @@ function extractXmlMedia(item: CustomItem): {
     }
   }
 
-  const mediaContent = item.mediaContent ?? item["media:content"];
-  if (!enclosureUrl && mediaContent) {
-    const url = asHttpUrl(mediaAttribute(mediaContent, "url"));
-    const type = url ? resolveMediaMime(mediaAttribute(mediaContent, "type"), url) : null;
-    if (url && type) {
-      enclosureUrl = url;
-      enclosureType = type;
+  if (!enclosureUrl && item.rawLinks) {
+    for (const rawLink of asMediaEntries(item.rawLinks)) {
+      if (!isRecord(rawLink) || !isRecord(rawLink.$)) continue;
+      if (String(rawLink.$.rel ?? "").toLowerCase() !== "enclosure") continue;
+      const url = asHttpUrl(rawLink.$.href);
+      const type = url ? resolveMediaMime(rawLink.$.type, url) : null;
+      if (url && type) {
+        enclosureUrl = url;
+        enclosureType = type;
+        break;
+      }
     }
   }
 
-  const duration = parseDurationSeconds(item.itunesDuration ?? mediaAttribute(mediaContent, "duration"));
+  const candidateMediaEntries: unknown[] = [];
+  const directMedia = item.mediaContent ?? item["media:content"];
+  if (directMedia) candidateMediaEntries.push(...asMediaEntries(directMedia));
+  const mediaGroup = item.mediaGroup ?? item["media:group"];
+  if (mediaGroup) {
+    for (const group of asMediaEntries(mediaGroup)) {
+      if (!isRecord(group)) continue;
+      const grouped = group["media:content"] ?? group.mediaContent;
+      if (grouped) candidateMediaEntries.push(...asMediaEntries(grouped));
+    }
+  }
+
+  for (const entry of candidateMediaEntries) {
+    if (mediaDuration === undefined) mediaDuration = mediaAttribute(entry, "duration");
+    if (!enclosureUrl) {
+      const url = asHttpUrl(mediaAttribute(entry, "url"));
+      const type = url ? resolveMediaMime(mediaAttribute(entry, "type"), url) : null;
+      if (url && type) {
+        enclosureUrl = url;
+        enclosureType = type;
+        mediaDuration = mediaAttribute(entry, "duration") ?? mediaDuration;
+      }
+    }
+  }
+
+  const duration = parseDurationSeconds(item.itunesDuration ?? mediaDuration);
   const rawChaptersUrl = mediaAttribute(item.podcastChapters, "url");
   const rawChaptersType = mediaAttribute(item.podcastChapters, "type");
   const chaptersMime = typeof rawChaptersType === "string" ? rawChaptersType.toLowerCase().split(";")[0].trim() : "";

@@ -59,6 +59,41 @@ test("parseFeedBody extracts audio/video enclosures, duration, and chapters from
   assert.equal(parsedJson.items[0]?.enclosureUrl, "https://cdn.example.org/demo.mp4");
   assert.equal(parsedJson.items[0]?.enclosureType, "video/mp4");
   assert.equal(parsedJson.items[0]?.enclosureDurationSeconds, 125);
+
+  const atomFeed = `<?xml version="1.0" encoding="UTF-8"?>
+  <feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+    <title>Mixed Atom</title>
+    <entry>
+      <id>atom-audio</id>
+      <title>Atom Audio</title>
+      <link rel="alternate" href="https://example.org/atom-audio"/>
+      <link rel="enclosure" type="application/ogg" href="https://cdn.example.org/stream?id=1"/>
+    </entry>
+    <entry>
+      <id>mrss-group</id>
+      <title>Grouped Video</title>
+      <link rel="alternate" href="https://example.org/mrss-group"/>
+      <media:group>
+        <media:content url="https://cdn.example.org/thumb.jpg" type="image/jpeg"/>
+        <media:content url="https://cdn.example.org/clip.mp4" type="video/mp4" duration="95"/>
+      </media:group>
+    </entry>
+    <entry>
+      <id>flac-audio</id>
+      <title>Lossless Podcast</title>
+      <link rel="alternate" href="https://example.org/flac"/>
+      <media:content url="https://cdn.example.org/episode.flac" duration="180"/>
+    </entry>
+  </feed>`;
+
+  const parsedAtom = await parseFeedBody(atomFeed);
+  assert.equal(parsedAtom.items[0]?.enclosureUrl, "https://cdn.example.org/stream?id=1");
+  assert.equal(parsedAtom.items[0]?.enclosureType, "audio/ogg");
+  assert.equal(parsedAtom.items[1]?.enclosureUrl, "https://cdn.example.org/clip.mp4");
+  assert.equal(parsedAtom.items[1]?.enclosureType, "video/mp4");
+  assert.equal(parsedAtom.items[1]?.enclosureDurationSeconds, 95);
+  assert.equal(parsedAtom.items[2]?.enclosureUrl, "https://cdn.example.org/episode.flac");
+  assert.equal(parsedAtom.items[2]?.enclosureType, "audio/flac");
 });
 
 test("parsePodcastChapters filters hidden chapters and sorts by startTime", async () => {

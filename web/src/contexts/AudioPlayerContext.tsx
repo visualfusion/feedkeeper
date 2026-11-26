@@ -33,6 +33,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const lastSyncedAtRef = useRef(0);
   const currentItemRef = useRef<Item | null>(null);
   currentItemRef.current = currentItem;
+  const playbackRateRef = useRef(playbackRate);
+  playbackRateRef.current = playbackRate;
 
   const syncPosition = useCallback((item: Item, pos: number, dur: number, completed: boolean) => {
     lastSyncedAtRef.current = Date.now();
@@ -58,6 +60,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       }
     };
     const onLoadedMetadata = () => {
+      audio.playbackRate = playbackRateRef.current;
       if (Number.isFinite(audio.duration) && audio.duration > 0) {
         setDuration(audio.duration);
       }
@@ -69,6 +72,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       }
     };
     const onPlay = () => setIsPlaying(true);
+    const onError = () => setIsPlaying(false);
     const onPause = () => {
       setIsPlaying(false);
       const item = currentItemRef.current;
@@ -88,6 +92,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
     audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onError);
 
     return () => {
       audio.pause();
@@ -96,6 +101,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onError);
     };
   }, [syncPosition]);
 

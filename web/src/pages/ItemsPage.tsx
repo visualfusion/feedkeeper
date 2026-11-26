@@ -979,7 +979,7 @@ export function ItemsPage() {
       ) : currentFeed && !search && currentFeedKind === "audio" ? (
         <>
           <MediaShowHeader feed={currentFeed} />
-          <PodcastEpisodeList items={items} focusedItemId={focusedItemId} onOpen={openArticle} onBookmark={toggleBookmark} onRead={toggleRead} />
+          <PodcastEpisodeList feed={currentFeed} items={items} focusedItemId={focusedItemId} onOpen={openArticle} onBookmark={toggleBookmark} onRead={toggleRead} />
         </>
       ) : currentFeed && !search && currentFeedKind === "video" ? (
         <>

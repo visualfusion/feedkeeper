@@ -6,6 +6,7 @@ import { ArticleExcerpt } from "./ArticleExcerpt.tsx";
 import { JapaneseText } from "./JapaneseText.tsx";
 import { editorialCompanions, editorialFeatures } from "../utils/editorialLayout.ts";
 import { textLanguage } from "../utils/japanese.ts";
+import { formatMediaDuration, youtubeVideoId } from "./MediaPlayer.tsx";
 
 interface NewspaperGridProps {
   items: Item[];
@@ -71,6 +72,12 @@ function EditorialCard({ item, featured, besideFeature, focused, onOpen, onBookm
           <div className="mb-3 flex min-w-0 items-center gap-2 text-xs font-semibold tracking-[0.08em] uppercase text-[var(--c-text-muted)]">
             <Favicon feedId={item.feed_id} iconUrl={item.feed_icon_url} siteUrl={item.feed_site_url} feedUrl={item.feed_url} articleUrl={item.link} className="h-3.5 w-3.5 shrink-0 rounded-xs object-contain" />
             <span className="truncate">{item.feed_title}</span>
+            {(item.enclosure_url || youtubeVideoId(item.link)) && (
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[var(--c-border)] px-2 py-0.5 text-[11px] font-medium tracking-normal normal-case text-[var(--c-text-muted)] shrink-0">
+                <span aria-hidden="true">{item.enclosure_type?.startsWith("video/") || (!item.enclosure_url && youtubeVideoId(item.link)) ? "▶" : "🎧"}</span>
+                {item.enclosure_duration_seconds ? formatMediaDuration(item.enclosure_duration_seconds) : (item.enclosure_type?.startsWith("video/") || (!item.enclosure_url && youtubeVideoId(item.link)) ? "Video" : "Audio")}
+              </span>
+            )}
           </div>
           <h2
             lang={textLanguage(item.title || item.feed_title)}
