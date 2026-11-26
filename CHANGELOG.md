@@ -2,6 +2,16 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.6] - 2026-11-26
+
+### Fixed
+- **YouTube embed Error 153 (`Referrer-Policy`):** Set `Referrer-Policy: strict-origin-when-cross-origin` on the server and YouTube `<iframe>` so `youtube-nocookie.com` embeds receive the origin header and play cleanly instead of showing Error 153.
+- **Calm full-text notice in web reader:** Automatic reader extraction no longer shows a red error banner on failure (nor runs on podcast/YouTube items); manual full-text failures now render a calm, neutral notice matching the consent-wall style.
+- **HTML entity decoding in show descriptions:** Replaced chained `.replace()` calls in `plainDescription` with a single-pass entity map (resolves CodeQL `js/double-escaping`).
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.47.5] - 2026-11-26
 
 ### Added
