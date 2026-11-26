@@ -1,13 +1,16 @@
 import { useTranslation } from "react-i18next";
+import { supportedLanguages } from "../i18n/index.ts";
 import { rememberLanguage } from "../i18n/remember.ts";
 import { CustomSelect } from "./CustomSelect.tsx";
 
-const LANGUAGES = [
+const ALL_LANGUAGE_OPTIONS = [
   { value: "de", label: "Deutsch" },
   { value: "en", label: "English" },
   { value: "ja", label: "日本語" },
   { value: "ru", label: "Русский" },
 ];
+
+const LANGUAGES = ALL_LANGUAGE_OPTIONS.filter((opt) => supportedLanguages.includes(opt.value));
 
 export function LanguageSwitcher() {
   const { t, i18n } = useTranslation();

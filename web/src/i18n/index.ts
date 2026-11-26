@@ -7,6 +7,24 @@ import ru from "./locales/ru.json";
 import ja from "./locales/ja.json";
 import { LANGUAGE_KEY } from "./remember.ts";
 
+const ALL_LANGUAGES = ["en", "de", "ja", "ru"] as const;
+
+function resolveSupportedLanguages(): string[] {
+  if (typeof document !== "undefined") {
+    const raw = document.querySelector('meta[name="feedkeeper-languages"]')?.getAttribute("content");
+    if (raw) {
+      const filtered = raw
+        .split(",")
+        .map((code) => code.trim().toLowerCase())
+        .filter((code) => (ALL_LANGUAGES as readonly string[]).includes(code));
+      if (filtered.length > 0) return filtered;
+    }
+  }
+  return [...ALL_LANGUAGES];
+}
+
+export const supportedLanguages = resolveSupportedLanguages();
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -18,7 +36,7 @@ i18n
       ja: { translation: ja },
     },
     fallbackLng: "en",
-    supportedLngs: ["en", "de", "ja", "ru"],
+    supportedLngs: supportedLanguages,
     interpolation: { escapeValue: false },
     // An explicit choice (stored by rememberLanguage) comes first, then the system's language. What the detector finds
     // is not stored, so that only a real choice overrides the system.
