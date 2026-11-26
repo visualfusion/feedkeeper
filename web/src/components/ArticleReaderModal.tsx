@@ -8,6 +8,7 @@ import { hasCommandModifier, isEditableTarget, openSafeExternalUrl } from "../ut
 import { Favicon } from "./Favicon.js";
 import { JapaneseText } from "./JapaneseText.js";
 import { MediaPlayer, youtubeVideoId } from "./MediaPlayer.js";
+import type { ExtensionFooterAction } from "../extensions/host.js";
 
 export type ArticleContentUpdate = Pick<Item, "id" | "full_content_html">;
 
@@ -22,6 +23,7 @@ interface ArticleReaderModalProps {
   onItemUpdated?: (item: ArticleContentUpdate) => void;
   hasNext?: boolean;
   hasPrev?: boolean;
+  footerActions?: ExtensionFooterAction[];
 }
 
 export function ArticleReaderModal({
@@ -35,6 +37,7 @@ export function ArticleReaderModal({
   onItemUpdated,
   hasNext = false,
   hasPrev = false,
+  footerActions,
 }: ArticleReaderModalProps) {
   const { t, i18n } = useTranslation();
   // The header floats over the article; its height becomes the article's top offset.
@@ -63,6 +66,8 @@ export function ArticleReaderModal({
   // The subscription can opt out of fetching articles from the website.
   const fullTextDisabled = item?.feed_full_text_mode === "never";
   const [leadImage, setLeadImage] = useState<{ src: string; width: number; height: number } | null>(null);
+  const [actionPending, setActionPending] = useState(false);
+  const [actionVersion, setActionVersion] = useState(0);
   const articleUrl = item?.link ? safeHttpUrl(item.link) : null;
 
   // Sync state whenever active item changes
@@ -70,6 +75,7 @@ export function ArticleReaderModal({
     setShowFullText(Boolean(item?.full_content_html));
     setExtractionError(null);
     setConsentWall(false);
+    setActionPending(false);
   }, [item?.id, item?.full_content_html]);
 
   useEffect(() => { setExtractedByline(null); }, [item?.id]);
@@ -551,6 +557,44 @@ export function ArticleReaderModal({
                     </svg>
                   </a>
                 )}
+
+                {footerActions && footerActions.length > 0 && footerActions.map((action) => (
+                  <button
+                    key={`${action.id}-${actionVersion}`}
+                    type="button"
+                    onClick={() => {
+                      if (actionPending) return;
+                      setActionPending(true);
+                      void Promise.resolve(action.onPress())
+                        .catch(console.error)
+                        .finally(() => {
+                          setActionPending(false);
+                          setActionVersion((v) => v + 1);
+                        });
+                    }}
+                    disabled={actionPending}
+                    aria-pressed={Boolean(action.active)}
+                    title={action.label}
+                    aria-label={action.label}
+                    className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all active:scale-95 disabled:opacity-55 cursor-pointer ${
+                      action.active
+                        ? "bg-[var(--c-blue3)]/15 border-[var(--c-blue3)] text-[var(--c-text)]"
+                        : "border-[var(--c-border)] text-[var(--c-text-muted)] hover:text-[var(--c-text)] hover:bg-[var(--c-border)]/40"
+                    }`}
+                  >
+                    <svg
+                      className={`w-4 h-4${action.rotate180 ? " rotate-180" : ""}`}
+                      viewBox="0 0 24 24"
+                      fill={action.active ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d={action.iconPath} />
+                    </svg>
+                  </button>
+                ))}
               </div>
             </div>
           </article>

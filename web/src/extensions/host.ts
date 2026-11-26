@@ -290,11 +290,20 @@ export function resolveMeta(extensions: unknown, language: string): ResolvedMeta
   };
 }
 
+export interface ExtensionFooterAction {
+  id: string;
+  label: string;
+  active?: boolean;
+  iconPath: string;
+  rotate180?: boolean;
+  onPress: () => void | Promise<void>;
+}
+
 export interface PageExtensionContext {
   userId: number;
   language: string;
   appendText: (element: HTMLElement, text: string) => void;
-  openArticle: (item: Item, onChange: (item: Item) => void) => void;
+  openArticle: (item: Item, onChange: (item: Item) => void, actions?: ExtensionFooterAction[]) => void;
 }
 
 export interface PageExtension {

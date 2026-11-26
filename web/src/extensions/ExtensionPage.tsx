@@ -6,7 +6,7 @@ import { useAuth } from "../auth/AuthContext.tsx";
 import { announceItemsChanged } from "../utils/badge.ts";
 import { segmentJapaneseText, textLanguage } from "../utils/japanese.ts";
 import { ArticleReaderModal } from "../components/ArticleReaderModal.tsx";
-import { resolvePageExtensions, type PageExtension } from "./host.ts";
+import { resolvePageExtensions, type ExtensionFooterAction, type PageExtension } from "./host.ts";
 import { useExtensions } from "./useExtensions.ts";
 
 export function ExtensionPage() {
@@ -22,7 +22,7 @@ export function ExtensionPage() {
 
 function MountedPage({ page: { mount }, userId, language }: { page: PageExtension; userId: number; language: string }) {
   const container = useRef<HTMLDivElement>(null);
-  const [reader, setReader] = useState<{ item: Item; onChange: (item: Item) => void } | null>(null);
+  const [reader, setReader] = useState<{ item: Item; onChange: (item: Item) => void; actions?: ExtensionFooterAction[] } | null>(null);
 
   useEffect(() => {
     if (!container.current) return;
@@ -32,7 +32,7 @@ function MountedPage({ page: { mount }, userId, language }: { page: PageExtensio
     try {
       cleanup = mount(element, {
         userId, language, appendText,
-        openArticle: (item, onChange) => { if (active) setReader({ item, onChange }); },
+        openArticle: (item, onChange, actions) => { if (active) setReader({ item, onChange, actions }); },
       });
     } catch (error) {
       console.error("Could not mount extension page", error);
@@ -68,6 +68,7 @@ function MountedPage({ page: { mount }, userId, language }: { page: PageExtensio
             void sendItemAction("bookmark", item.id, !item.bookmarked)
               .then(() => updateReader({ ...item, bookmarked: !item.bookmarked })).catch(console.error);
           }}
+          footerActions={reader.actions}
         />
       )}
     </>
