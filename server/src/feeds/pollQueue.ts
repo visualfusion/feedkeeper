@@ -18,8 +18,17 @@ interface Job { feed_id: number; host: string; enqueued_at: number; available_at
 type Attempt = (feed: Feed, signal: AbortSignal, interactive: boolean) => Promise<PollResult>;
 type Waiter = { promise: Promise<PollResult>; resolve: (result: PollResult) => void; timer: NodeJS.Timeout };
 
+const MAX_ERROR_BACKOFF_MS = 24 * 60 * 60_000;
+
 export function retryDelay(attempt: number, settings: PollSettings, random = Math.random()): number {
   return Math.ceil(Math.min(settings.retryMaxMs, settings.retryBaseMs * 2 ** attempt) * (0.5 + random * 0.5));
+}
+/** Exponentially back off feeds that fail repeatedly so permanently broken sources do not starve healthy ones. */
+export function errorBackoffMs(pollIntervalMinutes: number, consecutiveErrors: number): number {
+  const baseMs = Math.max(1, pollIntervalMinutes) * 60_000;
+  if (consecutiveErrors <= 3) return baseMs;
+  const factor = 2 ** Math.min(consecutiveErrors - 3, 10);
+  return Math.min(MAX_ERROR_BACKOFF_MS, baseMs * factor);
 }
 function isTransient(error: unknown): boolean {
   return error instanceof FeedHttpError ? [408, 425, 429, 500, 502, 503, 504].includes(error.status)
@@ -114,7 +123,14 @@ export class PollQueue {
           AND (f.last_polled_at IS NULL OR f.last_polled_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now','-' || f.poll_interval_minutes || ' minutes'))
           ORDER BY f.id LIMIT 200`).all(after);
         if (!rows.length) break;
-        db.transaction(() => { for (const feed of rows) if (!this.active.has(feed.id)) this.enqueue(feed); })();
+        const now = Date.now();
+        db.transaction(() => {
+          for (const feed of rows) {
+            if (this.active.has(feed.id)) continue;
+            if (feed.last_polled_at && Date.parse(feed.last_polled_at) + errorBackoffMs(feed.poll_interval_minutes, feed.consecutive_errors ?? 0) > now) continue;
+            this.enqueue(feed);
+          }
+        })();
         after = rows[rows.length - 1].id;
         this.kick();
         await yieldTurn();
@@ -229,7 +245,8 @@ export class PollQueue {
       const transient = isTransient(error);
       const retry = transient && job.attempts < this.settings.maxRetries;
       const retryAt = Math.max(Date.now() + retryDelay(job.attempts, this.settings), error instanceof FeedHttpError ? error.retryAt ?? 0 : 0);
-      const resumeAt = retry ? retryAt : Math.max(retryAt, Date.now() + feed.poll_interval_minutes * 60_000);
+      const nextErrors = (feed.consecutive_errors ?? 0) + 1;
+      const resumeAt = retry ? retryAt : Math.max(retryAt, Date.now() + errorBackoffMs(feed.poll_interval_minutes, nextErrors));
       db.transaction(() => {
         updateFeedAfterPoll(feed.id, { error: message });
         if (retry) {

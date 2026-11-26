@@ -12,13 +12,32 @@ db.function("background_full_text_paused", (link: string) => Number(isBackground
 
 /** Refillable durable queue, bounded independently of library size. */
 export function scheduleFullTexts(): number {
+  lastScheduledAt = Date.now();
   const queued = db.prepare("SELECT COUNT(*) n FROM full_text_jobs").get() as { n: number };
   const room = Math.max(0, 200 - queued.n);
   if (!room) return 0;
   const eligible = (db.prepare("SELECT id FROM users").all() as { id: number }[]).filter(user => hasUserCapability(user.id, "fulltext")).map(user => user.id);
   if (!eligible.length) return 0;
   const candidates = db.prepare<[string, string, string, string, number, number], { id: number; user_id: number; priority: number }>(`
-    WITH candidate_articles AS (
+    WITH eligible_feeds AS (
+      SELECT s.feed_id, MIN(s.user_id) AS user_id
+      FROM subscriptions s
+      WHERE s.user_id IN (SELECT value FROM json_each(?))
+        AND COALESCE(s.full_text_mode, 'auto') = 'auto'
+      GROUP BY s.feed_id
+    ),
+    subscription_candidates AS (
+      SELECT i.id AS item_id, ef.user_id, 1 AS priority, i.created_at, i.link,
+             ROW_NUMBER() OVER (PARTITION BY i.feed_id ORDER BY i.created_at DESC, i.id DESC) AS feed_rank
+      FROM eligible_feeds ef
+      JOIN items i ON i.feed_id = ef.feed_id
+      WHERE i.link IS NOT NULL AND i.full_content_html IS NULL
+        AND i.extraction_status = 'pending'
+        AND i.created_at >= strftime('%Y-%m-%dT%H:%M:%fZ','now','-14 days')
+        AND (i.extraction_retry_at IS NULL OR i.extraction_retry_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        AND NOT EXISTS (SELECT 1 FROM full_text_jobs j WHERE j.item_id = i.id)
+    ),
+    candidate_articles AS (
       SELECT ids.value AS item_id, e.user_id, 3 AS priority, i.created_at, i.link
       FROM editions e, json_each(e.item_ids) ids
       JOIN items i ON i.id = ids.value
@@ -26,7 +45,6 @@ export function scheduleFullTexts(): number {
         AND NOT EXISTS (SELECT 1 FROM subscriptions disabled WHERE disabled.user_id=e.user_id AND disabled.feed_id=i.feed_id AND disabled.full_text_mode='never')
         AND e.status = 'active' AND e.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now')
         AND i.link IS NOT NULL AND i.full_content_html IS NULL
-        AND i.extraction_status != 'feed_only'
         AND i.extraction_status = 'pending'
         AND (i.extraction_retry_at IS NULL OR i.extraction_retry_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         AND NOT EXISTS (SELECT 1 FROM full_text_jobs j WHERE j.item_id = i.id)
@@ -39,7 +57,6 @@ export function scheduleFullTexts(): number {
       WHERE b.user_id IN (SELECT value FROM json_each(?))
         AND NOT EXISTS (SELECT 1 FROM subscriptions disabled WHERE disabled.user_id=b.user_id AND disabled.feed_id=i.feed_id AND disabled.full_text_mode='never')
         AND i.link IS NOT NULL AND i.full_content_html IS NULL
-        AND i.extraction_status != 'feed_only'
         AND i.extraction_status = 'pending'
         AND (i.extraction_retry_at IS NULL OR i.extraction_retry_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         AND NOT EXISTS (SELECT 1 FROM full_text_jobs j WHERE j.item_id = i.id)
@@ -52,30 +69,21 @@ export function scheduleFullTexts(): number {
       WHERE n.user_id IN (SELECT value FROM json_each(?))
         AND NOT EXISTS (SELECT 1 FROM subscriptions disabled WHERE disabled.user_id=n.user_id AND disabled.feed_id=i.feed_id AND disabled.full_text_mode='never')
         AND i.link IS NOT NULL AND i.full_content_html IS NULL
-        AND i.extraction_status != 'feed_only'
         AND i.extraction_status = 'pending'
         AND (i.extraction_retry_at IS NULL OR i.extraction_retry_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         AND NOT EXISTS (SELECT 1 FROM full_text_jobs j WHERE j.item_id = i.id)
 
       UNION ALL
 
-      SELECT i.id AS item_id, s.user_id, 1 AS priority, i.created_at, i.link
-      FROM subscriptions s
-      JOIN items i ON i.feed_id = s.feed_id
-      WHERE s.user_id IN (SELECT value FROM json_each(?))
-        AND COALESCE(s.full_text_mode, 'auto') = 'auto'
-        AND i.link IS NOT NULL AND i.full_content_html IS NULL
-        AND i.extraction_status != 'feed_only'
-        AND i.extraction_status = 'pending'
-        AND i.created_at >= strftime('%Y-%m-%dT%H:%M:%fZ','now','-14 days')
-        AND (i.extraction_retry_at IS NULL OR i.extraction_retry_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-        AND NOT EXISTS (SELECT 1 FROM full_text_jobs j WHERE j.item_id = i.id)
+      SELECT item_id, user_id, priority, created_at, link
+      FROM subscription_candidates
+      WHERE feed_rank <= 10
     )
     SELECT item_id AS id, user_id, MAX(priority) AS priority
     FROM candidate_articles
     WHERE ? = 0 OR background_full_text_paused(link) = 0
     GROUP BY item_id
-    ORDER BY (priority + CAST((julianday('now')-julianday(created_at))*1440 / 60 AS INTEGER)) DESC, created_at ASC LIMIT ?`).all(JSON.stringify(eligible), JSON.stringify(eligible), JSON.stringify(eligible), JSON.stringify(eligible), pruneFullTextBlocks(), room);
+    ORDER BY MAX(priority) DESC, created_at DESC LIMIT ?`).all(JSON.stringify(eligible), JSON.stringify(eligible), JSON.stringify(eligible), JSON.stringify(eligible), pruneFullTextBlocks(), room);
   const add = db.prepare("INSERT OR IGNORE INTO full_text_jobs(item_id, user_id, priority, created_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))");
   let count = 0;
   db.transaction(() => {
@@ -131,6 +139,8 @@ let timer: NodeJS.Timeout | undefined;
 let seedTimer: NodeJS.Timeout | undefined;
 let stopping = false;
 let scheduled = false;
+let lastScheduledAt = 0;
+const PUMP_REFILL_COOLDOWN_MS = 5_000;
 const startedAt = Date.now();
 let completed = 0;
 let failed = 0;
@@ -213,7 +223,7 @@ function pump() {
   if (timer) clearTimeout(timer);
   const pool = configureFullTextPool();
   if (active.size >= pool.limits.concurrency) return;
-  if (seedTimer && (db.prepare("SELECT COUNT(*) n FROM full_text_jobs").get() as { n: number }).n < pool.limits.concurrency * 2) scheduleFullTexts();
+  if (seedTimer && Date.now() - lastScheduledAt >= PUMP_REFILL_COOLDOWN_MS && (db.prepare("SELECT COUNT(*) n FROM full_text_jobs").get() as { n: number }).n < pool.limits.concurrency * 2) scheduleFullTexts();
   const jobs = db.prepare<[string, number], Job>(`SELECT j.*, i.link FROM full_text_jobs j JOIN items i ON i.id=j.item_id
     WHERE julianday(j.available_at) <= julianday(?) ORDER BY (j.priority + CAST((julianday('now')-julianday(j.created_at))*86400000 / ? AS INTEGER)) DESC,
     j.created_at, j.item_id LIMIT 1000`).all(new Date().toISOString(), pool.limits.agingMs);

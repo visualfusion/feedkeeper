@@ -2,6 +2,16 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.4] - 2026-11-26
+
+### Fixed
+- **Full-text SSRF retry loop:** Recorded a 7-day failed extraction attempt when `SsrfBlockedError` is raised so article URLs resolving to non-public addresses no longer stay `pending` and re-enter the background queue every 15 seconds.
+- **Background full-text fairness & scheduler throttling:** Deduplicated subscribed feeds before scanning, capped per-feed background scheduling to 10 recent pending items per batch so high-volume firehose feeds cannot monopolize the queue, and added a 5-second refill cooldown in `pump()` to prevent tight SQLite/JS rescanning loops.
+- **Exponential feed poll backoff on repeated failures:** Applied exponential backoff (up to 24 hours) after 3 consecutive poll errors in both `PollQueue.run()` and `seedDue()` so permanently broken or rate-limited feeds stop consuming poll slots every 15 minutes.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.47.3] - 2026-11-25
 
 ### Fixed

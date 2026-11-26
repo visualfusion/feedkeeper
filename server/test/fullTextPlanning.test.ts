@@ -141,5 +141,35 @@ test("durable full texts share triggers, retry without occupying workers and res
     const stale = add("/stale");
     db.prepare("UPDATE items SET created_at='2020-01-01T00:00:00.000Z' WHERE id=?").run(stale);
     assert.equal(queue.scheduleFullTexts(), 0, "stale subscription items older than 14 days are skipped in background");
+
+    // SSRF-blocked article URLs record a failed attempt instead of staying pending in an infinite loop.
+    const ssrfBlocked = add("/ssrf-blocked", "http://127.0.0.1/internal");
+    process.env.ALLOW_PRIVATE_FEEDS = "false";
+    try {
+      assert.deepEqual(await loadFullText(user, ssrfBlocked), { ok: false, error: "extraction_failed" });
+    } finally {
+      process.env.ALLOW_PRIVATE_FEEDS = "true";
+    }
+    const ssrfItem = repo.findItemById(ssrfBlocked)!;
+    assert.equal(ssrfItem.extraction_status, "failed");
+    assert.ok(Date.parse(ssrfItem.extraction_retry_at!) > Date.now() + 6 * 86400_000);
+    assert.equal(queue.scheduleFullTexts(), 0, "SSRF-blocked items are not rescheduled in background");
+
+    // A high-volume feed cannot monopolize background full-text scheduling.
+    db.prepare("DELETE FROM full_text_jobs").run();
+    db.prepare("UPDATE items SET extraction_status='feed_only'").run();
+    const firehose = repo.createFeed(base + "/firehose", 15).id;
+    const normal = repo.createFeed(base + "/normal", 15).id;
+    repo.subscribe(user, firehose);
+    repo.subscribe(user, normal);
+    db.transaction(() => {
+      const insert = db.prepare("INSERT INTO items(feed_id,guid,title,link) VALUES (?,?,?,?)");
+      for (let i = 0; i < 15; i++) insert.run(firehose, `firehose-${i}`, "Firehose", base + `/firehose/${i}`);
+      insert.run(normal, "normal-0", "Normal", base + "/normal/0");
+    })();
+    assert.equal(queue.scheduleFullTexts(), 11, "caps per-feed background batch at 10 while still scheduling other feeds");
+    const scheduledFeeds = db.prepare("SELECT i.feed_id, COUNT(*) n FROM full_text_jobs j JOIN items i ON i.id=j.item_id GROUP BY i.feed_id").all() as { feed_id: number; n: number }[];
+    assert.equal(scheduledFeeds.find(r => r.feed_id === firehose)?.n, 10);
+    assert.equal(scheduledFeeds.find(r => r.feed_id === normal)?.n, 1);
   } finally { await queue.stopFullTextScheduler(); alternate.closeAllConnections(); await new Promise<void>(done => alternate.close(() => done())); source.closeAllConnections(); await new Promise<void>(done => source.close(() => done())); }
 });

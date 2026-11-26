@@ -81,7 +81,10 @@ export async function executeFullText(userId: number, itemId: number, force: boo
     return { ok: true, id: itemId, fullContentHtml: findItemById(itemId)!.full_content_html || current.content_html || "",
       title: result.article.title, byline: result.article.byline, cached: false };
   } catch (error) {
-    if (error instanceof SsrfBlockedError) return { ok: false, error: "extraction_failed" };
+    if (error instanceof SsrfBlockedError) {
+      recordAttempt(itemId, "failed");
+      return { ok: false, error: "extraction_failed" };
+    }
     if (error instanceof ArticleHostBusyError) return { ok: false, error: "source_busy", retryable: true, deferred: true, host: error.host, retryAt: error.retryAt };
     if (error instanceof ArticleAccessDeniedError) return { ok: false, error: "capability_not_available" };
     if (articleWorkPool().isClosing || error instanceof ArticleWorkBusyError) return { ok: false, error: "queue_full", retryable: true };

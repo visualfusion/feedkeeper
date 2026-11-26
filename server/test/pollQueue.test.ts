@@ -6,7 +6,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 process.env.DATABASE_PATH = ":memory:";
 process.env.SESSION_SECRET = "poll-queue-test-secret-at-least-32-chars";
 const { db, runMigrations } = await import("../src/db/index.js");
-const { PollQueue, retryDelay } = await import("../src/feeds/pollQueue.js");
+const { PollQueue, retryDelay, errorBackoffMs } = await import("../src/feeds/pollQueue.js");
 const { readPollSettings } = await import("../src/feeds/pollSettings.js");
 const { FeedHttpError } = await import("../src/feeds/fetcher.js");
 const { createFeed, subscribe } = await import("../src/feeds/repository.js");
@@ -172,6 +172,29 @@ test("poll queue: a feed somebody waits for is polled before older scheduled wor
   assert.deepEqual(seen[0], { id: wanted.id, interactive: true });
   assert.deepEqual(seen.slice(1).map(entry => entry.interactive), [false, false, false]);
   assert.deepEqual(seen.slice(1).map(entry => entry.id), background.map(f => f.id), "background work keeps its order of arrival");
+  await q.stop();
+});
+
+test("poll queue: repeated errors apply exponential backoff in both run and seedDue", async () => {
+  reset();
+  assert.equal(errorBackoffMs(15, 0), 15 * 60_000);
+  assert.equal(errorBackoffMs(15, 3), 15 * 60_000);
+  assert.equal(errorBackoffMs(15, 4), 30 * 60_000);
+  assert.equal(errorBackoffMs(15, 5), 60 * 60_000);
+  assert.equal(errorBackoffMs(15, 6), 120 * 60_000);
+  assert.equal(errorBackoffMs(15, 20), 24 * 60 * 60_000);
+
+  const broken = feed("broken.example.test", 1);
+  const healthy = feed("healthy.example.test", 1);
+  const thirtyMinAgo = new Date(Date.now() - 30 * 60_000).toISOString();
+  db.prepare("UPDATE feeds SET last_polled_at = ?, consecutive_errors = 6 WHERE id = ?").run(thirtyMinAgo, broken.id);
+  db.prepare("UPDATE feeds SET last_polled_at = ?, consecutive_errors = 0 WHERE id = ?").run(thirtyMinAgo, healthy.id);
+
+  const seen: number[] = [];
+  const q = new PollQueue(async f => { seen.push(f.id); return { newItems: 0, error: null }; }, () => true, settings);
+  await q.seedDue();
+  await until(() => q.metrics().pending === 0 && q.metrics().running === 0);
+  assert.deepEqual(seen, [healthy.id], "seedDue skips repeatedly failing feeds still in exponential backoff");
   await q.stop();
 });
 
