@@ -2,9 +2,17 @@ import { SIDEBAR_HEADINGS, SIDEBAR_SELECTORS } from "../patterns/sidebars/index.
 import { type ContentRoot, type ContentRule, count, flat, pruneEmpty } from "../shared.js";
 
 const HEADINGS = "h2, h3, h4";
+const PARAGRAPH_HEADINGS = "p";
 /** Only the second half of the text can hold a list of other articles: before it, the same title is part of the story. */
 const AFTER_SHARE = 0.5;
 const MIN_LINKS = 2;
+const DURATION_ONLY_ITEM = /^\d{1,3}\s*(?:Min\.?|min(?:utes?)?(?:\s+read)?|Sek\.?|sec|分|秒)$/i;
+
+function isDurationOnlyList(element: Element | null): boolean {
+  if (!element || (element.tagName !== "UL" && element.tagName !== "OL")) return false;
+  const items = [...element.querySelectorAll(":scope > li")];
+  return items.length >= MIN_LINKS && items.every(item => DURATION_ONLY_ITEM.test(flat(item.textContent)));
+}
 
 function level(heading: Element): number {
   return Number(heading.tagName.slice(1));
@@ -69,8 +77,19 @@ export const sidebars: ContentRule = {
       const anchor = sectionAnchor(heading);
       const section = sectionOf(anchor, level(heading));
       const links = section.reduce((sum, element) => sum + element.querySelectorAll("a[href]").length + (element.matches("a[href]") ? 1 : 0), 0);
-      if (links < MIN_LINKS || textBefore(root, anchor) / total < AFTER_SHARE) continue;
+      if ((links < MIN_LINKS && !section.some(isDurationOnlyList)) || textBefore(root, anchor) / total < AFTER_SHARE) continue;
       section.forEach(element => element.remove());
+      removeBlock(anchor, stats);
+      changed = true;
+    }
+    for (const heading of [...root.querySelectorAll(PARAGRAPH_HEADINGS)]) {
+      if (!root.contains(heading) || !SIDEBAR_HEADINGS.some(pattern => pattern.test(flat(heading.textContent)))) continue;
+      const anchor = sectionAnchor(heading);
+      const next = anchor.nextElementSibling;
+      if (!next || (next.tagName !== "UL" && next.tagName !== "OL")) continue;
+      const links = next.querySelectorAll("a[href]").length;
+      if ((links < MIN_LINKS && !isDurationOnlyList(next)) || textBefore(root, anchor) / total < AFTER_SHARE) continue;
+      next.remove();
       removeBlock(anchor, stats);
       changed = true;
     }
