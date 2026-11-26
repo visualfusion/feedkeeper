@@ -89,4 +89,9 @@ test("removes responsive picture hero variants with width/focal-point suffixes a
   );
   assert.equal(proxied.includes("<img"), false);
   assert.equal(proxied.includes("Proxy caption"), false);
+
+  const mediaCard = sanitizeHtml('<p><a href="https://example.com/demo.mp4" data-media="video" data-source="example.com" data-tracking="1">Video</a></p>');
+  assert.equal(mediaCard.includes('data-media="video"'), true);
+  assert.equal(mediaCard.includes('data-source="example.com"'), true);
+  assert.equal(mediaCard.includes("data-tracking"), false);
 });

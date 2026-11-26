@@ -71,7 +71,6 @@ const sanitizeConfig = {
   USE_PROFILES: { html: true },
   // `data-media` and `data-source` are set by the server for videos, social posts and audio players, which show as a card.
   ALLOWED_ATTR: ["href", "src", "alt", "title", "width", "height", "data-media", "data-source"],
-  ALLOW_DATA_ATTR: false,
   FORBID_TAGS: ["form", "input", "button", "textarea", "select", "style", "video", "audio", "source"],
 };
 
@@ -91,6 +90,13 @@ export function leadingArticleImage(rawHtml: string, baseUrl?: string | null): s
   if (!rawHtml) return null;
   const cleanHtml = DOMPurify.sanitize(rawHtml, sanitizeConfig);
   const doc = new DOMParser().parseFromString(cleanHtml, "text/html");
+  doc.querySelectorAll("*").forEach((element) => {
+    for (const attr of Array.from(element.attributes)) {
+      if (attr.name.startsWith("data-") && (element.tagName !== "A" || (attr.name !== "data-media" && attr.name !== "data-source"))) {
+        element.removeAttribute(attr.name);
+      }
+    }
+  });
 
   for (const img of doc.querySelectorAll("img")) {
     const before = doc.createRange();
@@ -110,6 +116,13 @@ export function sanitizeHtml(rawHtml: string, options: SanitizeOptions = {}): st
 
   const cleanHtml = DOMPurify.sanitize(rawHtml, sanitizeConfig);
   const doc = new DOMParser().parseFromString(cleanHtml, "text/html");
+  doc.querySelectorAll("*").forEach((element) => {
+    for (const attr of Array.from(element.attributes)) {
+      if (attr.name.startsWith("data-") && (element.tagName !== "A" || (attr.name !== "data-media" && attr.name !== "data-source"))) {
+        element.removeAttribute(attr.name);
+      }
+    }
+  });
   const heroUrl = options.heroImageUrl ? safeHttpUrl(options.heroImageUrl, options.baseUrl) : null;
   const heroUnwrapped = unwrapImageUrl(heroUrl);
   const heroFilename = imageFilename(heroUnwrapped);
