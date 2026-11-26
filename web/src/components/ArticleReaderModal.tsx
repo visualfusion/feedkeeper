@@ -357,8 +357,12 @@ export function ArticleReaderModal({
                   </span>
                 </>
               )}
-              {(byline || formattedDate) && <span>•</span>}
-              <span>{t("reader.readingTime", { count: readingTime })}</span>
+              {!isMediaItem && !consentWall && (showFullText || Boolean(item.full_content_html) || readingTime > 1) && (
+                <>
+                  {(byline || formattedDate) && <span>•</span>}
+                  <span>{t("reader.readingTime", { count: readingTime })}</span>
+                </>
+              )}
             </div>
 
             <MediaPlayer item={item} />
