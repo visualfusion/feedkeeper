@@ -702,11 +702,22 @@ export function ItemsPage() {
       }
     }
     for (const feed of feeds) {
+      const label = feed.label ?? feed.title ?? feed.url;
       list.push({
         value: `feed:${feed.id}`,
-        label: feed.label ?? feed.title ?? feed.url,
+        label,
         group: t("feeds.feedGroup"),
         badge: feed.unread_count,
+        icon: (
+          <Favicon
+            feedId={feed.id}
+            iconUrl={feed.icon_url}
+            siteUrl={feed.site_url}
+            feedUrl={feed.url}
+            fallbackName={label}
+            className="w-4 h-4 rounded-xs shrink-0 object-contain"
+          />
+        ),
       });
     }
     return list;

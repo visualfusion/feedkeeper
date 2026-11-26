@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useId, type KeyboardEvent } from "react";
+import { useState, useRef, useEffect, useId, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 export interface SelectOption {
@@ -6,6 +6,7 @@ export interface SelectOption {
   label: string;
   group?: string;
   badge?: string | number;
+  icon?: ReactNode;
 }
 
 interface CustomSelectProps {
@@ -147,6 +148,7 @@ export function CustomSelect({
         <span className="truncate flex items-center gap-1.5">
           {selectedOption ? (
             <>
+              {selectedOption.icon}
               <span className="truncate">{selectedOption.label}</span>
               {selectedOption.badge !== undefined && (
                 <span
@@ -241,6 +243,7 @@ export function CustomSelect({
                           } ${isSelected ? "font-medium bg-[var(--c-blue1)]/10" : ""}`}
                         >
                           <span className="truncate flex items-center gap-1.5">
+                            {opt.icon}
                             <span className="truncate">{opt.label}</span>
                             {opt.badge !== undefined && (
                               <span
