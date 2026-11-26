@@ -2,6 +2,23 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.9] - 2026-11-26
+
+### Added
+- **Publisher website links in feed list:** Clicking the source domain under a feed row on the Feeds page now opens the original publisher website in a new tab (`rel="nofollow noopener noreferrer"`), while clicking the feed name continues to open its articles.
+- **Clickable reader headlines:** Clicking an article's headline inside the web reader drawer opens the original article URL in a new tab.
+
+### Changed
+- **Media feed labels for notifications and badge counts:** Notification and badge count toggles in feed settings now adapt their wording for podcast and video feeds instead of referring to articles.
+
+### Fixed
+- **Proxied hero image deduplication & orphaned captions:** Unwrapped embedded original URLs from image proxies (`?url=…`, `?src=…`, `/https://…`) in both `sanitizeHtml` and `comparableImageKey`, and removed orphaned `<figure>` elements with captions when the duplicate hero image is stripped.
+- **Dark mode link contrast in web reader:** Added a dedicated `--c-link` variable (`#7db3f5` in dark mode) for readable links inside `.reader-content`.
+- **Short teaser reading time:** Hid the reading time badge in `ArticleReaderModal` when the displayed text has fewer than 40 words.
+
+### Upgrade notes
+- No database migrations.
+
 ## [0.47.8] - 2026-11-26
 
 ### Added
