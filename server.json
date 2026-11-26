@@ -7,12 +7,12 @@
     "url": "https://github.com/visualfusion/feedkeeper",
     "source": "github"
   },
-  "version": "0.47.11",
+  "version": "0.47.12",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "feedkeeper",
-      "version": "0.47.11",
+      "version": "0.47.12",
       "runtimeHint": "npx",
       "transport": { "type": "stdio" },
       "packageArguments": [{ "type": "positional", "value": "mcp" }]

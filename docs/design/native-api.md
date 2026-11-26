@@ -220,7 +220,7 @@ Implemented routes accept device tokens or personal access tokens unless noted. 
   - The server creates automatic issues; an active MCP-curated issue takes priority until expiry or dismissal.
   - `GET /edition` returns populated articles in preserved order; `/edition/state` returns the retained revision even after expiry or dismissal. Reads never generate an issue.
   - `POST /edition/generate` ensures an issue exists or requests a new automatic selection. UUID request IDs make retries safe; forced generation requires a revision.
-  - `publish_edition` accepts a conditional revision, UUID request ID, optional title, plain summary and linked overview (see `editions.md`), and a future expiry (default 24 hours, maximum seven days).
+  - `publish_edition` requires the current revision and a UUID request ID, and accepts an optional title, plain summary and linked overview (see `editions.md`), and a future expiry (default 24 hours, maximum seven days). Publishing replaces the active issue.
   - `GET/PATCH /native-preferences` syncs app-only folder order, newspaper visibility and selection preferences. It has no effect on the web folder list or article stream.
   - See [editions.md](editions.md) for defaults, lifecycle, scheduler, MCP workflow, first-time adoption and offline handling.
 

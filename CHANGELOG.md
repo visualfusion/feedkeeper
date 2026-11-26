@@ -2,6 +2,14 @@
 
 All notable changes to FeedKeeper are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/) for its releases. The full release notes, including upgrade notes, are on the [releases page](https://github.com/visualfusion/feedkeeper/releases).
 
+## [0.47.12] - 2026-11-26
+
+### Changed
+- **MCP edition publishing:** Mark publishing as potentially destructive because it replaces the active edition. Clients must supply the current revision and an idempotency UUID, and should confirm replacement with the user. Existing MCP clients must supply both fields.
+
+### Upgrade notes
+- No database migrations. MCP clients calling `publish_edition` must provide `expectedRevision` and `requestId`.
+
 ## [0.47.11] - 2026-11-26
 
 ### Added

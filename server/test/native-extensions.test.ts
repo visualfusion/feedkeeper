@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import type { AddressInfo } from "node:net";
 import express from "express";
@@ -328,7 +329,7 @@ test("native extensions: feed icons, folder icons, notes, editions, and retentio
     await client.connect(clientTransport);
 
     // MCP: duplicate itemIds rejected
-    const dupRes = await client.callTool({ name: "publish_edition", arguments: { itemIds: [itemId, itemId] } });
+    const dupRes = await client.callTool({ name: "publish_edition", arguments: { itemIds: [itemId, itemId], requestId: randomUUID(), expectedRevision: 0 } });
     assert.equal(dupRes.isError, true);
 
     // MCP: foreign/inaccessible itemIds rejected
@@ -341,14 +342,14 @@ test("native extensions: feed icons, folder icons, notes, editions, and retentio
     const client2 = new Client({ name: "feedkeeper-test-2", version: "1.0" });
     await mcpServer2.connect(s2Transport);
     await client2.connect(c2Transport);
-    const foreignRes = await client2.callTool({ name: "publish_edition", arguments: { itemIds: [itemId] } });
+    const foreignRes = await client2.callTool({ name: "publish_edition", arguments: { itemIds: [itemId], requestId: randomUUID(), expectedRevision: 0 } });
     assert.equal(foreignRes.isError, true);
     await client2.close();
 
     // MCP: valid publish_edition
     const pubRes = await client.callTool({
       name: "publish_edition",
-      arguments: { itemIds: [itemId], durationHours: 24 },
+      arguments: { itemIds: [itemId], durationHours: 24, requestId: randomUUID(), expectedRevision: 0 },
     });
     assert.equal(pubRes.isError, undefined);
     const mcpEdition = JSON.parse((pubRes.content as { text: string }[])[0].text);

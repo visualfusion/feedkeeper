@@ -302,7 +302,7 @@ To have an AI assistant configure the MCP connection for you, create a Personal 
 | `import_opml` | Import feeds from an OPML 2.0 XML string |
 | `get_edition` | Read the current issue, source and revision, including expired or dismissed state |
 | `get_edition_candidates` | Get compact candidates respecting app section preferences, muted keywords, and learned reader feedback (`readerPreferences`) |
-| `publish_edition` | Publish an ordered curated issue with optional structured topic overviews and a presentation layout, expiry, revision checks and safe retries |
+| `publish_edition` | Publish an ordered curated issue, replacing the active one; requires the current revision and an idempotency key, with optional topic overviews, layout and expiry |
 | `dismiss_edition` | Dismiss the shared issue with revision and replay protection |
 
 Besides tools, the server offers prompts (`daily_briefing`, `catch_up_on_topic`, `saved_reading_list`, `triage_unread`) and resources (`feedkeeper://feeds`, `opml`, `saved`, `digest` and `feedkeeper://items/{id}`) that clients can show as ready-made actions.

@@ -743,9 +743,13 @@ export function createMcpServerForUser(userId: number, scope: TokenScope): McpSe
 
   if (scope === "write") server.registerTool("publish_edition", {
     title: "Publish curated newspaper edition",
-    description: "Publishes an ordered selection of 1 to 24 article IDs as the user's official curated edition ('Deine Zeitung'). The published edition remains available until the next edition is published or expires. Pass the revision from get_edition as expectedRevision for optimistic concurrency, and a UUID requestId for idempotent retries. Does NOT alter underlying articles. Requires write scope.",
-    annotations: writeAdditiveIdempotentAnnotations,
-    inputSchema: publishEditionFields,
+    description: "Publishes an ordered selection of 1 to 24 article IDs as the user's official curated edition ('Deine Zeitung'), replacing the currently active edition, including its editorial content. The underlying articles are not altered. Confirm with the user before replacing an existing edition. Pass the revision from get_edition as expectedRevision for optimistic concurrency, and a UUID requestId for idempotent retries. Requires write scope.",
+    annotations: writeDestructiveAnnotations,
+    inputSchema: {
+      ...publishEditionFields,
+      expectedRevision: z.number().int().min(0).describe("Current edition revision from get_edition; required to prevent overwriting a newer edition"),
+      requestId: z.uuid().describe("Unique idempotency UUID for this publication; reuse when retrying"),
+    },
   }, async (input) => capabilityAction("editions", () => publishCuratedEdition(userId, input)));
 
   if (scope === "write") server.registerTool("dismiss_edition", {

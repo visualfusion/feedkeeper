@@ -312,6 +312,15 @@ test("server editions and app preferences keep devices in step without changing 
       const tools = (await reader.client.listTools()).tools.map((tool) => tool.name);
       assert.ok(tools.includes("get_edition") && tools.includes("get_edition_candidates"));
       for (const name of ["publish_edition", "dismiss_edition"]) assert.ok(!tools.includes(name));
+      const publish = (await writer.client.listTools()).tools.find((tool) => tool.name === "publish_edition")!;
+      assert.equal(publish.annotations?.destructiveHint, true);
+      assert.ok(publish.inputSchema.required?.includes("expectedRevision"));
+      assert.ok(publish.inputSchema.required?.includes("requestId"));
+      for (const args of [{ itemIds: [a], requestId: randomUUID() }, { itemIds: [a], expectedRevision: 0 }]) {
+        const rejected = await writer.client.callTool({ name: "publish_edition", arguments: args });
+        assert.equal(rejected.isError, true);
+      }
+      assert.equal(editions.getEditionState(owner).revision, 0);
       const id = randomUUID();
       const overview = [{heading: "Original report", segments: [{text: "Source report", itemId: a}]}];
       const first = await writer.client.callTool({ name: "publish_edition", arguments: { itemIds: [a], requestId: id, expectedRevision: 0, overview } });

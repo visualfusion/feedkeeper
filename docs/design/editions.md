@@ -95,7 +95,7 @@ Write tools:
 - `update_native_preferences`: the same conditional PATCH contract.
 - `generate_edition`: legacy read-only alias for the latest curated publication.
 - `dismiss_edition`: conditional dismissal.
-- `publish_edition`: publish 1–24 ordered, unique, accessible IDs with optional editorial text. It may deliberately include read, saved or annotated articles; subscribed hidden sections and muted items are rejected.
+- `publish_edition`: publish 1–24 ordered, unique, accessible IDs with optional editorial text, replacing the active issue. It requires the current `expectedRevision` and an idempotent `requestId`; clients should confirm replacement with the user. It may deliberately include read, saved or annotated articles; subscribed hidden sections and muted items are rejected.
 
 Recommended agent flow: read preferences and candidates, inspect selected originals, then publish with the observed `expectedRevision` and a persisted UUID `requestId`. On a conflict, reread and reconsider the selection before sending a new operation. The server remains the authority and never needs to run the agent itself.
 
