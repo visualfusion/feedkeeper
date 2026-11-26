@@ -506,8 +506,8 @@ export function ItemsPage() {
     }
   }, [articleParam, items]);
 
-  function openArticle(item: Item) {
-    setFocusedItemId(item.id);
+  function openArticle(item: Item, fromKeyboard = false) {
+    if (!fromKeyboard) setFocusedItemId(null);
     setSelectedArticle(item);
     if (!item.read) {
       api.markRead(item.id).then(announceItemsChanged).catch(() => {});
@@ -664,7 +664,7 @@ export function ItemsPage() {
         setFocusedItemId(items[prevIndex].id);
       } else if ((event.key === "Enter" || event.key === "o" || event.key === "O") && focusedItem) {
         event.preventDefault();
-        openArticle(focusedItem);
+        openArticle(focusedItem, true);
       } else if ((event.key === "m" || event.key === "M") && focusedItem) {
         event.preventDefault();
         void toggleRead(focusedItem);
