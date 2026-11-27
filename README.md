@@ -13,6 +13,10 @@
   <a href="#contributing"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=for-the-badge" alt="PRs Welcome" /></a>
 </p>
 
+<p align="center">
+  <a href="https://glama.ai/mcp/servers/visualfusion/feedkeeper"><img src="https://glama.ai/mcp/servers/visualfusion/feedkeeper/badges/score.svg" alt="visualfusion/feedkeeper MCP server" /></a>
+</p>
+
 <br />
 
 FeedKeeper is an RSS, Atom, and JSON Feed reader for news, blogs, podcasts, and YouTube channels. It runs on your own server or Raspberry Pi, stores everything in SQLite, and needs no cloud account.
@@ -245,7 +249,7 @@ docker compose exec feedkeeper node server/dist/feedkeeper.js doctor
 
 If you would rather not operate a server, [FeedKeeper Cloud](https://feedkeeper.cloud) is a hosted edition run by the same maintainers. This repository stays MIT-licensed and fully self-hostable.
 
-## Connecting an MCP client [![Glama Score](https://glama.ai/mcp/servers/visualfusion/feedkeeper/badges/score.svg)](https://glama.ai/mcp/servers/visualfusion/feedkeeper)
+## Connecting an MCP client
 
 **Local stdio mode (Claude Desktop & local tooling).** Run `feedkeeper mcp` (or `node server/dist/mcp-stdio.js`) to start a local stdio MCP server backed by your SQLite database without needing an open port or network configuration.
 
