@@ -1,7 +1,7 @@
 # FeedKeeper
 
 <p align="center">
-  <strong>A lightweight, self-hosted RSS reader, podcast & YouTube client, and remote MCP server for your news, media, and AI workflows.</strong>
+  <strong>A self-hosted RSS reader, podcast and YouTube client, and remote MCP server.</strong>
 </p>
 
 <p align="center">
@@ -15,11 +15,11 @@
 
 <br />
 
-FeedKeeper is an independent RSS, Atom, and JSON Feed manager for news, blogs, podcasts, and YouTube channels — built for people who want full ownership over their subscriptions. It runs quietly on your own server or Raspberry Pi, stores everything in a local SQLite database, and requires zero cloud accounts.
+FeedKeeper is an RSS, Atom, and JSON Feed reader for news, blogs, podcasts, and YouTube channels. It runs on your own server or Raspberry Pi, stores everything in SQLite, and needs no cloud account.
 
-Beyond a clean web reader, FeedKeeper includes a native, authenticated **[Model Context Protocol (MCP)](https://modelcontextprotocol.io)** endpoint. Listed in the official MCP Registry (`io.github.visualfusion/feedkeeper`) and verified for the Anthropic Claude Directory, it lets MCP clients read, search, bookmark, and organize your feeds over a remote connection. Your subscriptions and reading history stay in your own SQLite database.
+Alongside the web reader, FeedKeeper includes an authenticated **[Model Context Protocol (MCP)](https://modelcontextprotocol.io)** endpoint so MCP clients can read, search, bookmark, and organize your feeds over a remote connection while your subscriptions stay in your database.
 
-It is multi-user by default, with isolated accounts, personal access tokens, and a multilingual interface (English, German, Japanese, and Russian).
+It is multi-user by default, with isolated accounts, personal access tokens, and a web interface in English, German, Japanese, and Russian.
 
 <p align="center">
   <img src="docs/screenshots/iphone.png" alt="FeedKeeper on iPhone: newspaper view with category filter and tab bar" width="170" />
@@ -31,11 +31,11 @@ It is multi-user by default, with isolated accounts, personal access tokens, and
 
 There are good self-hosted readers already, such as Miniflux and FreshRSS. FeedKeeper is for you if you want your feeds to be part of your AI workflows without giving up ownership:
 
-- **MCP built in.** Claude, ChatGPT and other MCP clients connect to `/mcp` directly, with OAuth sign-in or personal access tokens, read-only or read and write. FeedKeeper is listed in the official Model Context Protocol Registry (`io.github.visualfusion/feedkeeper`) and verified in Claude's connector directory. Ask for a daily briefing, let an agent triage unread articles, or let it curate an edition. No separate bridge to run.
-- **News, podcasts, and YouTube in one place.** FeedKeeper automatically detects podcast feeds and YouTube channels (even from plain channel URLs), gives each its own show or 16:9 video layout, plays audio in a persistent mini-player with chapter markers, embeds YouTube privately (`youtube-nocookie.com`), and syncs playback positions across devices.
+- **MCP built in.** Claude, ChatGPT and other MCP clients connect to `/mcp` directly, with OAuth sign-in or personal access tokens, read-only or read and write. FeedKeeper is listed in the official Model Context Protocol Registry (`io.github.visualfusion/feedkeeper`) and verified in Claude's connector directory. Ask for a daily briefing, let an agent triage unread articles, or let it curate an edition without running a separate bridge.
+- **News, podcasts, and YouTube in one place.** FeedKeeper detects podcast feeds and YouTube channels (including plain channel URLs), gives each its own show or 16:9 video layout, plays audio in a persistent mini-player with chapter markers, embeds YouTube via `youtube-nocookie.com`, and syncs playback positions across devices.
 - **Small to run.** One Node process and one SQLite file, with full-text search built in. No PostgreSQL, no Redis. It runs on a Raspberry Pi or on shared hosting such as Uberspace.
-- **An open API.** The REST API under `/api/v1` is described in an [OpenAPI file](docs/openapi.yaml), with offline sync, notes and editions, so third parties can build their own clients.
-- **Built to be extended.** Operators can add settings, footer links or a single sign-on form to the web app without forking it, see [Extending the web app](docs/extending-the-web-app.md).
+- **Open REST API.** `/api/v1` is described in an [OpenAPI file](docs/openapi.yaml), with offline sync, notes and editions, so third parties can build their own clients.
+- **Extensible web app.** Operators can add settings, footer links or a single sign-on form to the web app without forking it; see [Extending the web app](docs/extending-the-web-app.md).
 
 If you only need a plain, mature reader with many integrations, the established projects are the safer choice. FeedKeeper is young (version 0.x), so expect some rough edges.
 
@@ -52,7 +52,7 @@ docker compose up -d
 
 Open `http://localhost:3000` to complete the initial setup via the web onboarding screen. For a public domain, also add `PUBLIC_URL=https://your.domain` to `.env` (see [`.env.example`](.env.example) for all options).
 
-Just want to look around? `npx feedkeeper` starts it without Docker (it needs a supported Node.js, see [Running FeedKeeper with Node.js](docs/deployment-npm.md)); the data stays in `~/.feedkeeper`.
+To try FeedKeeper without Docker, run `npx feedkeeper` (requires a supported Node.js version, see [Running FeedKeeper with Node.js](docs/deployment-npm.md)); data stays in `~/.feedkeeper`.
 
 To update, pull the new image and restart:
 
@@ -61,7 +61,7 @@ docker compose pull
 docker compose up -d
 ```
 
-Changing `SESSION_SECRET` signs out active browser sessions and makes stored two-factor keys unreadable (see [Account security](docs/account-security.md)); feeds and accounts stay in the database. Want to build the image yourself? Clone the repository and run `docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
+Changing `SESSION_SECRET` signs out active browser sessions and makes stored two-factor keys unreadable (see [Account security](docs/account-security.md)); feeds and accounts stay in the database. To build the image yourself, clone the repository and run `docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
 
 Started without a `SESSION_SECRET` (for example from one of the templates below), the image creates one on the first start and keeps it in the data volume.
 
@@ -85,46 +85,45 @@ If you use an AI coding assistant on your server or local machine, you can paste
 
 ### Feeds & Media
 
-- **Podcasts & persistent audio player** — automatically detects audio feeds (with manual kind override), shows dedicated podcast headers with cover artwork and descriptions, supports episode artwork (`<itunes:image>`), `<enclosure>`, `itunes:duration`, JSON Feed `attachments`, and `podcast:chapters` (MP3, M4A, FLAC, OGG). Listen via a persistent mini-player across the web app with playback speed controls, clickable chapter markers, and cross-device playback position sync (resetting automatically when an episode finishes).
-- **YouTube channels & video feeds** — subscribe to YouTube channels directly from their channel URL without a Google account, browse video feeds in a dedicated 16:9 grid, read extracted `<media:description>` notes, watch videos inline via `youtube-nocookie.com` or HTML5 video enclosures, and filter streams with `has:audio` and `has:video`.
-- **Smart feed discovery** — paste a direct feed link or a website address (like `example.com/blog`); FeedKeeper finds RSS, Atom, and JSON Feeds (including YouTube channels, Bluesky, Mastodon, GitHub, Codeberg, Substack, Reddit, and Medium), including ones listed on a site's feed overview page, and checks each one before subscribing.
-- **Categories and feed ordering** — group subscriptions into categories, search and filter the feed list, rename categories in place, and reorder feeds by dragging.
-- **Guided onboarding & starter packs** — get started instantly with curated feed lists by interest (News, Technology, Apple, Development, Science, Design, Gaming, Business, Sport, Culture), each feed with a short description and feeds from several lists in one go, single website discovery, or OPML import when setting up an empty account. The lists are served to the native apps too (`GET /api/v1/feed-lists`).
-- **OPML 2.0 import & export** — switch back and forth from Feedly, NetNewsWire, Inoreader, or Reeder at any time.
-- **Reliable feed updates** — fetch several feeds at once with limits per source. Slow feeds and temporary failures do not hold up other updates, and unfinished work resumes after a restart.
-- **Automatic character encoding** — parses standard UTF-8 as well as legacy ISO-8859-1/Windows-1252 feeds without garbled umlauts or broken symbols.
-- **Authoritative feed icons** — icons are cached on the server with SHA-256 hashes and conditional ETags, so devices load them fast without third-party requests.
-- **Health monitoring & feed moves** — clear status indicators show polling health, consecutive fetch errors, and timestamps so you instantly spot dead feeds. Permanent `301`/`308` redirects update feed URLs automatically, and `410 Gone` responses trigger auto-discovery to offer a one-click replacement.
+- **Podcasts and persistent audio player.** Detects audio feeds (with manual kind override), shows podcast headers with cover artwork and descriptions, and supports episode artwork (`<itunes:image>`), `<enclosure>`, `itunes:duration`, JSON Feed `attachments`, and `podcast:chapters` (MP3, M4A, FLAC, OGG). A persistent mini-player across the web app offers playback speed controls, clickable chapter markers, and cross-device playback position sync (resetting when an episode finishes).
+- **YouTube channels and video feeds.** Subscribe to YouTube channels from their channel URL without a Google account, browse videos in a 16:9 grid, read `<media:description>` notes, watch inline via `youtube-nocookie.com` or HTML5 video enclosures, and filter with `has:audio` and `has:video`.
+- **Feed discovery.** Paste a direct feed link or a website address (like `example.com/blog`); FeedKeeper finds RSS, Atom, and JSON Feeds (including YouTube channels, Bluesky, Mastodon, GitHub, Codeberg, Substack, Reddit, and Medium), including ones listed on a site's feed overview page, and checks each one before subscribing.
+- **Categories and feed ordering.** Group subscriptions into categories, search and filter the feed list, rename categories in place, and reorder feeds by dragging.
+- **Guided onboarding and starter packs.** Start with curated feed lists by interest (News, Technology, Apple, Development, Science, Design, Gaming, Business, Sport, Culture), each feed with a short description, or use single-website discovery or OPML import. The lists are served to native apps via `GET /api/v1/feed-lists`.
+- **OPML 2.0 import and export.** Move subscriptions back and forth from Feedly, NetNewsWire, Inoreader, or Reeder at any time.
+- **Reliable feed updates.** Fetch several feeds at once with limits per source. Slow feeds and temporary failures do not hold up other updates, and unfinished work resumes after a restart.
+- **Automatic character encoding.** Parses UTF-8 as well as legacy ISO-8859-1/Windows-1252 feeds without garbled characters.
+- **Authoritative feed icons.** Icons are cached on the server with SHA-256 hashes and conditional ETags, so devices load them without third-party requests.
+- **Health monitoring and feed moves.** Status indicators show polling health, consecutive fetch errors, and timestamps for dead feeds. Permanent `301`/`308` redirects update feed URLs automatically, and `410 Gone` responses trigger auto-discovery to offer a one-click replacement.
 
 ### Reading, Search & Knowledge
 
-- **Article reader & background preparation** — read feed content in the app, with shared, bounded full-text extraction, durable retries and source-host limits. Full-text fetching can be tuned per subscription. Reader content omits repeated author and date lines, including standalone inline bylines, while keeping attribution when no author is provided separately. Videos, social posts and audio players, including those held back by consent plugins, become one link that clients show as a card, and lists of related or popular articles inside an article are removed. The cleanup is a set of small [content rules](docs/content-rules.md) that the community can extend. See [full-text fetching](docs/full-text.md) for settings and operating limits.
-- **List and newspaper views** — switch between a compact list and an editorial layout with wide lead stories and longer previews; phones always use the newspaper layout.
-- **Full-text search & quick filters** — indexed with SQLite FTS5 across titles, snippets, cached full text, and personal notes. Ranked by BM25 relevance with diacritic-insensitive matching, phrase support, filter operators (`has:audio`, `has:video`, `has:notes`, `is:unread`, `is:starred`, `feed:`), and quick filter chips in the web app.
-- **Saved articles as a lasting archive** — star an article to save it: FeedKeeper keeps its full text and stores its images next to the database, so it stays readable even if the source changes. Saved articles survive cleanups and unsubscribing, ignore the word filter, and their full text is searchable.
-- **Article notes and lasting knowledge** — attach personal Markdown notes to any article. Notes sync across devices, export to standalone Markdown files, and protect articles permanently from retention cleanups.
-- **Universal Inbox (Read-it-Later)** — save web clippings, URLs, and personal notes directly to your personal inbox from any browser, share extension, or MCP client. Full article contents and lead images are automatically extracted and archived offline.
-- **Curated editions & daily briefings** — finite morning, midday, and evening editions. Curated by external agents via MCP (e.g. Claude, local LLMs, or custom scripts), with structured, linked editorial overviews. The latest publication remains available until its successor is published.
-  Candidates and publication require readable body text beyond a repeated headline or read-more/player prompt, regardless of publisher or URL. Video/audio-only entries stay in the library but out of new editions; short reports, summaries and transcripts remain eligible. Existing editions are unchanged.
-- **Keyword mute filters** — cut through information overload by filtering out articles matching specific keywords before they reach your stream.
-- **Empty gallery filtering** — gallery links with no editorial text (only an image or a read-more prompt) stay out of article lists, search, notifications and curation. Short news and captions remain visible; saved or annotated items remain accessible. Nothing is deleted.
+- **Article reader and background preparation.** Read feed content in the app, with shared, bounded full-text extraction, durable retries and source-host limits. Full-text fetching can be tuned per subscription. Reader content omits repeated author and date lines, including standalone inline bylines, while keeping attribution when no author is provided separately. Videos, social posts and audio players, including those held back by consent plugins, become one link that clients show as a card, and lists of related or popular articles inside an article are removed. The cleanup uses [content rules](docs/content-rules.md) that contributors can extend; see [full-text fetching](docs/full-text.md) for settings and limits.
+- **List and newspaper views.** Switch between a compact list and an editorial layout with wide lead stories and longer previews; phones always use the newspaper layout.
+- **Full-text search and quick filters.** Indexed with SQLite FTS5 across titles, snippets, cached full text, and personal notes. Ranked by BM25 relevance with diacritic-insensitive matching, phrase support, filter operators (`has:audio`, `has:video`, `has:notes`, `is:unread`, `is:starred`, `feed:`), and quick filter chips in the web app.
+- **Saved articles as a lasting archive.** Star an article to save it: FeedKeeper keeps its full text and stores its images next to the database, so it stays readable even if the source changes. Saved articles survive cleanups and unsubscribing, ignore the word filter, and their full text is searchable.
+- **Article notes.** Attach personal Markdown notes to any article. Notes sync across devices, export to standalone Markdown files, and protect articles from retention cleanups.
+- **Universal Inbox (Read-it-Later).** Save web clippings, URLs, and personal notes to your inbox from any browser, share extension, or MCP client. Full article contents and lead images are extracted and archived offline.
+- **Curated editions and daily briefings.** Finite morning, midday, and evening editions curated by external agents via MCP (Claude, local LLMs, or custom scripts), with structured, linked editorial overviews. The latest publication remains available until its successor is published. Candidates and publication require readable body text beyond a repeated headline or read-more/player prompt; video/audio-only entries stay in the library and out of new editions, while short reports, summaries and transcripts remain eligible.
+- **Keyword mute filters.** Hide articles matching specific keywords before they reach your stream.
+- **Empty gallery filtering.** Gallery links with no editorial text (only an image or a read-more prompt) stay out of article lists, search, notifications and curation. Short news and captions remain visible; saved or annotated items remain accessible. Nothing is deleted.
 
 ### Web App & Notifications
 
-- **Keyboard shortcuts** — navigate the article list and newspaper with `J`/`K` (or `↓`/`↑`), open stories with `Enter`/`O`, mark read, star, or open the original with `M`/`S`/`V`, jump to search with `/`, refresh with `R`, mark all read with `Shift+A`, and press `?` for the shortcut overview.
-- **Mobile-friendly web app** — responsive layout with tab navigation and pull to refresh, installable on the home screen, with light, dark and system themes.
-- **Works offline** — a service worker lets the installed app start without a connection. It keeps your saved articles and the newest unread ones on the device with their full text and images, so you can read, search and filter them on the train. Changes such as marking read or saving are kept and sent once you are back online. Switch it off in the settings; cached data is removed when you log out.
-- **Notifications and home screen shortcuts** — optional push notifications for new articles of the feeds you choose (on iPhone and iPad once the app is on the home screen), the number of unread articles of the feeds you choose on the app icon, shortcuts to saved articles and to adding a feed, and sharing a web address from another app straight into the add-feed dialog. Notifications are encrypted end to end and delivered through your browser vendor's push service; the server creates its push keys on first start and keeps them in the database.
-- **Personal profiles** — each account can set its display name and a profile photo.
+- **Keyboard shortcuts.** Navigate the article list and newspaper with `J`/`K` (or `↓`/`↑`), open stories with `Enter`/`O`, mark read, star, or open the original with `M`/`S`/`V`, jump to search with `/`, refresh with `R`, mark all read with `Shift+A`, and press `?` for the shortcut overview.
+- **Mobile-friendly web app.** Responsive layout with tab navigation and pull to refresh, installable on the home screen, with light, dark and system themes.
+- **Works offline.** A service worker lets the installed app start without a connection. It keeps your saved articles and the newest unread ones on the device with their full text and images, so you can read, search and filter them on the train. Changes such as marking read or saving are kept and sent once you are back online. Switch it off in the settings; cached data is removed when you log out.
+- **Notifications and home screen shortcuts.** Optional push notifications for new articles of chosen feeds (on iPhone and iPad once the app is on the home screen), unread counts per feed on the app icon, shortcuts to saved articles and adding a feed, and sharing a web address from another app straight into the add-feed dialog. Notifications are encrypted end to end and delivered through your browser vendor's push service; the server creates its push keys on first start and keeps them in the database.
+- **Personal profiles.** Each account can set its display name and a profile photo.
 
 ### Sync, AI & Operations
 
-- **Remote MCP access** — stream items directly into Claude or any MCP-compatible environment via standard Streamable HTTP, with read-only or read-write tokens, OAuth sign-in for connectors such as ChatGPT and Claude (consent page, PKCE, revocable in Settings), and cursor-based paging for incremental sync.
-- **Privacy & self-hosting first** — a single Node.js process and one SQLite file. No external database engines, no telemetry, no tracking.
-- **Passkeys with browser autofill & step-up reauthentication** — sign in effortlessly without a password via WebAuthn browser autofill directly from the email input field. Protect security-sensitive actions (passkey registration, 2FA setup, recovery codes) with modal biometric confirmation without typing a password. Optional TOTP two-factor authentication and one-time recovery codes on every installation; see [Account security](docs/account-security.md).
-- **Hardened security** — SSRF protection against internal network probing, rate limiting on authentication, and hashed API tokens.
-- **Automated database housekeeping** — sensible defaults prune read articles (while keeping at least the newest 30 entries per feed), enforce maximum item retention, and run SQLite `VACUUM` on schedule to keep storage lean.
-- **Online backups** — create verified SQLite backups while the service keeps running.
+- **Remote MCP access.** Stream items directly into Claude or any MCP-compatible environment via Streamable HTTP, with read-only or read-write tokens, OAuth sign-in for connectors such as ChatGPT and Claude (consent page, PKCE, revocable in Settings), and cursor-based paging for incremental sync.
+- **No telemetry or tracking.** Your reading data stays in your SQLite database with no external database engines, no analytics, and no tracking.
+- **Passkeys and two-factor authentication.** Sign in without a password via WebAuthn browser autofill from the email field, and confirm sensitive actions (passkey registration, 2FA setup, recovery codes) with biometric step-up verification. Optional TOTP two-factor authentication and one-time recovery codes are included; see [Account security](docs/account-security.md).
+- **Hardened security.** SSRF protection against internal network probing, rate limiting on authentication, and hashed API tokens.
+- **Automated database housekeeping.** Defaults prune read articles (keeping at least the newest 30 entries per feed), enforce maximum item retention, and run SQLite `VACUUM` on schedule.
+- **Online backups.** Create verified SQLite backups while the service keeps running.
 
 ## How it fits together
 
@@ -151,7 +150,7 @@ flowchart LR
     MCPClient <--> MCPEP
 ```
 
-One Node process serves the built web reader, the open REST API (`/api/v1`), and an MCP endpoint (`/mcp`, using the [Streamable HTTP transport](https://modelcontextprotocol.io/docs/concepts/transports)) — all backed by a single SQLite database, the FTS5 search index, and the feed poller.
+One Node process serves the built web reader, the open REST API (`/api/v1`), and an MCP endpoint (`/mcp`, using the [Streamable HTTP transport](https://modelcontextprotocol.io/docs/concepts/transports)), backed by a single SQLite database, the FTS5 search index, and the feed poller.
 
 ### Web reader, native apps, and MCP
 
@@ -210,12 +209,12 @@ git clone https://github.com/visualfusion/feedkeeper.git
 cd feedkeeper
 npm install
 cp .env.example .env
-# edit .env — at minimum, set SESSION_SECRET (see the comment in the file)
+# edit .env: at minimum, set SESSION_SECRET (see the comment in the file)
 npm run dev:server   # terminal 1
 npm run dev:web      # terminal 2
 ```
 
-Open `http://localhost:5173` and follow the onboarding screen to create the first admin account. (Prefer the terminal? `npm run setup` does the same thing without a browser.)
+Open `http://localhost:5173` and follow the onboarding screen to create the first admin account, or run `npm run setup` in the terminal.
 
 ## Deploying
 
@@ -250,19 +249,19 @@ If you would rather not operate a server, [FeedKeeper Cloud](https://feedkeeper.
 
 **Local stdio mode (Claude Desktop & local tooling).** Run `feedkeeper mcp` (or `node server/dist/mcp-stdio.js`) to start a local stdio MCP server backed by your SQLite database without needing an open port or network configuration.
 
-**With OAuth (ChatGPT, Claude and other connectors).** Add `https://<your-domain>/mcp` as a remote MCP server or custom connector. The client discovers the sign-in on its own: you log in to FeedKeeper, choose **read only** or **read and write** on the consent page, and the client gets a short-lived token (1 hour, refreshed for 30 days). Connected AI assistants are listed under **Settings → MCP** and can be disconnected at any time. `OAUTH_ALLOWED_REDIRECT_HOSTS` can limit which hosts may register. Set `PUBLIC_URL` to the address the client reaches the server at; see [docs/design/mcp-oauth.md](docs/design/mcp-oauth.md).
+**With OAuth (ChatGPT, Claude and other connectors).** Add `https://<your-domain>/mcp` as a remote MCP server or custom connector. The client discovers the sign-in on its own: you log in to FeedKeeper, choose **read only** or **read and write** on the consent page, and the client gets a short-lived token (1 hour, refreshed for 30 days). Connected AI assistants are listed under **Settings > MCP** and can be disconnected at any time. `OAUTH_ALLOWED_REDIRECT_HOSTS` can limit which hosts may register. Set `PUBLIC_URL` to the address the client reaches the server at; see [docs/design/mcp-oauth.md](docs/design/mcp-oauth.md).
 
 **With a personal access token (scripts and clients without OAuth).**
 
-1. Log in to the FeedKeeper web UI and go to **Settings → Personal access tokens**.
-2. Create a token and copy it immediately — it's only shown once. Choose **Read only** for clients that only need to browse articles; choose **Read and write** to let the client change feeds or reading state. Existing tokens retain their previous write access.
-3. Add an MCP server entry pointing at `https://<your-domain>/mcp`, sending `Authorization: Bearer <token>` as a header. Settings → MCP also offers a ready-made Claude Desktop configuration.
+1. Log in to the FeedKeeper web UI and go to **Settings > Personal access tokens**.
+2. Create a token and copy it immediately, as it is only shown once. Choose **Read only** for clients that only need to browse articles; choose **Read and write** to let the client change feeds or reading state. Existing tokens retain their previous write access.
+3. Add an MCP server entry pointing at `https://<your-domain>/mcp`, sending `Authorization: Bearer <token>` as a header. **Settings > MCP** also offers a ready-made Claude Desktop configuration.
 
-Every tool call is scoped to the signed-in user — a client can only see and manage that user's own feeds and items. OAuth tokens work only on `/mcp`.
+Every tool call is scoped to the signed-in user: a client can only see and manage that user's own feeds and items. OAuth tokens work only on `/mcp`.
 
 ### Connect via AI assistant prompt
 
-To have an AI assistant configure the MCP connection for you, create a Personal Access Token in **Settings → Personal access tokens** and run:
+To have an AI assistant configure the MCP connection for you, create a Personal Access Token in **Settings > Personal access tokens** and run:
 
 > "Add FeedKeeper as a remote HTTP MCP server pointing to https://<your-domain>/mcp with Authorization: Bearer <your-token> to my MCP configuration (e.g. claude_desktop_config.json or Cursor MCP settings). Verify the connection by listing my feeds."
 
@@ -311,7 +310,7 @@ Read-only tokens expose only the tools that leave FeedKeeper data unchanged. `ge
 
 ## Native apps
 
-The official **FeedKeeper app** is available on the [App Store](https://analytics.visualfusion.de/q/feedkeeper-app) for **iOS, iPadOS, and macOS**. It currently ships in English, German, and Japanese (Russian is available in the web interface only). The app pairs directly with your self-hosted instance in seconds — just scan the pairing QR code under **Settings → Devices** in your web reader.
+The official **FeedKeeper app** is available on the [App Store](https://apps.apple.com/app/feedkeeper/id6819176523) for **iOS, iPadOS, and macOS**. It currently ships in English, German, and Japanese (Russian is available in the web interface only). The app pairs with your self-hosted instance by scanning the pairing QR code under **Settings > Devices** in your web reader.
 
 The app builds on FeedKeeper's open native API (`/api/v1`) to provide:
 - Incremental delta-sync and offline article caching
@@ -320,7 +319,7 @@ The app builds on FeedKeeper's open native API (`/api/v1`) to provide:
 - Synchronized personal Markdown notes per article
 - Reading layout preferences and daily newspaper editions
 
-The built-in web reader remains 100% free and fully supported. The native sync API is open and documented in [docs/openapi.yaml](docs/openapi.yaml) — third-party and community clients are warmly encouraged to build on the same endpoints (see [docs/building-clients.md](docs/building-clients.md) for a getting-started guide).
+The built-in web reader remains 100% free and fully supported. The native sync API is open and documented in [docs/openapi.yaml](docs/openapi.yaml), and third-party and community clients can build on the same endpoints (see [docs/building-clients.md](docs/building-clients.md) for a getting-started guide).
 
 ## Security
 
@@ -335,7 +334,7 @@ The built-in web reader remains 100% free and fully supported. The native sync A
 
 Feed icons and the images of saved articles are delivered by the FeedKeeper server, so browsing does not contact third-party sites for them; images of other articles still load from their source websites. To find a feed's icon, the server fetches the site's homepage about once a week. Opening a full article through the reader also fetches that page from the FeedKeeper server.
 
-Found a security issue? Please report it privately as described in [SECURITY.md](SECURITY.md) instead of opening a public issue.
+Report security issues privately as described in [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
 ## Configuration
 
@@ -349,23 +348,11 @@ Run **one application process per database**. On hosts with little memory, start
 
 ### Reader cleanup
 
-Reader HTML is cleaned when served, without rewriting stored publisher content. Exact adjacent image copies (for example separate desktop/mobile elements) collapse to one; different sources, links, responsive sources, captions and repetitions separated by text remain distinct. Empty product-card headers and ad slots are removed using their container structure and German, English and Japanese labels. Existing advertising content, affiliate disclosures and sponsored-article labels remain readable. These rules also apply to previously stored articles when requested again; downloaded client copies need to refresh before they reflect a server update.
+Reader HTML is cleaned when served, without rewriting stored publisher content. Exact adjacent image copies (for example separate desktop/mobile elements) collapse to one; different sources, links, responsive sources, captions and repetitions separated by text remain distinct. Empty product-card headers and ad slots are removed using their container structure and German, English and Japanese labels, while existing advertising content, affiliate disclosures and sponsored-article labels remain readable.
 
 ### Article images
 
-The image proxy shares downloads and cached images between subscribers of the same feed. This covers native clients requesting proxy images and the web app's offline copies; images loaded directly from a publisher bypass this cache. Every request still checks access to the article and its image. Different feeds and different source URLs, including query parameters, have separate cache entries.
-
-The disposable cache defaults to **256 MiB, 2,000 images and six hours**, with four active jobs and at most 32 waiting jobs. Full queues return `503 image_busy` with `Retry-After: 1`. Downloads retain the existing HTTP limits, size limit, SSRF checks and redirect rules; `POLL_REQUEST_TIMEOUT_MS` also bounds time spent waiting in the image queue. Missing images (HTTP 404/410) and unsupported formats are remembered for 60 seconds; other failures are not cached. Source cache directives can shorten or prevent disk caching.
-
-The web reader binds offline article snapshots and queued changes to the authenticated account. Account switches invalidate private service-worker responses, including when the previous session expired without an explicit logout; in-flight responses cannot refill a later session's cache. Legacy snapshots without account ownership are discarded and downloaded again. A change in another tab revokes that tab's offline account binding until authentication is refreshed.
-
-Normal proxied article images use private cache lifetimes of at most six hours and a content ETag. Browsers and the web offline cache revalidate them; archived images keep their fixed version. A new proxy URL version lets existing clients move away from the previous year-long immutable policy.
-
-See `IMAGE_CACHE_*` in [.env.example](.env.example) to change these limits. `IMAGE_CACHE_PATH` defaults to `image-cache` next to the database. Use one process per cache directory and keep it separate from `ARCHIVE_PATH`. Expired and least recently used entries are removed automatically. The cache stores hashed keys rather than source URLs, uses asynchronous file operations, and does not write to SQLite on cache hits. Once used, it logs aggregate `image_cache` counters every minute: hits, misses, shared work, negative hits, errors, overloads, evictions, bytes, entries, active and waiting jobs.
-
-Saved articles retain their permanent archives. Cache and archive files share disk space through hard links when they are on the same filesystem; otherwise saving an article copies its image. Evicting the cache never deletes a saved copy. Existing archives can refill the cache without contacting the source; these snapshots stay tied to their article so an old saved image cannot replace a newer one at the same source URL. Back up the database and archive as before; the disposable cache needs no backup.
-
-No database migration is needed. To roll back, stop the application and return to the previous version. Alternatively, set `IMAGE_CACHE_MAX_BYTES=0` and restart to disable disk caching; `IMAGE_CACHE_NEGATIVE_TTL_SECONDS=0` also disables remembered failures. Existing disposable files can be removed while the application is stopped. Keep the archive.
+The image proxy shares downloads and cached images between subscribers of the same feed, with per-article access checks and separate entries per source URL. The disposable cache defaults to **256 MiB, 2,000 images and six hours** (`IMAGE_CACHE_*` in [`.env.example`](.env.example)), separate from permanent archives for saved articles. See [Article image cache](docs/image-cache.md) for offline isolation, hard links, metrics and rollback options.
 
 ## Extending
 
@@ -378,11 +365,11 @@ Operators and products built on FeedKeeper can add settings sections, footer lin
 
 ## Contributing
 
-Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started. Improving or adding a language is a good first contribution, see [docs/translating.md](docs/translating.md). So is a better starter feed for the lists new users see, see [docs/feed-lists.md](docs/feed-lists.md). Notable changes are listed in the [changelog](CHANGELOG.md). This is a young project, so expect some rough edges.
+Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started. Improving or adding a language is a good first contribution (see [docs/translating.md](docs/translating.md)), as is suggesting a starter feed (see [docs/feed-lists.md](docs/feed-lists.md)). Notable changes are listed in the [changelog](CHANGELOG.md).
 
 ## License
 
-[MIT](LICENSE) — third-party licenses (including the Apache License 2.0 copy for the BudouX Japanese model and the MIT License for the oEmbed provider registry) are listed in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+[MIT](LICENSE). Third-party licenses (including the Apache License 2.0 copy for the BudouX Japanese model and the MIT License for the oEmbed provider registry) are listed in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 
 ---
 

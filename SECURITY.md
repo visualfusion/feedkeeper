@@ -20,7 +20,7 @@ You should get an initial response within a few days. Once a fix is available, w
 
 ## Scope
 
-Feedkeeper is self-hosted software. Reports about the maintainer's own instance at `rss.visualfusion.de` (e.g. account enumeration against that specific deployment) are welcome through the same channel, but most reports will concern the codebase itself and apply to every self-hosted instance.
+FeedKeeper is self-hosted software. Most reports concern the codebase itself and apply to every self-hosted installation.
 
 Areas of particular interest:
 

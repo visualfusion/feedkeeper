@@ -32,10 +32,10 @@ servers with no capability object retain their previous behavior, subject to
 
 | Capability | Protected operations | Available after disabling |
 | --- | --- | --- |
-| `mcp` | Streamable HTTP MCP access | Native library and automatic editions, according to their own permissions |
+| `mcp` | Streamable HTTP MCP access | Native library and curated editions, according to their own permissions |
 | `sync` | `/sync`, subscription creation and URL changes, OPML import, discovery and explicit refresh, `item.read/save/progress` mutations, `/items/read-all`, native preference PATCH, folder creation/updates containing `iconSymbol`; matching MCP operations | Ordinary library/feed reads, existing subscription settings/order/removal, plain folders and keywords, reading existing preferences/icons; note and edition operations use their separate capabilities |
 | `notes` | Note PUT and `item.note.set` mutations | Existing note reads, Markdown exports and revision-checked deletion; stored notes remain protected from retention |
-| `editions` | Edition candidates, generation and MCP publication/generation; scheduled automatic generation | Reading the existing edition/state and dismissing it; disabling does not delete the issue |
+| `editions` | Edition candidates and MCP publication; legacy `/edition/generate` read-only alias | Reading the existing edition/state and dismissing it; disabling does not delete the issue |
 | `fulltext` | Fetching reader text via `/items/{id}/full-text` or MCP `fetch_full_text` | Already stored article content |
 | `search.fts` | `/search` | Ordinary item listing and local offline search |
 
@@ -80,7 +80,7 @@ license. Any future hosted app entitlement needs a separate explicit contract.
 {
   "apiVersion": 1,
   "serverVersion": "0.12.0",
-  "features": ["pairing", "sync", "mutations", "subscriptions", "folders", "items", "fulltext", "images", "muted-keywords", "opml", "retention", "feed-icons", "folder-icons", "notes", "edition", "edition.automatic", "edition.revisions", "native-preferences", "search.fts", "account-capabilities", "mcp"],
+  "features": ["pairing", "sync", "mutations", "subscriptions", "folders", "items", "fulltext", "images", "muted-keywords", "opml", "retention", "feed-icons", "folder-icons", "notes", "edition", "edition.revisions", "native-preferences", "search.fts", "account-capabilities", "mcp"],
   "limits": { "maxMutationsPerRequest": 200, "retentionDays": 90, "retention": { "enabled": true, "readDays": 30, "maxDays": 90, "maxItemsPerFeed": 1000, "protectActiveEdition": true } },
   "minClientVersion": null
 }
@@ -110,7 +110,7 @@ New tables (migrations are additive and keep existing data):
 | `item_notes` | Personal article notes with content, revision and timestamps. |
 | `item_note_revisions` | Last revision after a note is deleted, so old edits and deletions cannot overwrite a recreated note. |
 | `feed_icons` | Server-cached raster icons and content hashes for subscriptions. |
-| `editions` | A user's current automatic or curated issue, identity, source, order, monotonic revision, status and expiry. The slot is retained after dismissal. |
+| `editions` | A user's current curated issue, identity, source, order, monotonic revision, status and expiry. The slot is retained after dismissal. |
 | `edition_history` | The last 32 issues per user, for avoiding repeated selections within 72 hours. No article content is duplicated. |
 | `native_preferences` | Revision-checked app-only section ordering, newspaper exclusions and edition preferences. |
 | `native_requests` | Atomic receipts for preference and edition commands, retained for at least 35 days. |
@@ -127,7 +127,7 @@ Two streams, because articles and personal state behave differently.
 
 **State stream (per user).** Everything personal and small goes through the change log:
 
-`GET /sync?since=<seq>&limit=500` →
+`GET /sync?since=<seq>&limit=500`:
 
 ```json
 {
@@ -157,7 +157,7 @@ The log is **compacted**: each object has exactly one row whose `seq` moves forw
 ] }
 ```
 
-The server applies them in order and answers per mutation (`applied`, `duplicate`, `stale`, `rejected` or `conflict`). Replays are harmless thanks to `applied_mutations`. Conflict rules: read, saved and reading position are last-writer-wins **per field** by `at`. The log records when each field last changed, whether through a device or the web app, and an older change is answered `stale` and not applied. `at` may be at most 5 minutes ahead of the server clock (it is clamped) and at most 30 days old (older is `rejected`). Reading positions below 5 % or above 95 % clear the stored position. Notes use `expectedRevision` on both set and delete; a mismatch returns `revision_conflict` with the current state, including the tombstone revision after deletion. A rejected mutation never blocks the rest of the batch.
+The server applies them in order and answers per mutation (`applied`, `duplicate`, `stale`, `rejected` or `conflict`). Replays are harmless thanks to `applied_mutations`. Conflict rules: read, saved and reading position are last-writer-wins **per field** by `at`. The log records when each field last changed, whether through a device or the web app, and an older change is answered `stale` and not applied. `at` may be at most 5 minutes ahead of the server clock (it is clamped) and at most 30 days old (older is `rejected`). Reading positions below 5% or above 95% clear the stored position. Notes use `expectedRevision` on both set and delete; a mismatch returns `revision_conflict` with the current state, including the tombstone revision after deletion. A rejected mutation never blocks the rest of the batch.
 
 ## Resources
 
@@ -184,7 +184,7 @@ Implemented routes accept device tokens or personal access tokens unless noted. 
 **Saved articles, notes and progress**
 - Saving is state (`item.save`). It triggers the archive on the server; `archivedAt` appears once full text and images are stored. Personal notes can be attached to any accessible article.
 - `GET/PUT/DELETE /items/{id}/note` and `item.note.set|delete` mutations synchronize personal Markdown notes. With `expectedRevision`, edits and deletions use optimistic concurrency. A deletion advances the revision, and a recreation advances it again. `GET` returns `404 note_not_found` with `current` tombstone state when no active note exists.
-- `item.progress` stores the reading position of **any** article so another device can continue where you stopped. Clients send it batched: when leaving the article or at most every 10 seconds. The server ignores positions below 5 % and above 95 %, since "not started" and "finished" are covered by the read state.
+- `item.progress` stores the reading position of **any** article so another device can continue where you stopped. Clients send it batched: when leaving the article or at most every 10 seconds. The server ignores positions below 5% and above 95%, since "not started" and "finished" are covered by the read state.
 - `GET /items/{id}/note.md` and `GET /notes/export` return Markdown with article title and link.
 
 **Planned: highlights and tags**
@@ -216,10 +216,10 @@ Implemented routes accept device tokens or personal access tokens unless noted. 
   - Retention protection: articles with notes are permanently excluded from database retention cleanup (`runCleanup`), even after feed unsubscription or age limit expiration.
   - Item listing endpoints (`/items`, `/items/{id}`, `/items/bundle`, `/edition`) include `state.hasNote: boolean`.
 
-- **Shared Edition „Deine Zeitung“ (`edition`, `edition.automatic`, `edition.revisions`)**:
-  - The server creates automatic issues; an active MCP-curated issue takes priority until expiry or dismissal.
+- **Shared Edition „Deine Zeitung“ (`edition`, `edition.revisions`)**:
+  - Editions are curated via MCP (`publish_edition`). The server retains the active curated issue until expiry or dismissal and never generates heuristic replacements.
   - `GET /edition` returns populated articles in preserved order; `/edition/state` returns the retained revision even after expiry or dismissal. Reads never generate an issue.
-  - `POST /edition/generate` ensures an issue exists or requests a new automatic selection. UUID request IDs make retries safe; forced generation requires a revision.
+  - `POST /edition/generate` remains a read-only compatibility alias that returns the latest curated issue (or absence).
   - `publish_edition` requires the current revision and a UUID request ID, and accepts an optional title, plain summary and linked overview (see `editions.md`), and a future expiry (default 24 hours, maximum seven days). Publishing replaces the active issue.
   - `GET/PATCH /native-preferences` syncs app-only folder order, newspaper visibility and selection preferences. It has no effect on the web folder list or article stream.
   - See [editions.md](editions.md) for defaults, lifecycle, scheduler, MCP workflow, first-time adoption and offline handling.

@@ -1,10 +1,10 @@
 # Translating FeedKeeper
 
-The web interface is available in English, German and Japanese. Adding or improving a language is a great first contribution, and you do not need to write any application code.
+The web interface is available in English, German, Japanese and Russian. Adding or improving a language is a good first contribution, and you do not need to write any application code.
 
 ## Improve an existing translation
 
-1. Open the file for the language in `web/src/i18n/locales/` (`en.json`, `de.json` or `ja.json`).
+1. Open the file for the language in `web/src/i18n/locales/` (`en.json`, `de.json`, `ja.json` or `ru.json`).
 2. Change the text. Keys (the left side) stay the same.
 3. Keep placeholders such as `{{count}}` or `{{name}}` exactly as they are; they are filled in by the app.
 4. Open a pull request.
@@ -23,7 +23,7 @@ The web interface is available in English, German and Japanese. Adding or improv
 
 ## Tips
 
-- Check the result in the app: set the language in Settings → Reading & appearance and click through the screens that use your text.
+- Check the result in the app: set the language in **Settings > Reading & appearance** and click through the screens that use your text.
 - Keep button labels short; many of them sit in narrow mobile layouts.
 - Use plural-aware wording where the English text has a count, and ask in your pull request if you are unsure how a string is used.
 - A best-effort translation is welcome. Maintainers and other contributors will review it.

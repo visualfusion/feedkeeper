@@ -8,11 +8,11 @@ For the full endpoint reference with input schemas and responses, see [docs/open
 
 Clients authenticate using a Bearer token in the `Authorization` header:
 
-- **Personal access tokens**: Users can generate a token in **Settings → API & integrations**. Good for scripts and command-line tools.
+- **Personal access tokens**: Users can generate a token in **Settings > API & integrations**. Good for scripts and command-line tools.
 - **Device pairing with a QR code**: Best for interactive mobile and desktop apps.
-  1. The user opens **Settings → Devices** in the web app and clicks *Pair new device*.
+  1. The user opens **Settings > Devices** in the web app and clicks *Pair new device*.
   2. The web UI displays a QR code containing `{ "url": "https://...", "code": "..." }`.
-  3. Your app calls `POST /api/v1/pairing-codes` with `{ "code": "...", "deviceName": "My Reader" }`.
+  3. Your app calls `POST /api/v1/devices/pair` with `{ "code": "...", "deviceName": "My Reader", "platform": "ios" }`.
   4. The server returns a long-lived device token scoped specifically to `/api/v1`. Users can see and revoke connected devices in their settings at any time.
 
 ## 2. Server capabilities
@@ -45,7 +45,7 @@ FeedKeeper uses a compact change log so offline clients stay in step without dow
 
 - **Article notes**: `GET`, `PUT`, and `DELETE` on `/api/v1/items/{id}/note` let users save personal Markdown notes on any story. Articles with notes are permanently excluded from server retention cleanup.
 - **Full-text search**: `GET /api/v1/search?q=...` uses SQLite FTS5 with BM25 relevance ranking across titles, snippets, cached full text, and personal notes.
-- **Editions**: `GET /api/v1/edition` serves an ordered issue of up to 24 stories, either generated automatically by the server based on time slots and reading preferences, or hand-curated through MCP.
+- **Editions**: `GET /api/v1/edition` serves the latest curated issue of up to 24 stories, published via MCP.
 
 ## 6. Account capabilities
 

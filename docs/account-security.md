@@ -1,6 +1,6 @@
 # Passkeys and two-factor authentication
 
-Every installation can offer passkeys and authenticator codes. Open **Settings → Account → Account security** to manage them. Nothing is enabled automatically for existing accounts.
+Every installation can offer passkeys and authenticator codes. Open **Settings > Account > Account security** to manage them. Nothing is enabled automatically for existing accounts.
 
 ## Passkeys
 
@@ -43,13 +43,13 @@ The built-in cookie login uses `/api/auth/security`. Read `/config` for supporte
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/passkeys/options` → `/passkeys/verify` | Discoverable passkey login; options return `{ challengeId, publicKey }`, verification takes `{ challengeId, credential }`. |
+| POST | `/passkeys/options` -> `/passkeys/verify` | Discoverable passkey login; options return `{ challengeId, publicKey }`, verification takes `{ challengeId, credential }`. |
 | POST | `/mfa` | Complete a password login that returned `403 mfa_required`; takes `{ challengeId, code }`. Accepts TOTP or one recovery code. |
-| POST | `/reauth` | Password and optional second factor → one-time `{ reauthToken }`. |
-| POST | `/reauth/passkey/options` → `/reauth/passkey/verify` | Passkey → one-time reauthentication proof. |
-| POST | `/passkeys/register/options` → `/passkeys/register/verify` | Proof → registration options; verification takes `{ challengeId, credential, name }`. |
+| POST | `/reauth` | Password and optional second factor -> one-time `{ reauthToken }`. |
+| POST | `/reauth/passkey/options` -> `/reauth/passkey/verify` | Passkey -> one-time reauthentication proof. |
+| POST | `/passkeys/register/options` -> `/passkeys/register/verify` | Proof -> registration options; verification takes `{ challengeId, credential, name }`. |
 | DELETE | `/passkeys/:id` | Remove an owned credential with `{ reauthToken }`. |
-| POST | `/totp/setup` → `/totp/confirm` | Proof → secret, QR payload URI and setup challenge; confirmation takes `{ challengeId, code }` and returns recovery codes. |
+| POST | `/totp/setup` -> `/totp/confirm` | Proof -> secret, QR payload URI and setup challenge; confirmation takes `{ challengeId, code }` and returns recovery codes. |
 | POST | `/totp/disable` | Disable with a fresh proof. |
 | POST | `/recovery-codes` | Replace recovery codes with a fresh proof. |
 

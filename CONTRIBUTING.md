@@ -10,7 +10,7 @@ Open an [issue](https://github.com/visualfusion/feedkeeper/issues/new/choose) wi
 - Steps to reproduce
 - Your FeedKeeper version (shown in the release you installed, or the Docker image tag), how you run it, and your browser if it's a UI issue
 
-For security vulnerabilities, see [SECURITY.md](SECURITY.md) instead — please don't open a public issue.
+For security vulnerabilities, see [SECURITY.md](SECURITY.md) instead; please don't open a public issue.
 
 ## Suggesting features
 
@@ -46,7 +46,7 @@ All three run in CI on every pull request; please make sure they pass locally fi
 
 ## Codebase architecture
 
-Feedkeeper is an npm workspace with two packages:
+FeedKeeper is an npm workspace with two packages:
 
 - `server/`: Express + TypeScript backend.
   - `src/db/`: SQLite setup with `better-sqlite3` and incremental migrations (`src/db/migrations/`).
@@ -57,13 +57,13 @@ Feedkeeper is an npm workspace with two packages:
   - `src/mcp/`: Remote Model Context Protocol server exposing tools over Streamable HTTP (`/mcp`).
 - `web/`: Single-page app built with Vite, React, and Tailwind CSS (installable as a PWA).
   - `src/pages/`: Feeds, Items, Settings, and Auth views.
-  - `src/i18n/`: Translations in `en.json`, `de.json`, and `ja.json`.
+  - `src/i18n/`: Translations in `en.json`, `de.json`, `ja.json`, and `ru.json`.
 
 ## Pull request guidelines
 
-- Keep PRs focused — one change per PR is easier to review than a bundle of unrelated fixes.
+- Keep PRs focused: one change per PR is easier to review than a bundle of unrelated fixes.
 - Match the existing code style. ESLint (`npm run lint`) catches unused code and common mistakes; there is no automatic formatter yet. Warnings about React hook dependencies are known and do not block a pull request.
-- If you touch user-facing text, update all three locale files (`web/src/i18n/locales/{en,de,ja}.json`), not just English; a test fails when their keys differ. If you don't speak German or Japanese, a best-effort translation is fine, it will get reviewed. See [docs/translating.md](docs/translating.md) to improve or add a language.
+- If you touch user-facing text, update all four locale files (`web/src/i18n/locales/{en,de,ja,ru}.json`), not just English; a test fails when their keys differ. If you don't speak German, Japanese, or Russian, a best-effort translation is fine and will get reviewed. See [docs/translating.md](docs/translating.md) to improve or add a language.
 - User-visible changes get a line under "Unreleased" in [CHANGELOG.md](CHANGELOG.md).
 - Commit messages are a short conventional subject, for example `fix(server): reject empty feed titles` or `feat(web): add a refresh button`.
 - If you change the database schema, add a new migration file under `server/src/db/migrations/` rather than editing an existing one.

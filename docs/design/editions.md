@@ -1,6 +1,6 @@
 # Shared editions and native reading preferences
 
-Status: base contract implemented in FeedKeeper `0.11.0`; linked overviews and explicit article limits are additive, unreleased extensions. The HTTP schemas are in [../openapi.yaml](../openapi.yaml); the wider native API is described in [native-api.md](native-api.md).
+Status: base contract implemented in FeedKeeper `0.11.0`; linked overviews, layouts and explicit article limits are implemented extensions. The HTTP schemas are in [../openapi.yaml](../openapi.yaml); the wider native API is described in [native-api.md](native-api.md).
 
 ## Responsibilities and priority
 
@@ -117,7 +117,7 @@ Migration `0023_server_editions.sql` is additive: it introduces preferences, rec
 
 Back up the database and article archive before deploying. Build and test before restart; startup applies the migration and starts edition maintenance. Deploy a tagged release with matching package versions and built assets. For an unpublished preview, use a distinct development version and keep its changes under Unreleased until publication is authorized.
 
-## Linked overviews (unreleased)
+## Linked overviews
 
 Feature flag: `edition.overview`. `publish_edition` accepts optional `overview`, an array of 1–5 `{heading, segments}` blocks. Each segment has plain `text` and an optional positive integer `itemId`. The server requires at least one linked segment per block, validates every reference against the selected and access-checked `itemIds`, and rejects invalid links with `invalid_overview_reference`. Headings are limited to 160 UTF-16 code units, segments to 1000, at most 20 segments per block and 3000 visible code units in total. The server assigns stable per-issue IDs (`topic-1`, etc.). Native responses and sync include the stored overview. Older clients ignore it and display `summary`; when no summary is supplied, a plain-text fallback is derived from the blocks.
 
@@ -140,7 +140,7 @@ Candidate payloads additionally include `sourceName` and `folderName`. The gener
 Migration `0025_edition_overview.sql` adds a nullable JSON column without changing existing editions, accounts or tokens. Consumers must build the current core before validation; core builds now emit declarations so downstream TypeScript contracts cannot silently use stale declaration files.
 
 
-## Layouts (unreleased)
+## Layouts
 
 Feature flag: `edition.layout`. `publish_edition` accepts an optional `layout`, a presentation plan for the issue: what its writer considers important and what belongs together. It never says how a screen draws it; clients map the roles onto their own columns, sizes and type. The issue's `itemIds` stay the canonical, ordered list, and an issue without a layout is shown exactly as before.
 

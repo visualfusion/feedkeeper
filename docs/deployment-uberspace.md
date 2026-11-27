@@ -1,6 +1,6 @@
 # Deploying to Uberspace
 
-This guide walks through running Feedkeeper on an [Uberspace](https://uberspace.de) 7 account, but the same steps apply to any Linux host where you have a shell account and can run a long-lived Node.js process (a VPS, another shared host with SSH access, etc.).
+This guide walks through running FeedKeeper on an [Uberspace](https://uberspace.de) 7 account, but the same steps apply to any Linux host where you have a shell account and can run a long-lived Node.js process (a VPS, another shared host with SSH access, etc.).
 
 ## 1. Pick a Node.js version
 
@@ -28,10 +28,10 @@ cp .env.example .env
 
 Edit `.env`:
 
-- `PUBLIC_URL` — the domain you'll add in step 5, e.g. `https://rss.example.com`.
-- `SESSION_SECRET` — generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
-- `TRUST_PROXY=true` — Uberspace terminates TLS in front of your app, so Express needs to trust its `X-Forwarded-*` headers. If a CDN such as Cloudflare proxies the domain as well, `true` would treat the CDN's edge address as the client, and all visitors behind one edge would share rate limits. List the trusted proxies instead: Uberspace's web server connects from a unique local IPv6 address, so use `uniquelocal` followed by the CDN's published ranges, e.g. `TRUST_PROXY=uniquelocal,173.245.48.0/20,…` with every range from <https://www.cloudflare.com/ips/>. Uberspace's web server replaces `X-Forwarded-For` with the address of the Cloudflare edge, so also set `CLIENT_IP_HEADER=CF-Connecting-IP`; the app accepts that header only from the listed proxies.
-- `ALLOW_SIGNUP=false` — keep this unless you deliberately want open registration.
+- `PUBLIC_URL`: the domain you'll add in step 5, e.g. `https://rss.example.com`.
+- `SESSION_SECRET`: generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+- `TRUST_PROXY=true`: Uberspace terminates TLS in front of your app, so Express needs to trust its `X-Forwarded-*` headers. If a CDN such as Cloudflare proxies the domain as well, `true` would treat the CDN's edge address as the client, and all visitors behind one edge would share rate limits. List the trusted proxies instead: Uberspace's web server connects from a unique local IPv6 address, so use `uniquelocal` followed by the CDN's published ranges, e.g. `TRUST_PROXY=uniquelocal,173.245.48.0/20,…` with every range from <https://www.cloudflare.com/ips/>. Uberspace's web server replaces `X-Forwarded-For` with the address of the Cloudflare edge, so also set `CLIENT_IP_HEADER=CF-Connecting-IP`; the app accepts that header only from the listed proxies.
+- `ALLOW_SIGNUP=false`: keep this unless you deliberately want open registration.
 
 ## 4. Build and create the first admin account
 
@@ -40,7 +40,7 @@ npm run build
 npm run setup
 ```
 
-`npm run setup` asks for an email, display name, and password and creates the first admin account from the terminal. If you'd rather do this from the browser, skip it — the web UI shows the same onboarding screen the first time anyone opens the app.
+`npm run setup` asks for an email, display name, and password and creates the first admin account from the terminal. If you'd rather do this from the browser, skip it; the web UI shows the same onboarding screen the first time anyone opens the app.
 
 ## 5. Point a domain at it
 
@@ -101,9 +101,7 @@ Build before restarting and check `/api/health` and `/api/v1/meta` afterwards. T
 
 ### Testing an unpublished update
 
-An unpublished source tree can be deployed through SSH without pushing to GitHub. Keep `.env`, the live database, article archive and installed dependencies outside the uploaded file list. Build and test in a separate directory first, then transfer the source and built server files and restart the service. Preserve the previous code and a verified database/archive backup until the test is accepted. A preview version such as `0.11.0-dev.1` identifies the test through `/meta`; release notes stay under Unreleased, with no tag or GitHub release created.
-
-For the shared-edition upgrade, migration `0023_server_editions.sql` runs at startup. See [design/editions.md](design/editions.md) for the preference-adoption sequence and compatibility changes. Transferring server files does not upload settings that still live on a native device. The app performs that initial transfer through the API.
+An unpublished source tree can be deployed through SSH without pushing to GitHub. Keep `.env`, the live database, article archive and installed dependencies outside the uploaded file list. Build and test in a separate directory first, then transfer the source and built server files and restart the service. Keep the previous code and a verified database/archive backup until the test is accepted. Pending database migrations run automatically at startup.
 
 ### Creating and restoring a backup
 
@@ -127,5 +125,5 @@ If you use a different process manager, substitute its stop and start commands. 
 ## Notes
 
 - The SQLite database lives at the path set by `DATABASE_PATH` (`./data/feedkeeper.sqlite` by default). Use the backup command above while the service is running; SQLite uses WAL mode, so copying only the main file may miss recent changes.
-- Feedkeeper polls subscribed feeds on its own schedule; there's no cron job to set up.
-- If `npm install` fails to build the native SQLite binding, install build tools with `uberspace tools version use gcc` or check the current Uberspace manual for the native module build guide — most environments get a prebuilt binary and never hit this.
+- FeedKeeper polls subscribed feeds on its own schedule; there's no cron job to set up.
+- If `npm install` fails to build the native SQLite binding, install build tools with `uberspace tools version use gcc` or check the current Uberspace manual for the native module build guide. Most environments get a prebuilt binary and never hit this.
